@@ -948,26 +948,19 @@ document.addEventListener("DOMContentLoaded", () => {
   renderComplaints();
 });
 
-// AUTO-UPDATE SERVICE WORKER (Mencegah kendala cache tersimpan di HP warga)
+// AUTO-UPDATE SENYAP DI LATAR BELAKANG (TANPA GANGGU WARGA)
 if ("serviceWorker" in navigator) {
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
+  });
+
   window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("./service-worker.js")
-      .then((registration) => {
-        registration.addEventListener("updatefound", () => {
-          const newWorker = registration.installing;
-          newWorker.addEventListener("statechange", () => {
-            if (
-              newWorker.state === "installed" &&
-              navigator.serviceWorker.controller
-            ) {
-              window.location.reload();
-            }
-          });
-        });
-      })
-      .catch((error) => {
-        console.log("Service Worker gagal mendaftar: ", error);
-      });
+    navigator.serviceWorker.register("./service-worker.js").catch((error) => {
+      console.log("Service Worker gagal mendaftar: ", error);
+    });
   });
 }

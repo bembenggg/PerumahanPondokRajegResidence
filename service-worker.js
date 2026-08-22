@@ -1,4 +1,4 @@
-const CACHE_NAME = "prr-warga-v4";
+const CACHE_NAME = "prr-warga-v6";
 const urlsToCache = ["./", "./index.html", "./style.css", "./app.js"];
 
 self.addEventListener("install", (event) => {
@@ -29,8 +29,12 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    }),
+    fetch(event.request)
+      .then((response) => {
+        return response;
+      })
+      .catch(() => {
+        return caches.match(event.request);
+      }),
   );
 });
