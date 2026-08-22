@@ -1,0 +1,1336 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#087a4b" />
+    <meta name="description" content="Layanan digital Perumahan Pondok Rajeg" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icons/icon-192.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <!-- Google Material Symbols -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <title>Pondok Rajeg Residence</title>
+  </head>
+  <body>
+    <!-- 1. SPLASH SCREEN -->
+    <div id="splashScreen" class="splash-screen">
+      <div class="splash-content">
+        <div class="brand-mark large">
+          <img src="LOGO-PRR.JPG" alt="Logo PRR" />
+        </div>
+        <h1>Perumahan<br /><strong>Pondok Rajeg Residence</strong></h1>
+        <p>Portal Layanan Warga & Keuangan Lingkungan</p>
+        <div class="spinner"></div>
+      </div>
+    </div>
+
+    <!-- 2. HALAMAN LOGIN WARGA -->
+    <div id="loginView" class="auth-container">
+      <div class="auth-split-box">
+        <div class="auth-form-side">
+          <div class="brand-top-badge">
+            <div class="brand-mark">
+              <img src="LOGO-PRR.JPG" alt="Logo PRR" />
+            </div>
+            <span>PONDOK RAJEG RESIDENCE</span>
+          </div>
+          <h2>Masuk Warga</h2>
+          <p class="auth-subtitle">
+            Silakan masukkan Blok/Nomor rumah dan PIN Anda untuk mengakses
+            portal layanan.
+          </p>
+
+          <form id="loginForm">
+            <label
+              >Blok / Nomor Rumah
+              <input
+                type="text"
+                id="loginUnit"
+                required
+                placeholder="Contoh: B8/2"
+              />
+            </label>
+            <label
+              >PIN Warga
+              <input
+                type="password"
+                id="loginPin"
+                required
+                placeholder="••••"
+                maxlength="6"
+              />
+            </label>
+            <button type="submit" class="primary-button">
+              Masuk ke Portal <span>→</span>
+            </button>
+          </form>
+          <p class="form-note">
+            Belum punya PIN? Hubungi pengurus Paguyuban Pondok Rajeg Residence.
+          </p>
+        </div>
+
+        <div class="auth-visual-side">
+          <div class="visual-content-inner">
+            <span class="visual-badge">Kawasan Asri & Terpadu</span>
+            <h3>
+              Lingkungan Nyaman,<br /><strong>Semua Urusan Mudah.</strong>
+            </h3>
+            <p>
+              Kelola iuran IPL bulanan, pantau transparansi kas Paguyuban Pondok
+              Rajeg Residence, hingga ajukan pengaduan fasilitas dalam satu
+              genggaman digital.
+            </p>
+          </div>
+
+          <div class="visual-floating-card">
+            <div class="floating-icon">
+              <span class="material-symbols-rounded">verified_user</span>
+            </div>
+            <div class="floating-text">
+              <b>Transparansi Kas Paguyuban Pondok Rajeg Residence 100%</b>
+              <small
+                >Laporan keuangan terbuka, akurat, dan dapat diakses secara
+                real-time oleh seluruh warga.</small
+              >
+            </div>
+          </div>
+
+          <div class="hero-orb orb-one"></div>
+          <div class="hero-orb orb-two"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. APLIKASI UTAMA (DASHBOARD) -->
+    <div class="app-shell" id="mainApp">
+      <header class="topbar">
+        <div class="brand-mark" aria-hidden="true">
+          <img src="LOGO-PRR.JPG" alt="Logo PRR" />
+        </div>
+        <div class="brand">
+          <span>PERUMAHAN</span><strong>Pondok Rajeg Residence</strong>
+        </div>
+        <div class="topbar-actions">
+          <button
+            class="icon-button desktop-profile-btn"
+            id="topbarProfileBtn"
+            aria-label="Profil Unit"
+            title="Profil Unit & Keluarga"
+          >
+            <span class="material-symbols-rounded">badge</span>
+          </button>
+          <button
+            class="icon-button"
+            id="notificationBtn"
+            aria-label="Notifikasi"
+            title="Notifikasi"
+          >
+            <span class="material-symbols-rounded">notifications</span>
+            <i></i>
+          </button>
+          <button
+            class="icon-button logout-btn"
+            id="logoutBtn"
+            aria-label="Keluar"
+            title="Keluar akun"
+          >
+            <span class="material-symbols-rounded">logout</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="main-content">
+        <div class="dashboard-left">
+          <section class="hero">
+            <p class="eyebrow" id="welcomeUser">Selamat datang, Warga</p>
+            <h1>Lingkungan nyaman,<br /><em>semua urusan mudah.</em></h1>
+            <p class="hero-copy">
+              Kelola pembayaran IPL dan pantau keuangan kas warga secara
+              transparan.
+            </p>
+            <div class="hero-orb orb-one"></div>
+            <div class="hero-orb orb-two"></div>
+          </section>
+
+          <!-- SURAT PERINGATAN -->
+          <section
+            id="arrearsWarningSection"
+            class="arrears-section"
+            style="display: none"
+          >
+            <div class="warning-banner-card" id="warningCardContainer">
+              <div class="warning-icon-box">
+                <span class="material-symbols-rounded" id="warningIconSymbol"
+                  >warning</span
+                >
+              </div>
+              <div class="warning-content">
+                <b id="warningTitle">SURAT PERINGATAN RESMI RT</b>
+                <p id="warningDesc">
+                  Tunggakan IPL terdeteksi selama
+                  <span id="unpaidCount">3</span> bulan. Layanan pengambilan
+                  sampah di rumah Anda ditangguhkan sementara waktu.
+                </p>
+                <div class="unpaid-months-list">
+                  <small
+                    >History Nunggak:
+                    <span id="unpaidMonthsText" class="text-danger-bold"
+                      >Juni, Juli, Agustus 2026</span
+                    ></small
+                  >
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- RINGKASAN KEUANGAN -->
+          <section
+            class="balance-card cashflow-card"
+            aria-label="Ringkasan Keuangan"
+          >
+            <div class="net-balance-row">
+              <div class="net-balance-info">
+                <span class="label">Saldo Kas Bersih Paguyuban Bulan ini</span>
+                <strong id="netBalance">Rp 3.300.000</strong>
+              </div>
+              <div class="house-icon cash">
+                <span class="material-symbols-rounded"
+                  >account_balance_wallet</span
+                >
+              </div>
+            </div>
+
+            <div class="finance-rows">
+              <div class="finance-row-item income">
+                <div class="row-left">
+                  <div class="row-icon">
+                    <span class="material-symbols-rounded">trending_down</span>
+                  </div>
+                  <span>Total Pemasukan</span>
+                </div>
+                <strong id="totalCashFlow" class="text-success"
+                  >Rp 4.500.000</strong
+                >
+              </div>
+
+              <div class="finance-row-item expense">
+                <div class="row-left">
+                  <div class="row-icon">
+                    <span class="material-symbols-rounded">trending_up</span>
+                  </div>
+                  <span>Total Pengeluaran</span>
+                </div>
+                <strong id="totalExpense" class="text-danger"
+                  >Rp 1.200.000</strong
+                >
+              </div>
+            </div>
+          </section>
+
+          <!-- KARTU TAGIHAN IPL -->
+          <section class="balance-card" aria-label="Status IPL">
+            <div class="balance-card-top">
+              <div class="balance-info">
+                <p>Tagihan IPL bulan ini</p>
+                <strong id="currentBill">Rp 150.000</strong>
+                <span id="billStatus" class="status-chip">Belum dibayar</span>
+              </div>
+              <div class="house-icon">
+                <span class="material-symbols-rounded">home</span>
+              </div>
+            </div>
+            <button class="pay-small" data-page="ipl">
+              Bayar Tagihan Sekarang <span>→</span>
+            </button>
+          </section>
+
+          <!-- AKSES CEPAT -->
+          <section class="quick-section">
+            <div class="section-heading">
+              <h2>Akses cepat</h2>
+              <span>Menu Warga Pondok Rajeg Residence</span>
+            </div>
+            <div class="quick-grid">
+              <button class="quick-card" data-page="ipl">
+                <b class="quick-icon money"
+                  ><span class="material-symbols-rounded">payments</span></b
+                >
+                <strong>Bayar IPL</strong>
+                <small>Tagihan & bukti transfer</small>
+              </button>
+              <button class="quick-card" id="tukangBtn">
+                <b class="quick-icon wrench"
+                  ><span class="material-symbols-rounded">handyman</span></b
+                >
+                <strong>Jasa & Internet</strong>
+                <small>Tukang, Bnetfit & Biznet</small>
+              </button>
+              <button class="quick-card" id="healthBtn">
+                <b class="quick-icon health"
+                  ><span class="material-symbols-rounded"
+                    >medical_services</span
+                  ></b
+                >
+                <strong>Darurat Medis</strong>
+                <small>Klinik, Bidan & Ambulans</small>
+              </button>
+              <button class="quick-card" id="infoBtn">
+                <b class="quick-icon info"
+                  ><span class="material-symbols-rounded">campaign</span></b
+                >
+                <strong>Info &amp; AD/ART</strong>
+                <small>STP PBB &amp; Dokumen PDF</small>
+              </button>
+            </div>
+
+            <!-- SECURITY DUTY CARD -->
+            <div class="security-duty-card modern-security">
+              <div class="security-header-row">
+                <div class="security-badge-pulse">
+                  <span class="pulse-dot"></span>
+                  <span>Pos Utama • Siaga 24/7</span>
+                </div>
+                <span class="material-symbols-rounded security-shield"
+                  >shield_person</span
+                >
+              </div>
+              <div class="security-body">
+                <b>Petugas Jaga: Bpk. Slamet &amp; Bpk. Mulyadi</b>
+                <p>
+                  Patroli keliling rutin &amp; pengawasan gerbang kawasan
+                  perumahan.
+                </p>
+              </div>
+              <div class="security-actions">
+                <a
+                  href="https://wa.me/6281234567890?text=Halo%20Pos%20Satpam,%20saya%20warga%20Pondok%20Rajeg%20ingin%20melaporkan..."
+                  target="_blank"
+                  class="whatsapp-btn security-wa-btn"
+                >
+                  <span class="material-symbols-rounded">chat</span> Chat Pos
+                  Satpam WA
+                </a>
+              </div>
+            </div>
+          </section>
+
+          <!-- INVENTARIS PRR -->
+          <section class="inventory-section">
+            <div class="section-heading">
+              <h2>Inventaris PRR</h2>
+              <span>Fasilitas Warga</span>
+            </div>
+            <div class="inventory-grid">
+              <div class="inventory-card">
+                <span class="material-symbols-rounded">roofing</span>
+                <div>
+                  <b>Tenda Warga</b>
+                  <small>Tidak Tersedia</small>
+                </div>
+              </div>
+              <div class="inventory-card">
+                <span class="material-symbols-rounded">chair</span>
+                <div>
+                  <b>Kursi Plastik</b>
+                  <small>Tidak Tersedia</small>
+                </div>
+              </div>
+              <div class="inventory-card">
+                <span class="material-symbols-rounded">speaker</span>
+                <div>
+                  <b>Sound System</b>
+                  <small>Tidak Tersedia</small>
+                </div>
+              </div>
+              <div class="inventory-card">
+                <span class="material-symbols-rounded">cleaning_services</span>
+                <div>
+                  <b>Alat Kebersihan</b>
+                  <small>Tidak Tersedia</small>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="dashboard-right">
+          <section class="activity-section">
+            <div class="section-heading">
+              <h2>Laporan Keuangan PRR</h2>
+              <button id="viewFinanceDetail" class="text-link-btn">
+                Lihat Detail →
+              </button>
+            </div>
+            <div class="activity-list">
+              <div class="activity">
+                <div class="activity-icon income">
+                  <span class="material-symbols-rounded">trending_up</span>
+                </div>
+                <div class="activity-text">
+                  <b>Agustus 2026</b>
+                  <small>Masuk: Rp 4.500.000 • Keluar: Rp 1.200.000</small>
+                </div>
+                <div class="activity-amount text-success">+Rp 3.300.000</div>
+              </div>
+              <div class="activity">
+                <div class="activity-icon income">
+                  <span class="material-symbols-rounded">trending_up</span>
+                </div>
+                <div class="activity-text">
+                  <b>Juli 2026</b>
+                  <small>Masuk: Rp 4.350.000 • Keluar: Rp 1.500.000</small>
+                </div>
+                <div class="activity-amount text-success">+Rp 2.850.000</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="activity-section">
+            <div class="section-heading">
+              <h2>Pengaduan Lingkungan</h2>
+              <button id="openComplaintModalBtnRight" class="text-link-btn">
+                + Buat Laporan
+              </button>
+            </div>
+            <div id="complaintList" class="activity-list"></div>
+          </section>
+
+          <section class="activity-section">
+            <div class="section-heading">
+              <h2>History Pembayaran Rumah Anda</h2>
+              <span id="currentYearLabel">Tahun 2026</span>
+            </div>
+            <div id="monthlyHistoryList" class="activity-list">
+              <div class="activity">
+                <div class="activity-icon">
+                  <span class="material-symbols-rounded">event_available</span>
+                </div>
+                <div class="activity-text">
+                  <b>Agustus 2026</b>
+                  <small>Lunas • Transfer Bank</small>
+                </div>
+                <div class="activity-amount text-success">Rp 150.000</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="activity-section">
+            <div class="section-heading">
+              <h2>Aktivitas warga terbaru</h2>
+            </div>
+            <div id="activityList" class="activity-list"></div>
+          </section>
+        </div>
+      </main>
+
+      <!-- BOTTOM NAV -->
+      <nav class="bottom-nav" aria-label="Navigasi utama">
+        <button class="nav-item active" data-page="home">
+          <span class="material-symbols-rounded">home</span>Beranda
+        </button>
+        <button class="nav-item" data-page="ipl">
+          <span class="material-symbols-rounded">receipt_long</span>IPL
+        </button>
+        <button
+          class="nav-item"
+          data-page="complaint"
+          id="openComplaintModalBtn"
+        >
+          <span class="material-symbols-rounded">campaign</span>Pengaduan
+        </button>
+        <button
+          class="nav-item"
+          data-page="profile"
+          id="openProfileModalBtnMobile"
+        >
+          <span class="material-symbols-rounded">badge</span>Profil
+        </button>
+      </nav>
+
+      <button id="panicButton" class="panic-button" aria-label="Tombol panik">
+        <span class="material-symbols-rounded">warning</span>
+        <b>PANIC</b>
+      </button>
+    </div>
+
+    <!-- MODAL PROFIL UNIT WARGA -->
+    <dialog id="profileDialog" class="modal profile-modal">
+      <form id="profileForm" method="dialog">
+        <button
+          type="button"
+          id="closeProfileBtn"
+          class="close"
+          aria-label="Tutup"
+        >
+          ×
+        </button>
+        <p class="eyebrow">DATA WARGA & KELUARGA</p>
+        <h2>Profil Unit Rumah</h2>
+
+        <label
+          >Nomor Kartu Keluarga (KK)
+          <input
+            type="text"
+            name="houseKK"
+            placeholder="Contoh: 3201123456780001"
+            maxlength="16"
+            required
+          />
+        </label>
+
+        <div class="form-row">
+          <label
+            >Status Unit Rumah
+            <select name="houseStatus" required>
+              <option value="Milik Sendiri">Milik Sendiri</option>
+              <option value="Kontrak / Sewa">Kontrak / Sewa</option>
+            </select>
+          </label>
+          <label
+            >Status Pernikahan
+            <select id="maritalStatusSelect" name="maritalStatus" required>
+              <option value="Menikah">Menikah</option>
+              <option value="Lajang">Lajang</option>
+              <option value="Duda">Duda</option>
+              <option value="Janda">Janda</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="profile-card-section">
+          <b
+            id="headTitleLabel"
+            style="
+              font-size: 12px;
+              color: var(--dark);
+              display: block;
+              margin-bottom: 8px;
+            "
+            >Data Kepala Keluarga (Suami)</b
+          >
+          <label
+            >Nama Lengkap
+            <input
+              type="text"
+              name="headName"
+              placeholder="Contoh: Budi Santoso"
+              required
+            />
+          </label>
+          <div class="form-row">
+            <label
+              >NIK KTP (16 Digit)
+              <input
+                type="text"
+                name="headNik"
+                placeholder="Nomor NIK KTP"
+                maxlength="16"
+                required
+              />
+            </label>
+            <label
+              >Tanggal Lahir
+              <input type="date" name="headDob" required />
+            </label>
+          </div>
+          <div class="form-row">
+            <label
+              >Gender
+              <select id="headGenderSelect" name="headGender" required>
+                <option value="Laki-laki">Laki-laki</option>
+                <option value="Perempuan">Perempuan</option>
+              </select>
+            </label>
+            <label
+              >Nomor WhatsApp (+62)
+              <input
+                type="text"
+                name="headWhatsApp"
+                placeholder="+6281234567890"
+                required
+              />
+            </label>
+          </div>
+        </div>
+
+        <div
+          id="wifeFields"
+          class="profile-card-section"
+          style="margin-top: 12px"
+        >
+          <b
+            style="
+              font-size: 12px;
+              color: var(--dark);
+              display: block;
+              margin-bottom: 8px;
+            "
+            >Data Istri</b
+          >
+          <label
+            >Nama Istri
+            <input
+              type="text"
+              name="wifeName"
+              placeholder="Contoh: Siti Aminah"
+            />
+          </label>
+          <div class="form-row">
+            <label
+              >NIK KTP Istri (16 Digit)
+              <input
+                type="text"
+                name="wifeNik"
+                placeholder="Nomor NIK KTP Istri"
+                maxlength="16"
+              />
+            </label>
+            <label
+              >Tanggal Lahir Istri
+              <input type="date" name="wifeDob" />
+            </label>
+          </div>
+          <div class="form-row">
+            <label
+              >Gender Istri
+              <input
+                type="text"
+                value="Perempuan"
+                disabled
+                style="background: #f4f8f5"
+              />
+              <input type="hidden" name="wifeGender" value="Perempuan" />
+            </label>
+            <label
+              >Nomor WhatsApp (+62)
+              <input
+                type="text"
+                name="wifeWhatsApp"
+                placeholder="+6281234567890"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div class="family-members-section">
+          <div class="section-heading" style="margin-bottom: 6px">
+            <label style="margin: 0; font-size: 11px"
+              >Daftar Tanggungan / Anggota Serumah</label
+            >
+            <button type="button" id="addTanggunganBtn" class="text-link-btn">
+              + Tambah Tanggungan
+            </button>
+          </div>
+          <div id="tanggunganContainer" class="tanggungan-container"></div>
+        </div>
+
+        <!-- UBAH PIN WARGA -->
+        <div
+          class="profile-card-section"
+          style="margin-top: 12px; background: #f0fdf4; border-color: #bbf7d0"
+        >
+          <div
+            style="
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              margin-bottom: 6px;
+            "
+          >
+            <span
+              class="material-symbols-rounded"
+              style="font-size: 18px; color: var(--green)"
+              >lock_reset</span
+            >
+            <b style="font-size: 12px; color: var(--green)"
+              >Ubah PIN Akses Warga</b
+            >
+          </div>
+          <p style="font-size: 10px; color: var(--muted); margin: 0 0 10px">
+            Kosongkan jika tidak ingin mengubah PIN akun Anda.
+          </p>
+          <div class="form-row">
+            <label style="margin: 0"
+              >PIN Baru (Maks. 6 Angka)
+              <input
+                type="password"
+                name="newPin"
+                placeholder="••••"
+                maxlength="6"
+              />
+            </label>
+            <label style="margin: 0"
+              >Konfirmasi PIN Baru
+              <input
+                type="password"
+                name="confirmPin"
+                placeholder="••••"
+                maxlength="6"
+              />
+            </label>
+          </div>
+        </div>
+
+        <button class="primary-button" type="submit" style="margin-top: 16px">
+          Simpan Profil Unit <span>→</span>
+        </button>
+      </form>
+    </dialog>
+
+    <!-- MODAL KONFIRMASI BATAL / CLOSE PROFIL -->
+    <dialog id="profileCloseConfirmDialog" class="modal interactive-modal">
+      <form method="dialog">
+        <div class="modal-icon-box danger-bg">
+          <span class="material-symbols-rounded">warning</span>
+        </div>
+        <p class="eyebrow" style="color: #dc2626">BATALKAN PERUBAHAN</p>
+        <h2>Yakin ingin menutup?</h2>
+        <p
+          style="
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.5;
+            margin: 0 0 16px;
+          "
+        >
+          Semua perubahan yang belum disimpan tidak akan tersimpan.
+        </p>
+        <div class="modal-btn-grid">
+          <button class="secondary-button" value="cancel">
+            Lanjutkan Mengisi
+          </button>
+          <button
+            class="primary-button error-btn"
+            id="confirmCloseProfile"
+            value="confirm"
+          >
+            Ya, Batalkan
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- MODAL KESEHATAN & DARURAT MEDIS -->
+    <dialog id="healthDialog" class="modal info-modal">
+      <form method="dialog">
+        <button class="close" value="cancel">×</button>
+        <p class="eyebrow" style="color: #dc2626">LAYANAN MEDIS & KESEHATAN</p>
+        <h2>Darurat Kesehatan Warga</h2>
+        <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px">
+          Hubungi fasilitas kesehatan terdekat atau layanan medis darurat area
+          perumahan:
+        </p>
+
+        <div class="tukang-tab-pane" style="max-height: 320px">
+          <article class="tukang-item emergency-item">
+            <b
+              ><span
+                class="material-symbols-rounded"
+                style="
+                  vertical-align: middle;
+                  font-size: 16px;
+                  margin-right: 4px;
+                  color: #dc2626;
+                "
+                >ambulance</span
+              >
+              Ambulans & Siaga Darurat Warga</b
+            >
+            <p>
+              Layanan darurat evakuasi medis dan rujukan rumah sakit warga PRR.
+            </p>
+            <a
+              href="https://wa.me/6281299998888?text=Darurat%20Medis!%20Saya%20warga%20Pondok%20Rajeg%20butuh%20bantuan%20ambulans..."
+              target="_blank"
+              class="whatsapp-btn emergency-wa-btn"
+            >
+              <span class="material-symbols-rounded">phone_in_talk</span>
+              Panggil Ambulans WA
+            </a>
+          </article>
+
+          <article class="tukang-item">
+            <b>Klinik Pratama Sehat 24 Jam Pondok Rajeg</b>
+            <p>
+              Layanan dokter umum, IGD ringan, nebulizer, dan tebus resep obat.
+            </p>
+            <a
+              href="https://wa.me/6281122334455?text=Halo%20Klinik%20Sehat,%20saya%20warga%20Pondok%20Rajeg%20ingin%20konsultasi..."
+              target="_blank"
+              class="whatsapp-btn"
+            >
+              <span class="material-symbols-rounded">chat</span> Chat Klinik WA
+            </a>
+          </article>
+
+          <article class="tukang-item">
+            <b>Bidan Desa / KIA (Bidan Adinda Rizki Fitrianisa)</b>
+            <p>
+              Pemeriksaan kehamilan, imunisasi balita, KB, dan konsultasi
+              kesehatan keluarga.
+            </p>
+            <a
+              href="https://wa.me/6281366778899?text=Halo%20Bidan%20Adinda,%20saya%20warga%20Pondok%20Rajeg%20ingin%20konsultasi..."
+              target="_blank"
+              class="whatsapp-btn"
+            >
+              <span class="material-symbols-rounded">chat</span> Chat Bidan WA
+            </a>
+          </article>
+        </div>
+
+        <button class="primary-button" value="cancel" style="margin-top: 14px">
+          Tutup
+        </button>
+      </form>
+    </dialog>
+
+    <!-- MODAL LOGIN BERHASIL / SUKSES -->
+    <dialog id="loginSuccessDialog" class="modal interactive-modal">
+      <form method="dialog" id="loginSuccessForm">
+        <div class="modal-icon-box success-bg">
+          <span class="material-symbols-rounded">verified_user</span>
+        </div>
+        <p class="eyebrow" style="color: #087a4b">OTENTIKASI BERHASIL</p>
+        <h2>Selamat Datang!</h2>
+        <p
+          id="loginSuccessMessageText"
+          style="
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.5;
+            margin: 0 0 16px;
+          "
+        >
+          Login ke portal Warga Pondok Rajeg Residence berhasil.
+        </p>
+        <button class="primary-button" id="enterDashboardBtn" value="confirm">
+          Masuk ke Dashboard <span>→</span>
+        </button>
+      </form>
+    </dialog>
+
+    <!-- MODAL KONFIRMASI KELUAR -->
+    <dialog id="logoutConfirmDialog" class="modal interactive-modal">
+      <form method="dialog">
+        <div class="modal-icon-box danger-bg">
+          <span class="material-symbols-rounded">logout</span>
+        </div>
+        <p class="eyebrow" style="color: #dc2626">KONFIRMASI AKUN</p>
+        <h2>Yakin anda mau keluar?</h2>
+        <p
+          style="
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.5;
+            margin: 0 0 16px;
+          "
+        >
+          Sesi aktif Anda akan diakhiri. Anda perlu memasukkan PIN kembali untuk
+          masuk ke portal.
+        </p>
+        <div class="modal-btn-grid">
+          <button class="secondary-button" value="cancel">Batal</button>
+          <button
+            class="primary-button error-btn"
+            id="confirmLogoutAction"
+            value="confirm"
+          >
+            Ya, Keluar
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- MODAL JASA TUKANG & INTERNET -->
+    <dialog id="tukangDialog" class="modal info-modal">
+      <form method="dialog">
+        <button class="close" value="cancel">×</button>
+        <p class="eyebrow">DIREKTORI WARGA</p>
+        <h2>Jasa Tukang & Internet</h2>
+        <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px">
+          Pilih kategori layanan yang Anda butuhkan di area perumahan:
+        </p>
+
+        <div class="tukang-tabs">
+          <button
+            type="button"
+            class="tukang-tab-btn active"
+            data-tukang-tab="internet"
+          >
+            Internet (ISP)
+          </button>
+          <button type="button" class="tukang-tab-btn" data-tukang-tab="tukang">
+            Jasa Tukang
+          </button>
+        </div>
+
+        <div id="internetContent" class="tukang-tab-pane active">
+          <article class="tukang-item internet-provider">
+            <b>Bnetfit Fiber Internet (Pemasangan Baru)</b>
+            <p>
+              Internet rumah unlimited stabil khusus area perumahan. Promo
+              pasang baru.
+            </p>
+            <a
+              href="https://wa.me/628111222333?text=Halo%20Sales%20Bnetfit,%20saya%20warga%20Pondok%20Rajeg%20Residence%20ingin%20pasang%20baru..."
+              target="_blank"
+              class="whatsapp-btn internet-btn"
+            >
+              <span class="material-symbols-rounded">router</span> Daftar
+              Bnetfit WA
+            </a>
+          </article>
+
+          <article class="tukang-item internet-provider">
+            <b>Biznet Home (Fiber Optic & WiFi)</b>
+            <p>
+              Layanan internet super cepat & hiburan TV digital berkualitas
+              tinggi.
+            </p>
+            <a
+              href="https://wa.me/6281244445555?text=Halo%20Sales%20Biznet,%20saya%20warga%20Pondok%20Rajeg%20Residence%20ingin%20pasang%20Biznet..."
+              target="_blank"
+              class="whatsapp-btn internet-btn"
+            >
+              <span class="material-symbols-rounded">wifi</span> Daftar Biznet
+              WA
+            </a>
+          </article>
+        </div>
+
+        <div id="tukangContent" class="tukang-tab-pane" style="display: none">
+          <article class="tukang-item">
+            <b>Pak Joko (Spesialis Mesin Air & Pompa)</b>
+            <p>
+              Perbaikan pompa air mati, gulung dinamo, sedot sumur bor,
+              otomatisasi.
+            </p>
+            <a
+              href="https://wa.me/6281298765432?text=Halo%20Pak%20Joko,%20saya%20warga%20Pondok%20Rajeg%20butuh%20bantuan%20mesin%20air..."
+              target="_blank"
+              class="whatsapp-btn"
+            >
+              <span class="material-symbols-rounded">chat</span> Hubungi WA Pak
+              Joko
+            </a>
+          </article>
+
+          <article class="tukang-item">
+            <b>oom e'eng (Spesialis Service AC Rumah)</b>
+            <p>Perbaikan AC Rumah, Cuci AC, Pasang AC rumah.</p>
+            <a
+              href="https://wa.me/6281298765432?text=Halo%20Pak%20Joko,%20saya%20warga%20Pondok%20Rajeg%20butuh%20bantuan%20mesin%20air..."
+              target="_blank"
+              class="whatsapp-btn"
+            >
+              <span class="material-symbols-rounded">chat</span> Hubungi WA O'm
+              e'eeng
+            </a>
+          </article>
+
+          <article class="tukang-item">
+            <b>Pak Budi (Spesialis Sumur Bor & Titik Air)</b>
+            <p>
+              Pembuatan sumur bor baru, pengeboran jet pump, mengatasi air
+              keruh/kuning.
+            </p>
+            <a
+              href="https://wa.me/6281211223344?text=Halo%20Pak%20Budi,%20saya%20warga%20Pondok%20Rajeg%20ingin%20konsultasi%20sumur%20bor..."
+              target="_blank"
+              class="whatsapp-btn"
+            >
+              <span class="material-symbols-rounded">chat</span> Hubungi WA Pak
+              Budi
+            </a>
+          </article>
+
+          <article class="tukang-item">
+            <b>Pak Deni (Tukang Bangunan, Atap & Ledeng)</b>
+            <p>
+              Perbaikan genteng bocor, instalasi pipa air / saluran mampet,
+              renovasi ringan.
+            </p>
+            <a
+              href="https://wa.me/6281355667788?text=Halo%20Pak%20Deni,%20saya%20warga%20Pondok%20Rajeg%20butuh%20bantuan%20perbaikan..."
+              target="_blank"
+              class="whatsapp-btn"
+            >
+              <span class="material-symbols-rounded">chat</span> Hubungi WA Pak
+              Deni
+            </a>
+          </article>
+        </div>
+
+        <button class="primary-button" value="cancel" style="margin-top: 14px">
+          Tutup
+        </button>
+      </form>
+    </dialog>
+
+    <!-- MODAL ERROR -->
+    <dialog id="errorDialog" class="modal error-modal">
+      <form
+        method="dialog"
+        class="interactive-modal"
+        style="text-align: center"
+      >
+        <button class="close" value="cancel">×</button>
+        <div
+          class="error-icon"
+          style="
+            width: 58px;
+            height: 58px;
+            margin: 0 auto 14px;
+            border-radius: 18px;
+            color: #dc2626;
+            background: #fef2f2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #fecaca;
+          "
+        >
+          <span class="material-symbols-rounded" style="font-size: 28px"
+            >gpp_bad</span
+          >
+        </div>
+        <p class="eyebrow" style="color: #dc2626">AKSES DITOLAK</p>
+        <h2>Verifikasi Gagal</h2>
+        <p
+          id="errorMessageText"
+          style="
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.5;
+            margin: 0 0 16px;
+          "
+        >
+          Kamu bukan warga Pondok Rajeg Residence. Pastikan rumah kamu sudah
+          terdaftar oleh ketua paguyuban.
+        </p>
+        <button
+          class="primary-button error-btn"
+          value="cancel"
+          style="background: #dc2626"
+        >
+          Mengerti
+        </button>
+      </form>
+    </dialog>
+
+    <!-- MODAL PENGADUAN -->
+    <dialog id="complaintDialog" class="modal">
+      <form id="complaintForm" method="dialog">
+        <button class="close" value="cancel" aria-label="Tutup">×</button>
+        <p class="eyebrow">LAYANAN PENGADUAN WARGA</p>
+        <h2>Laporkan Masalah Lingkungan</h2>
+        <label
+          >Kategori Masalah
+          <select name="category" required>
+            <option value="Lampu Jalan Mati">Lampu Jalan Mati</option>
+            <option value="Taman / Kebersihan">
+              Taman Belum Dibersihkan / Sampah
+            </option>
+            <option value="Fasilitas Umum Rusak">Fasilitas Umum Rusak</option>
+            <option value="Keamanan / Ketertiban">Keamanan / Ketertiban</option>
+            <option value="Lainnya">Lainnya</option>
+          </select>
+        </label>
+        <label
+          >Lokasi / Blok Rumah Terkait
+          <input
+            required
+            name="location"
+            placeholder="Contoh: Blok B-05 / Samping Pos Satpam"
+          />
+        </label>
+        <label
+          >Keterangan Lengkap
+          <textarea
+            required
+            name="description"
+            rows="3"
+            placeholder="Jelaskan detail kendala yang ditemukan..."
+          ></textarea>
+        </label>
+        <label
+          >Foto Pendukung (Opsional)
+          <input type="file" name="photo" accept="image/*" />
+        </label>
+        <button class="primary-button" type="submit">
+          Kirim Pengaduan <span>→</span>
+        </button>
+      </form>
+    </dialog>
+
+    <!-- MODAL KEUANGAN -->
+    <dialog id="financeDialog" class="modal finance-modal">
+      <form method="dialog">
+        <button class="close" value="cancel">×</button>
+        <p class="eyebrow">TRANSPARANSI KEUANGAN</p>
+        <h2>Rincian Kas PRR</h2>
+        <div class="finance-tabs">
+          <button type="button" class="tab-btn active" data-tab="monthly">
+            Bulanan (2026)
+          </button>
+          <button type="button" class="tab-btn" data-tab="yearly">
+            Tahunan
+          </button>
+        </div>
+        <div id="monthlyFinanceContent" class="tab-content active">
+          <article class="finance-detail-item">
+            <b>Agustus 2026</b>
+            <p>
+              Pemasukan: Rp 4.500.000 | Pengeluaran (Kebersihan & Keamanan): Rp
+              1.200.000
+            </p>
+            <small class="text-success"
+              >Saldo Bersih Bulan Ini: Rp 3.300.000</small
+            >
+          </article>
+          <article class="finance-detail-item">
+            <b>Juli 2026</b>
+            <p>
+              Pemasukan: Rp 4.350.000 | Pengeluaran (Perbaikan Pos): Rp
+              1.500.000
+            </p>
+            <small class="text-success"
+              >Saldo Bersih Bulan Ini: Rp 2.850.000</small
+            >
+          </article>
+        </div>
+        <div
+          id="yearlyFinanceContent"
+          class="tab-content"
+          style="display: none"
+        >
+          <article class="finance-detail-item">
+            <b>Tahun 2026 (Berjalan)</b>
+            <p>
+              Total Pemasukan: Rp 36.000.000 | Total Pengeluaran: Rp 12.500.000
+            </p>
+            <small class="text-success"
+              >Akumulasi Kas Bersih: Rp 23.500.000</small
+            >
+          </article>
+        </div>
+        <button class="primary-button" value="cancel" style="margin-top: 16px">
+          Tutup
+        </button>
+      </form>
+    </dialog>
+
+    <!-- MODAL IPL -->
+    <dialog id="iplDialog" class="modal">
+      <form id="paymentForm" method="dialog">
+        <button class="close" value="cancel" aria-label="Tutup">×</button>
+        <p class="eyebrow">PEMBAYARAN IPL</p>
+        <h2>Bayar iuran lingkungan</h2>
+        <div class="bill-summary">
+          <span>Total tagihan</span><strong id="modalBill">Rp 150.000</strong>
+          <small>IPL • Agustus 2026</small>
+        </div>
+        <label
+          >Nama pemilik rumah
+          <input required name="name" placeholder="Contoh: Budi Santoso" />
+        </label>
+        <div class="form-row">
+          <label
+            >Blok / Nomor
+            <input required name="unit" placeholder="A-12" />
+          </label>
+          <label
+            >Metode pembayaran
+            <select name="method">
+              <option>Transfer Bank</option>
+              <option>QRIS</option>
+              <option>Tunai ke petugas</option>
+            </select>
+          </label>
+        </div>
+        <label
+          >Nominal pembayaran
+          <input
+            required
+            name="amount"
+            type="number"
+            min="1000"
+            value="150000"
+          />
+        </label>
+        <label
+          >Bukti transfer (Foto / PDF)
+          <input type="file" name="proof" accept="image/*,.pdf" />
+        </label>
+        <button class="primary-button" type="submit">
+          Konfirmasi pembayaran <span>→</span>
+        </button>
+      </form>
+    </dialog>
+
+    <!-- MODAL PANIC -->
+    <dialog id="panicDialog" class="modal panic-modal">
+      <form
+        id="panicForm"
+        method="dialog"
+        class="interactive-modal"
+        style="text-align: center"
+      >
+        <button class="close" value="cancel" aria-label="Tutup">×</button>
+        <div
+          class="panic-icon"
+          style="
+            width: 58px;
+            height: 58px;
+            margin: 0 auto 14px;
+            border-radius: 18px;
+            color: #fff;
+            background: #e84245;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          "
+        >
+          <span class="material-symbols-rounded" style="font-size: 28px"
+            >emergency</span
+          >
+        </div>
+        <p class="eyebrow" style="color: #e84245">BANTUAN DARURAT</p>
+        <h2>Butuh bantuan segera?</h2>
+        <label style="text-align: left"
+          >Jenis keadaan darurat
+          <select name="emergency">
+            <option>Darurat Medis / Panggil Ambulans</option>
+            <option>Keamanan / kejadian mencurigakan</option>
+            <option>Kebakaran</option>
+            <option>Gangguan kesehatan lainnya</option>
+          </select>
+        </label>
+        <a
+          href="https://wa.me/6281299998888?text=DARURAT!%20Saya%20warga%20Pondok%20Rajeg%20butuh%20bantuan%20segera..."
+          target="_blank"
+          class="whatsapp-btn emergency-wa-btn"
+          style="
+            margin-top: 14px;
+            justify-content: center;
+            text-decoration: none;
+          "
+        >
+          <span class="material-symbols-rounded">phone_in_talk</span> Hubungi
+          Ambulans / Satpam via WA
+        </a>
+        <button
+          class="panic-confirm primary-button"
+          type="submit"
+          style="background: #e84245; margin-top: 10px"
+        >
+          Kirim sinyal darurat ke Pos
+        </button>
+      </form>
+    </dialog>
+
+    <!-- MODAL INFO WARGA & AD/ART (SISTEM TAB) -->
+    <dialog id="infoDialog" class="modal info-modal">
+      <form method="dialog">
+        <button class="close" value="cancel">×</button>
+        <p class="eyebrow">PUSAT INFORMASI &amp; DOKUMEN</p>
+        <h2>Info Warga &amp; Dokumen RT</h2>
+
+        <div class="tukang-tabs" style="margin-bottom: 14px">
+          <button
+            type="button"
+            class="tukang-tab-btn active"
+            data-infotab="announcements"
+          >
+            Pengumuman Warga
+          </button>
+          <button type="button" class="tukang-tab-btn" data-infotab="adart">
+            Dokumen AD/ART
+          </button>
+        </div>
+
+        <div
+          id="infoAnnouncementsContent"
+          class="tukang-tab-pane active"
+          style="max-height: 320px; overflow-y: auto; padding-right: 2px"
+        >
+          <article class="info-announcement-card">
+            <div class="info-card-header">
+              <span class="material-symbols-rounded">receipt_long</span>
+              <b>Pengambilan STP PBB 2025</b>
+            </div>
+            <p>
+              Surat Tagihan Pajak PBB (SPT PBB) warga Pondok Rajeg Residence
+              (PRR) sudah dapat diambil di pos penjemputan berikut:
+            </p>
+            <ul class="pbb-location-list">
+              <li>
+                <strong>Blok A &amp; B:</strong> Rumah Bpk. Akhmad Tika (B9/6)
+              </li>
+              <li><strong>Blok C:</strong> Rumah Bpk. Juhaeri (C8/15)</li>
+            </ul>
+          </article>
+
+          <article class="info-announcement-card">
+            <div class="info-card-header">
+              <span class="material-symbols-rounded">event</span>
+              <b>Kerja Bakti Lingkungan</b>
+            </div>
+            <p>
+              Minggu, 23 Agustus 2026 pukul 07.00 WIB. Titik kumpul di pos
+              keamanan utama kawasan perumahan.
+            </p>
+          </article>
+        </div>
+
+        <div
+          id="infoAdartContent"
+          class="tukang-tab-pane"
+          style="display: none; max-height: 320px; overflow-y: auto"
+        >
+          <p
+            style="
+              font-size: 12px;
+              color: var(--muted);
+              margin-bottom: 12px;
+              text-align: left;
+            "
+          >
+            Anggaran Dasar &amp; Anggaran Rumah Tangga Paguyuban Pondok Rajeg
+            Residence.
+          </p>
+          <div class="info-document-card">
+            <div class="doc-icon-box">
+              <span class="material-symbols-rounded">picture_as_pdf</span>
+            </div>
+            <div class="doc-info">
+              <b>AD/ART Paguyuban PRR (PDF)</b>
+              <small>Dokumen Resmi Aturan Hidup Bertetangga</small>
+            </div>
+            <a
+              href="dokumen/ad-art-prr.pdf"
+              target="_blank"
+              class="doc-download-btn"
+              title="Unduh / Lihat PDF"
+            >
+              <span class="material-symbols-rounded">download</span>
+            </a>
+          </div>
+        </div>
+
+        <button class="primary-button" value="cancel" style="margin-top: 14px">
+          Tutup
+        </button>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
