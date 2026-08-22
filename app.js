@@ -698,7 +698,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const submitBtn = profileForm.querySelector("button[type='submit']");
       const originalText = submitBtn.innerHTML;
       submitBtn.disabled = true;
-      submitBtn.innerHTML = "Sedang Menyimpan Ke Server PRR... ⏳";
+      submitBtn.innerHTML = "Menyimpan ke Server PRR... ⏳";
 
       const houseKK = formData.get("houseKK");
       const houseStatus = formData.get("houseStatus");
@@ -771,11 +771,11 @@ document.addEventListener("DOMContentLoaded", () => {
           successTitle.textContent = "Profil Berhasil Disimpan!";
         if (successMsg)
           successMsg.textContent = newPin
-            ? "Data profil dan PIN baru Anda berhasil diperbarui di database PRR."
+            ? "Data profil dan PIN baru Anda berhasil diperbarui di Server PRR."
             : "Data keluarga unit rumah Anda telah diperbarui dan disinkronkan otomatis.";
         successDialog?.showModal();
       } catch (error) {
-        showToast(`Gagal menyimpan ke Server : ${error.message}`);
+        showToast(`Gagal menyimpan ke Server PRR: ${error.message}`);
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
@@ -947,3 +947,27 @@ document.addEventListener("DOMContentLoaded", () => {
   renderActivities();
   renderComplaints();
 });
+
+// AUTO-UPDATE SERVICE WORKER (Mencegah kendala cache tersimpan di HP warga)
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("./service-worker.js")
+      .then((registration) => {
+        registration.addEventListener("updatefound", () => {
+          const newWorker = registration.installing;
+          newWorker.addEventListener("statechange", () => {
+            if (
+              newWorker.state === "installed" &&
+              navigator.serviceWorker.controller
+            ) {
+              window.location.reload();
+            }
+          });
+        });
+      })
+      .catch((error) => {
+        console.log("Service Worker gagal mendaftar: ", error);
+      });
+  });
+}
