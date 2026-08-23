@@ -20,19 +20,16 @@ if (!firebase.apps.length) {
 }
 const messaging = firebase.messaging();
 
-// Fungsi meminta izin notifikasi & menyimpan token perangkat
-// Fungsi meminta izin notifikasi & menyimpan token perangkat
+// Fungsi meminta izin notifikasi & menyimpan token perangkat ke Spreadsheet
 async function requestNotificationPermission() {
   if (!("Notification" in window)) return;
   try {
     const permission = await Notification.requestPermission();
     if (permission === "granted") {
-      // 1. Daftarkan service worker khusus firebase terlebih dahulu
       const swRegistration = await navigator.serviceWorker.register(
         "./firebase-messaging-sw.js",
       );
 
-      // 2. Sertakan serviceWorkerRegistration saat mengambil token
       const token = await messaging.getToken({
         vapidKey:
           "BPzVsG95x8uvmworbflPPJRBee81eTjCHvh8kkSlerKB5YdNyFnYhbov8qYwThcbkE1fE7yHj1GfSjMz22VyngA",
@@ -540,7 +537,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Modal Profil Handler
   const openProfileModalBtnMobile = $("#openProfileModalBtnMobile");
   const topbarProfileBtn = $("#topbarProfileBtn");
   const profileDialog = $("#profileDialog");
@@ -877,7 +873,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Modals Direktori
   const tukangBtn = $("#tukangBtn");
   const tukangDialog = $("#tukangDialog");
   if (tukangBtn && tukangDialog)
@@ -893,7 +888,6 @@ document.addEventListener("DOMContentLoaded", () => {
   if (infoBtn && infoDialog)
     infoBtn.addEventListener("click", () => infoDialog.showModal());
 
-  // Handler Tab di Modal Info & AD/ART Serta Navigasi Detail Artikel
   const infoTabBtns = document.querySelectorAll("[data-infotab]");
   const infoMainTabs = $("#infoMainTabs");
   const infoAnnouncementsContent = $("#infoAnnouncementsContent");
@@ -1033,8 +1027,6 @@ document.addEventListener("DOMContentLoaded", () => {
           type: emergencyType,
         });
         $("#panicDialog")?.close();
-
-        // Menampilkan pesan asli dari backend Apps Script ke layar
         showToast("🚨 " + result.message);
       } catch (error) {
         showToast(`Gagal mengirim sinyal: ${error.message}`);

@@ -1,3 +1,4 @@
+// service-worker.js
 const CACHE_NAME = "prr-warga-v10";
 const urlsToCache = [
   "./",
