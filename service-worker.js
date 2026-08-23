@@ -1,5 +1,5 @@
 // service-worker.js
-const CACHE_NAME = "prr-warga-v13";
+const CACHE_NAME = "prr-warga-v15";
 const urlsToCache = [
   "./",
   "./index.html",
