@@ -21,20 +21,31 @@ if (!firebase.apps.length) {
 const messaging = firebase.messaging();
 
 // Fungsi meminta izin notifikasi & menyimpan token perangkat
+// Fungsi meminta izin notifikasi & menyimpan token perangkat
 async function requestNotificationPermission() {
   if (!("Notification" in window)) return;
   try {
     const permission = await Notification.requestPermission();
     if (permission === "granted") {
+      // 1. Daftarkan service worker khusus firebase terlebih dahulu
+      const swRegistration = await navigator.serviceWorker.register(
+        "./firebase-messaging-sw.js",
+      );
+
+      // 2. Sertakan serviceWorkerRegistration saat mengambil token
       const token = await messaging.getToken({
         vapidKey:
-          "BPzVsG95x8uvmworbflPPJRBee81eTjCHvh8kkSlerKB5YdNyFnYhbov8qYwThcbkE1fE7yHj1GfSjMz22VyngA", // Ambil dari Cloud Messaging Web push certificates
+          "BPzVsG95x8uvmworbflPPJRBee81eTjCHvh8kkSlerKB5YdNyFnYhbov8qYwThcbkE1fE7yHj1GfSjMz22VyngA",
+        serviceWorkerRegistration: swRegistration,
       });
+
       if (token) {
         const unit = localStorage.getItem("pondok_rajeg_user") || "Tamu";
         await sendToBackend("saveFCMToken", { unit, token });
-        console.log("FCM Token perangkat tersimpan.");
+        console.log("FCM Token perangkat tersimpan:", token);
       }
+    } else {
+      console.log("Izin notifikasi ditolak oleh pengguna.");
     }
   } catch (error) {
     console.error("Gagal mendapatkan token notifikasi:", error);
