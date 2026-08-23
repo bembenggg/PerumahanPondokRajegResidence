@@ -38,14 +38,15 @@ messaging.onMessage((payload) => {
 });
 
 // Fungsi meminta izin notifikasi & menyimpan token perangkat ke Spreadsheet
+// CATATAN: service worker TIDAK didaftarkan di sini lagi. Kita pakai
+// registrasi service-worker.js tunggal yang sudah didaftarkan saat window load
+// (lihat bagian paling bawah file ini) agar tidak ada konflik scope SW.
 async function requestNotificationPermission() {
   if (!("Notification" in window)) return;
   try {
     const permission = await Notification.requestPermission();
     if (permission === "granted") {
-      const swRegistration = await navigator.serviceWorker.register(
-        "./firebase-messaging-sw.js",
-      );
+      const swRegistration = await navigator.serviceWorker.ready;
 
       const token = await messaging.getToken({
         vapidKey:
@@ -1127,7 +1128,11 @@ document.addEventListener("DOMContentLoaded", () => {
   renderComplaints();
 });
 
-// AUTO-UPDATE SERVICE WORKER
+// SATU-SATUNYA SERVICE WORKER: caching PWA + Firebase Cloud Messaging.
+// Registrasi ini terjadi lebih dulu (saat window load), lalu
+// requestNotificationPermission() di atas cukup menunggu (navigator.serviceWorker.ready)
+// registrasi ini alih-alih mendaftarkan file terpisah — sehingga tidak ada
+// konflik scope antar service worker.
 if ("serviceWorker" in navigator) {
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
