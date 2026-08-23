@@ -6,7 +6,6 @@ importScripts(
   "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js",
 );
 
-// Inisialisasi Firebase di Service Worker (Background)
 firebase.initializeApp({
   apiKey: "AIzaSyAL3BJnxwEbNOQ-R-rJGC_w9o1c3ZVC9Fo",
   authDomain: "prr-warga-notification.firebaseapp.com",
@@ -18,7 +17,6 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Menangani pesan masuk saat aplikasi di latar belakang / ditutup
 messaging.onBackgroundMessage((payload) => {
   console.log(
     "[firebase-messaging-sw.js] Menerima pesan latar belakang:",

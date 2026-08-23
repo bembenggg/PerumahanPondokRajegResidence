@@ -1,5 +1,11 @@
-const CACHE_NAME = "prr-warga-v9";
-const urlsToCache = ["./", "./index.html", "./style.css", "./app.js"];
+const CACHE_NAME = "prr-warga-v10";
+const urlsToCache = [
+  "./",
+  "./index.html",
+  "./style.css",
+  "./app.js",
+  "./firebase-messaging-sw.js",
+];
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
