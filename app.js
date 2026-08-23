@@ -5,6 +5,36 @@ const PROFILE_KEY = "pondok-rajeg-profile-data";
 const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbxkooeosCRLUrNxw18RZF9Epzn4_gfjj6YhOD71wqLOJUBQ9Oq2t7AZvc6RicDTMhjXKg/exec";
 
+const articlesData = {
+  "pbb-2025": {
+    title: "Pengambilan STP PBB 2025",
+    date: "15 Agustus 2026",
+    image: "https://i.ibb.co.com/b5VjvFGK/LOGO-PRR.jpg",
+    content: `
+      <p>Surat Tagihan Pajak PBB (SPT PBB) tahun 2025 untuk seluruh warga Perumahan Pondok Rajeg Residence (PRR) kini sudah didistribusikan oleh pengurus dan dapat diambil secara mandiri di pos penjemputan masing-masing wilayah blok.</p>
+      <p>Berikut adalah rincian lokasi penjemputan dokumen berdasarkan blok rumah Anda:</p>
+      <ul class="pbb-location-list" style="margin-bottom: 12px;">
+        <li><strong>Blok A &amp; B:</strong> Rumah Bpk. Akhmad Tika (B9/6)</li>
+        <li><strong>Blok C:</strong> Rumah Bpk. Juhaeri (C8/15)</li>
+      </ul>
+      <p>Mohon membawa kartu identitas diri atau bukti pembayaran IPL terakhir saat mengambil dokumen guna kelancaran pendataan warga.</p>
+    `,
+  },
+  "kerja-bakti": {
+    title: "Kerja Bakti Lingkungan Serentak",
+    date: "20 Agustus 2026",
+    image: "https://i.ibb.co.com/b5VjvFGK/LOGO-PRR.jpg",
+    content: `
+      <p>Dalam rangka menjaga kebersihan lingkungan, keasrian kawasan, serta mengantisipasi saluran air menghadapi musim penghujan, pengurus RT bersama warga akan mengadakan kegiatan <strong>Kerja Bakti Lingkungan Serentak</strong>.</p>
+      <p><strong>Waktu &amp; Tempat Pelaksanaan:</strong><br>
+      📅 Minggu, 23 Agustus 2026<br>
+      ⏰ Pukul 07.00 WIB s.d Selesai<br>
+      📍 Titik Kumpul: Pos Keamanan Utama Kawasan Perumahan</p>
+      <p>Diharapkan kepada seluruh warga untuk dapat meluangkan waktu berpartisipasi membawa alat kebersihan masing-masing (sapu lidi, cangkul kecil, atau parang pemotong rumput liar).</p>
+    `,
+  },
+};
+
 const $ = (selector) => document.querySelector(selector);
 const rupiah = (value) =>
   new Intl.NumberFormat("id-ID", {
@@ -332,7 +362,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const enterDashboardBtn = $("#enterDashboardBtn");
   const confirmLogoutAction = $("#confirmLogoutAction");
 
-  // Helper untuk update nama dan nomor rumah di beranda
   const refreshWelcomeHeader = () => {
     const savedUser = localStorage.getItem("pondok_rajeg_user");
     const savedName = localStorage.getItem("pondok_rajeg_name") || savedUser;
@@ -772,7 +801,6 @@ document.addEventListener("DOMContentLoaded", () => {
         await sendToBackend("profile", profileData);
         localStorage.setItem(PROFILE_KEY, JSON.stringify(profileData));
 
-        // Update nama di localStorage & header jika kepala keluarga diubah
         if (headName) {
           localStorage.setItem("pondok_rajeg_name", headName);
           refreshWelcomeHeader();
@@ -816,8 +844,16 @@ document.addEventListener("DOMContentLoaded", () => {
   if (infoBtn && infoDialog)
     infoBtn.addEventListener("click", () => infoDialog.showModal());
 
-  // Handler Tab di Modal Info & AD/ART
+  // Handler Tab di Modal Info & AD/ART Serta Navigasi Detail Artikel
   const infoTabBtns = document.querySelectorAll("[data-infotab]");
+  const infoMainTabs = $("#infoMainTabs");
+  const infoAnnouncementsContent = $("#infoAnnouncementsContent");
+  const infoArticleDetailContent = $("#infoArticleDetailContent");
+  const articleDetailBody = $("#articleDetailBody");
+  const backToInfoListBtn = $("#backToInfoListBtn");
+  const infoModalTitle = $("#infoModalTitle");
+  const infoModalEyebrow = $("#infoModalEyebrow");
+
   infoTabBtns.forEach((btn) => {
     btn.addEventListener("click", (e) => {
       infoTabBtns.forEach((b) => b.classList.remove("active"));
@@ -836,6 +872,47 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
+
+  // Event Klik Kartu Pengumuman Menuju Detail Artikel
+  const articleCards = document.querySelectorAll(".clickable-article");
+  articleCards.forEach((card) => {
+    card.addEventListener("click", () => {
+      const articleId = card.getAttribute("data-id");
+      const data = articlesData[articleId];
+      if (!data) return;
+
+      if (infoMainTabs) infoMainTabs.style.display = "none";
+      if (infoAnnouncementsContent)
+        infoAnnouncementsContent.style.display = "none";
+      if (infoArticleDetailContent)
+        infoArticleDetailContent.style.display = "block";
+      if (infoModalEyebrow) infoModalEyebrow.textContent = "DETAIL PENGUMUMAN";
+      if (infoModalTitle) infoModalTitle.textContent = data.title;
+
+      articleDetailBody.innerHTML = `
+        <div class="article-detail-meta">📅 Dipublikasikan: ${data.date}</div>
+        <img src="${data.image}" alt="${data.title}" class="article-detail-image" />
+        <div class="article-detail-body-text">
+          ${data.content}
+        </div>
+      `;
+    });
+  });
+
+  // Tombol Kembali ke Daftar Pengumuman (Gunakan & biasa agar aman)
+  if (backToInfoListBtn) {
+    backToInfoListBtn.addEventListener("click", () => {
+      if (infoArticleDetailContent)
+        infoArticleDetailContent.style.display = "none";
+      if (infoMainTabs) infoMainTabs.style.display = "flex";
+      if (infoAnnouncementsContent)
+        infoAnnouncementsContent.style.display = "block";
+      if (infoModalEyebrow)
+        infoModalEyebrow.textContent = "PUSAT INFORMASI & DOKUMEN";
+      if (infoModalTitle)
+        infoModalTitle.textContent = "Info Warga & Dokumen RT";
+    });
+  }
 
   const tukangTabBtns = document.querySelectorAll(".tukang-tab-btn");
   tukangTabBtns.forEach((btn) => {

@@ -13,7 +13,7 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"
     />
-    <link rel="stylesheet" href="style.css?v=7.0" />
+    <link rel="stylesheet" href="style.css?v=9.0" />
     <title>Pondok Rajeg Residence</title>
   </head>
   <body>
@@ -1234,14 +1234,17 @@
       </form>
     </dialog>
 
-    <!-- MODAL INFO WARGA & AD/ART (SISTEM TAB) -->
+    <!-- MODAL INFO WARGA & AD/ART (SISTEM TAB & DETAIL ARTIKEL) -->
     <dialog id="infoDialog" class="modal info-modal">
       <form method="dialog">
         <button class="close" value="cancel">×</button>
-        <p class="eyebrow">PUSAT INFORMASI &amp; DOKUMEN</p>
-        <h2>Info Warga &amp; Dokumen RT</h2>
+        <p class="eyebrow" id="infoModalEyebrow">
+          PUSAT INFORMASI &amp; DOKUMEN
+        </p>
+        <h2 id="infoModalTitle">Info Warga &amp; Dokumen RT</h2>
 
-        <div class="tukang-tabs" style="margin-bottom: 14px">
+        <!-- TABS UTAMA -->
+        <div id="infoMainTabs" class="tukang-tabs" style="margin-bottom: 14px">
           <button
             type="button"
             class="tukang-tab-btn active"
@@ -1254,40 +1257,72 @@
           </button>
         </div>
 
+        <!-- VIEW DAFTAR PENGUMUMAN -->
         <div
           id="infoAnnouncementsContent"
           class="tukang-tab-pane active"
           style="max-height: 320px; overflow-y: auto; padding-right: 2px"
         >
-          <article class="info-announcement-card">
+          <article
+            class="info-announcement-card clickable-article"
+            data-id="pbb-2025"
+          >
             <div class="info-card-header">
               <span class="material-symbols-rounded">receipt_long</span>
               <b>Pengambilan STP PBB 2025</b>
             </div>
             <p>
               Surat Tagihan Pajak PBB (SPT PBB) warga Pondok Rajeg Residence
-              (PRR) sudah dapat diambil di pos penjemputan berikut:
+              (PRR) sudah dapat diambil di pos penjemputan...
             </p>
-            <ul class="pbb-location-list">
-              <li>
-                <strong>Blok A &amp; B:</strong> Rumah Bpk. Akhmad Tika (B9/6)
-              </li>
-              <li><strong>Blok C:</strong> Rumah Bpk. Juhaeri (C8/15)</li>
-            </ul>
+            <small style="color: var(--green); font-weight: 700"
+              >Baca selengkapnya →</small
+            >
           </article>
 
-          <article class="info-announcement-card">
+          <article
+            class="info-announcement-card clickable-article"
+            data-id="kerja-bakti"
+          >
             <div class="info-card-header">
               <span class="material-symbols-rounded">event</span>
               <b>Kerja Bakti Lingkungan</b>
             </div>
             <p>
               Minggu, 23 Agustus 2026 pukul 07.00 WIB. Titik kumpul di pos
-              keamanan utama kawasan perumahan.
+              keamanan utama kawasan perumahan...
             </p>
+            <small style="color: var(--green); font-weight: 700"
+              >Baca selengkapnya →</small
+            >
           </article>
         </div>
 
+        <!-- VIEW DETAIL ARTIKEL (TERSEMBUNYI AWALNYA) -->
+        <div
+          id="infoArticleDetailContent"
+          class="tukang-tab-pane"
+          style="
+            display: none;
+            max-height: 340px;
+            overflow-y: auto;
+            text-align: left;
+          "
+        >
+          <button
+            type="button"
+            id="backToInfoListBtn"
+            class="text-link-btn"
+            style="margin-bottom: 10px"
+          >
+            ← Kembali ke Daftar Pengumuman
+          </button>
+          <div id="articleDetailBody">
+            <!-- Konten dinamis diisi via JavaScript -->
+          </div>
+        </div>
+
+        <!-- VIEW AD/ART -->
         <div
           id="infoAdartContent"
           class="tukang-tab-pane"
@@ -1330,6 +1365,6 @@
     </dialog>
 
     <div id="toast" class="toast" role="status"></div>
-    <script src="app.js?v=7.0"></script>
+    <script src="app.js?v=9.0"></script>
   </body>
 </html>
