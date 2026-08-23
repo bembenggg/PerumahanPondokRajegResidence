@@ -22,9 +22,17 @@ messaging.onBackgroundMessage((payload) => {
     "[firebase-messaging-sw.js] Menerima pesan latar belakang:",
     payload,
   );
-  const notificationTitle = payload.notification.title;
+
+  const notificationTitle =
+    (payload.notification && payload.notification.title) ||
+    (payload.data && payload.data.title) ||
+    "🚨 DARURAT PERUMAHAN";
+
   const notificationOptions = {
-    body: payload.notification.body,
+    body:
+      (payload.notification && payload.notification.body) ||
+      (payload.data && payload.data.body) ||
+      "Ada sinyal darurat dikirim oleh warga!",
     icon: "https://i.ibb.co.com/b5VjvFGK/LOGO-PRR.jpg",
     badge: "https://i.ibb.co.com/b5VjvFGK/LOGO-PRR.jpg",
     vibrate: [300, 100, 300, 100, 300],
