@@ -1,4 +1,4 @@
-const CACHE_NAME = "prr-warga-v6";
+const CACHE_NAME = "prr-warga-v7";
 const urlsToCache = ["./", "./index.html", "./style.css", "./app.js"];
 
 self.addEventListener("install", (event) => {

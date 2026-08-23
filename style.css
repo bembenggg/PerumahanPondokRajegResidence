@@ -1347,7 +1347,20 @@ textarea {
   font-size: 14px;
   outline: none;
   transition: border-color 0.2s;
+  box-sizing: border-box;
 }
+
+/* PERBAIKAN KHUSUS INPUT DATE DI HP AGAR PRESISI DAN TIDAK KELUAR KOTAK */
+input[type="date"] {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+}
+
 input:focus,
 select:focus,
 textarea:focus {
@@ -1369,6 +1382,7 @@ input[type="file"] {
   transition:
     border-color 0.2s,
     background 0.2s;
+  box-sizing: border-box;
 }
 input[type="file"]:hover {
   border-color: var(--green);
@@ -1390,12 +1404,20 @@ input[type="file"]::file-selector-button:hover {
   opacity: 0.9;
 }
 
-/* LAYOUT RESPONSIVE FORM ROW (FIX MOBILE PROFILE) */
+/* LAYOUT RESPONSIVE FORM ROW (FIX MOBILE PROFILE & DATE ALIGNMENT) */
 .form-row {
   display: grid;
   grid-template-columns: 1fr; /* Default stack ke bawah untuk HP */
   gap: 10px;
+  width: 100%;
+  min-width: 0;
 }
+.form-row label {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
 @media (min-width: 600px) {
   .form-row {
     grid-template-columns: 1fr 1fr; /* Berdampingan 2 kolom untuk tablet/desktop */

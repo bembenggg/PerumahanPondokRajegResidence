@@ -332,18 +332,24 @@ document.addEventListener("DOMContentLoaded", () => {
   const enterDashboardBtn = $("#enterDashboardBtn");
   const confirmLogoutAction = $("#confirmLogoutAction");
 
+  // Helper untuk update nama dan nomor rumah di beranda
+  const refreshWelcomeHeader = () => {
+    const savedUser = localStorage.getItem("pondok_rajeg_user");
+    const savedName = localStorage.getItem("pondok_rajeg_name") || savedUser;
+    if (savedUser && welcomeUser) {
+      welcomeUser.textContent = `Selamat datang, ${savedName} (Rumah ${savedUser})`;
+    }
+  };
+
   setTimeout(() => {
     if (splash) {
       splash.style.opacity = "0";
       setTimeout(() => {
         splash.style.display = "none";
         const savedUser = localStorage.getItem("pondok_rajeg_user");
-        const savedName =
-          localStorage.getItem("pondok_rajeg_name") || savedUser;
         if (savedUser) {
           if (mainApp) mainApp.style.display = "flex";
-          if (welcomeUser)
-            welcomeUser.textContent = `Selamat datang, ${savedName} (Rumah ${savedUser})`;
+          refreshWelcomeHeader();
           updateBill(savedUser);
         } else {
           if (loginView) loginView.style.display = "flex";
@@ -387,6 +393,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         localStorage.setItem("pondok_rajeg_user", unit);
         localStorage.setItem("pondok_rajeg_name", result.name);
+
+        refreshWelcomeHeader();
+
         if (loginSuccessMessageText)
           loginSuccessMessageText.textContent = `Halo ${result.name}, verifikasi Rumah ${unit} berhasil.`;
         if (loginSuccessDialog) loginSuccessDialog.showModal();
@@ -404,6 +413,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (enterDashboardBtn) {
     enterDashboardBtn.addEventListener("click", () => {
       const unit = localStorage.getItem("pondok_rajeg_user");
+      refreshWelcomeHeader();
       if (loginView) {
         loginView.style.opacity = "0";
         setTimeout(() => {
@@ -761,6 +771,13 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         await sendToBackend("profile", profileData);
         localStorage.setItem(PROFILE_KEY, JSON.stringify(profileData));
+
+        // Update nama di localStorage & header jika kepala keluarga diubah
+        if (headName) {
+          localStorage.setItem("pondok_rajeg_name", headName);
+          refreshWelcomeHeader();
+        }
+
         profileDataLoadedState = true;
         profileDialog.close();
 
@@ -937,18 +954,14 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  const currentUser = localStorage.getItem("pondok_rajeg_user");
-  const currentName = localStorage.getItem("pondok_rajeg_name") || currentUser;
-  if (currentUser && welcomeUser) {
-    welcomeUser.textContent = `Selamat datang, ${currentName} (Rumah ${currentUser})`;
-  }
-  updateBill(currentUser);
+  refreshWelcomeHeader();
+  updateBill(localStorage.getItem("pondok_rajeg_user"));
   updateCashFlow();
   renderActivities();
   renderComplaints();
 });
 
-// AUTO-UPDATE SENYAP DI LATAR BELAKANG (TANPA GANGGU WARGA)
+// AUTO-UPDATE SENYAP DI LATAR BELAKANG
 if ("serviceWorker" in navigator) {
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
