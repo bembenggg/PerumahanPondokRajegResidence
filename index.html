@@ -13,7 +13,10 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"
     />
-    <link rel="stylesheet" href="style.css?v=9.0" />
+    <!-- Firebase SDK Compat -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
+    <link rel="stylesheet" href="style.css?v=10.0" />
     <title>Pondok Rajeg Residence</title>
   </head>
   <body>
@@ -295,8 +298,8 @@
                 <b class="quick-icon info"
                   ><span class="material-symbols-rounded">campaign</span></b
                 >
-                <strong>Info &amp; AD/ART</strong>
-                <small>STP PBB &amp; Dokumen PDF</small>
+                <strong>Info & AD/ART</strong>
+                <small>STP PBB & Dokumen PDF</small>
               </button>
             </div>
 
@@ -312,10 +315,9 @@
                 >
               </div>
               <div class="security-body">
-                <b>Petugas Jaga: Bpk. Slamet &amp; Bpk. Mulyadi</b>
+                <b>Petugas Jaga: Bpk. Slamet & Bpk. Mulyadi</b>
                 <p>
-                  Patroli keliling rutin &amp; pengawasan gerbang kawasan
-                  perumahan.
+                  Patroli keliling rutin & pengawasan gerbang kawasan perumahan.
                 </p>
               </div>
               <div class="security-actions">
@@ -1234,14 +1236,12 @@
       </form>
     </dialog>
 
-    <!-- MODAL INFO WARGA & AD/ART (SISTEM TAB & DETAIL ARTIKEL) -->
+    <!-- MODAL INFO WARGA & AD/ART -->
     <dialog id="infoDialog" class="modal info-modal">
       <form method="dialog">
         <button class="close" value="cancel">×</button>
-        <p class="eyebrow" id="infoModalEyebrow">
-          PUSAT INFORMASI &amp; DOKUMEN
-        </p>
-        <h2 id="infoModalTitle">Info Warga &amp; Dokumen RT</h2>
+        <p class="eyebrow" id="infoModalEyebrow">PUSAT INFORMASI & DOKUMEN</p>
+        <h2 id="infoModalTitle">Info Warga & Dokumen RT</h2>
 
         <!-- TABS UTAMA -->
         <div id="infoMainTabs" class="tukang-tabs" style="margin-bottom: 14px">
@@ -1298,7 +1298,7 @@
           </article>
         </div>
 
-        <!-- VIEW DETAIL ARTIKEL (TERSEMBUNYI AWALNYA) -->
+        <!-- VIEW DETAIL ARTIKEL -->
         <div
           id="infoArticleDetailContent"
           class="tukang-tab-pane"
@@ -1317,9 +1317,7 @@
           >
             ← Kembali ke Daftar Pengumuman
           </button>
-          <div id="articleDetailBody">
-            <!-- Konten dinamis diisi via JavaScript -->
-          </div>
+          <div id="articleDetailBody"></div>
         </div>
 
         <!-- VIEW AD/ART -->
@@ -1336,7 +1334,7 @@
               text-align: left;
             "
           >
-            Anggaran Dasar &amp; Anggaran Rumah Tangga Paguyuban Pondok Rajeg
+            Anggaran Dasar & Anggaran Rumah Tangga Paguyuban Pondok Rajeg
             Residence.
           </p>
           <div class="info-document-card">
@@ -1365,6 +1363,6 @@
     </dialog>
 
     <div id="toast" class="toast" role="status"></div>
-    <script src="app.js?v=9.0"></script>
+    <script src="app.js?v=10.0"></script>
   </body>
 </html>

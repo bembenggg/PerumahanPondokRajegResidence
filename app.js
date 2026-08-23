@@ -5,6 +5,42 @@ const PROFILE_KEY = "pondok-rajeg-profile-data";
 const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbxkooeosCRLUrNxw18RZF9Epzn4_gfjj6YhOD71wqLOJUBQ9Oq2t7AZvc6RicDTMhjXKg/exec";
 
+// Konfigurasi Firebase PRR Warga
+const firebaseConfig = {
+  apiKey: "AIzaSyAL3BJnxwEbNOQ-R-rJGC_w9o1c3ZVC9Fo",
+  authDomain: "prr-warga-notification.firebaseapp.com",
+  projectId: "prr-warga-notification",
+  storageBucket: "prr-warga-notification.firebasestorage.app",
+  messagingSenderId: "995899929528",
+  appId: "1:995899929528:web:228b76fc6366ce2d0154d",
+};
+
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+const messaging = firebase.messaging();
+
+// Fungsi meminta izin notifikasi & menyimpan token perangkat
+async function requestNotificationPermission() {
+  if (!("Notification" in window)) return;
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+      const token = await messaging.getToken({
+        vapidKey:
+          "BPzVsG95x8uvmworbflPPJRBee81eTjCHvh8kkSlerKB5YdNyFnYhbov8qYwThcbkE1fE7yHj1GfSjMz22VyngA", // Ambil dari Cloud Messaging Web push certificates
+      });
+      if (token) {
+        const unit = localStorage.getItem("pondok_rajeg_user") || "Tamu";
+        await sendToBackend("saveFCMToken", { unit, token });
+        console.log("FCM Token perangkat tersimpan.");
+      }
+    }
+  } catch (error) {
+    console.error("Gagal mendapatkan token notifikasi:", error);
+  }
+}
+
 const articlesData = {
   "pbb-2025": {
     title: "Pengambilan STP PBB 2025",
@@ -14,7 +50,7 @@ const articlesData = {
       <p>Surat Tagihan Pajak PBB (SPT PBB) tahun 2025 untuk seluruh warga Perumahan Pondok Rajeg Residence (PRR) kini sudah didistribusikan oleh pengurus dan dapat diambil secara mandiri di pos penjemputan masing-masing wilayah blok.</p>
       <p>Berikut adalah rincian lokasi penjemputan dokumen berdasarkan blok rumah Anda:</p>
       <ul class="pbb-location-list" style="margin-bottom: 12px;">
-        <li><strong>Blok A &amp; B:</strong> Rumah Bpk. Akhmad Tika (B9/6)</li>
+        <li><strong>Blok A & B:</strong> Rumah Bpk. Akhmad Tika (B9/6)</li>
         <li><strong>Blok C:</strong> Rumah Bpk. Juhaeri (C8/15)</li>
       </ul>
       <p>Mohon membawa kartu identitas diri atau bukti pembayaran IPL terakhir saat mengambil dokumen guna kelancaran pendataan warga.</p>
@@ -26,7 +62,7 @@ const articlesData = {
     image: "https://i.ibb.co.com/b5VjvFGK/LOGO-PRR.jpg",
     content: `
       <p>Dalam rangka menjaga kebersihan lingkungan, keasrian kawasan, serta mengantisipasi saluran air menghadapi musim penghujan, pengurus RT bersama warga akan mengadakan kegiatan <strong>Kerja Bakti Lingkungan Serentak</strong>.</p>
-      <p><strong>Waktu &amp; Tempat Pelaksanaan:</strong><br>
+      <p><strong>Waktu & Tempat Pelaksanaan:</strong><br>
       📅 Minggu, 23 Agustus 2026<br>
       ⏰ Pukul 07.00 WIB s.d Selesai<br>
       📍 Titik Kumpul: Pos Keamanan Utama Kawasan Perumahan</p>
@@ -380,6 +416,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (mainApp) mainApp.style.display = "flex";
           refreshWelcomeHeader();
           updateBill(savedUser);
+          requestNotificationPermission();
         } else {
           if (loginView) loginView.style.display = "flex";
         }
@@ -452,6 +489,7 @@ document.addEventListener("DOMContentLoaded", () => {
             mainApp.style.opacity = "1";
           }
           updateBill(unit);
+          requestNotificationPermission();
         }, 200);
       }
     });
@@ -873,7 +911,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Event Klik Kartu Pengumuman Menuju Detail Artikel
   const articleCards = document.querySelectorAll(".clickable-article");
   articleCards.forEach((card) => {
     card.addEventListener("click", () => {
@@ -899,7 +936,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Tombol Kembali ke Daftar Pengumuman (Gunakan & biasa agar aman)
   if (backToInfoListBtn) {
     backToInfoListBtn.addEventListener("click", () => {
       if (infoArticleDetailContent)
@@ -962,6 +998,39 @@ document.addEventListener("DOMContentLoaded", () => {
       e.currentTarget.reset();
       renderComplaints();
       showToast("Laporan pengaduan berhasil dikirim ke pengurus RT.");
+    });
+  }
+
+  // PANIC FORM BROADCAST HANDLER
+  const panicForm = $("#panicForm");
+  if (panicForm) {
+    panicForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.currentTarget);
+      const emergencyType = formData.get("emergency") || "Darurat Warga";
+      const unit = localStorage.getItem("pondok_rajeg_user") || "Tidak Dikenal";
+      const name = localStorage.getItem("pondok_rajeg_name") || "Warga";
+
+      const submitBtn = panicForm.querySelector("button[type='submit']");
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = "Mengirim sinyal darurat ke seluruh warga... 🚨";
+
+      try {
+        await sendToBackend("broadcastPanic", {
+          unit,
+          name,
+          type: emergencyType,
+        });
+        $("#panicDialog")?.close();
+        showToast(
+          "🚨 Sinyal darurat berhasil disiarkan ke seluruh HP warga & Pos Satpam!",
+        );
+      } catch (error) {
+        showToast(`Gagal mengirim sinyal: ${error.message}`);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = "Kirim sinyal darurat ke Pos";
+      }
     });
   }
 
@@ -1038,7 +1107,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderComplaints();
 });
 
-// AUTO-UPDATE SENYAP DI LATAR BELAKANG
+// AUTO-UPDATE SERVICE WORKER
 if ("serviceWorker" in navigator) {
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
