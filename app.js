@@ -1027,15 +1027,15 @@ document.addEventListener("DOMContentLoaded", () => {
       submitBtn.innerHTML = "Mengirim sinyal darurat ke seluruh warga... 🚨";
 
       try {
-        await sendToBackend("broadcastPanic", {
+        const result = await sendToBackend("broadcastPanic", {
           unit,
           name,
           type: emergencyType,
         });
         $("#panicDialog")?.close();
-        showToast(
-          "🚨 Sinyal darurat berhasil disiarkan ke seluruh HP warga & Pos Satpam!",
-        );
+
+        // Menampilkan pesan asli dari backend Apps Script ke layar
+        showToast("🚨 " + result.message);
       } catch (error) {
         showToast(`Gagal mengirim sinyal: ${error.message}`);
       } finally {
