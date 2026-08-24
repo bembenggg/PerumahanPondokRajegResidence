@@ -1,7 +1,7 @@
 // service-worker.js
 // Gabungan: Caching PWA + Firebase Cloud Messaging (background push)
 
-const CACHE_NAME = "prr-warga-v17";
+const CACHE_NAME = "my-prr-warga-v18";
 const urlsToCache = ["./", "./index.html", "./style.css", "./app.js"];
 
 // ---------- FIREBASE MESSAGING (background push) ----------
@@ -29,7 +29,7 @@ messaging.onBackgroundMessage((payload) => {
   const notificationTitle =
     (payload.notification && payload.notification.title) ||
     (payload.data && payload.data.title) ||
-    "🚨 DARURAT PERUMAHAN";
+    "🚨 DARURAT MY PRR";
 
   const notificationOptions = {
     body:
@@ -44,7 +44,6 @@ messaging.onBackgroundMessage((payload) => {
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// Opsional: pindah fokus ke tab yang sudah terbuka saat notifikasi diklik
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   event.waitUntil(

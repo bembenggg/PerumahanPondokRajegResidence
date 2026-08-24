@@ -5,7 +5,7 @@ const PROFILE_KEY = "pondok-rajeg-profile-data";
 const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbxkooeosCRLUrNxw18RZF9Epzn4_gfjj6YhOD71wqLOJUBQ9Oq2t7AZvc6RicDTMhjXKg/exec";
 
-// Konfigurasi Firebase PRR Warga
+// Konfigurasi Firebase MY PRR Warga
 const firebaseConfig = {
   apiKey: "AIzaSyAL3BJnxwEbNOQ-R-rJGC_w9o1c3ZVC9Fo",
   authDomain: "prr-warga-notification.firebaseapp.com",
@@ -37,10 +37,6 @@ messaging.onMessage((payload) => {
   }
 });
 
-// Fungsi meminta izin notifikasi & menyimpan token perangkat ke Spreadsheet
-// CATATAN: service worker TIDAK didaftarkan di sini lagi. Kita pakai
-// registrasi service-worker.js tunggal yang sudah didaftarkan saat window load
-// (lihat bagian paling bawah file ini) agar tidak ada konflik scope SW.
 async function requestNotificationPermission() {
   if (!("Notification" in window)) return;
   try {
@@ -73,7 +69,7 @@ const articlesData = {
     date: "15 Agustus 2026",
     image: "https://i.ibb.co.com/b5VjvFGK/LOGO-PRR.jpg",
     content: `
-      <p>Surat Tagihan Pajak PBB (SPT PBB) tahun 2025 untuk seluruh warga Perumahan Pondok Rajeg Residence (PRR) kini sudah didistribusikan oleh pengurus dan dapat diambil secara mandiri di pos penjemputan masing-masing wilayah blok.</p>
+      <p>Surat Tagihan Pajak PBB (SPT PBB) tahun 2025 untuk seluruh warga MY PRR kini sudah didistribusikan oleh pengurus dan dapat diambil secara mandiri di pos penjemputan masing-masing wilayah blok.</p>
       <p>Berikut adalah rincian lokasi penjemputan dokumen berdasarkan blok rumah Anda:</p>
       <ul class="pbb-location-list" style="margin-bottom: 12px;">
         <li><strong>Blok A & B:</strong> Rumah Bpk. Akhmad Tika (B9/6)</li>
@@ -800,7 +796,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const submitBtn = profileForm.querySelector("button[type='submit']");
       const originalText = submitBtn.innerHTML;
       submitBtn.disabled = true;
-      submitBtn.innerHTML = "Menyimpan ke Server PRR... ⏳";
+      submitBtn.innerHTML = "Menyimpan ke Server MY PRR... ⏳";
 
       const houseKK = formData.get("houseKK");
       const houseStatus = formData.get("houseStatus");
@@ -879,11 +875,11 @@ document.addEventListener("DOMContentLoaded", () => {
           successTitle.textContent = "Profil Berhasil Disimpan!";
         if (successMsg)
           successMsg.textContent = newPin
-            ? "Data profil dan PIN baru Anda berhasil diperbarui di Server PRR."
+            ? "Data profil dan PIN baru Anda berhasil diperbarui di Server MY PRR."
             : "Data keluarga unit rumah Anda telah diperbarui dan disinkronkan otomatis.";
         successDialog?.showModal();
       } catch (error) {
-        showToast(`Gagal menyimpan ke Server PRR: ${error.message}`);
+        showToast(`Gagal menyimpan ke Server MY PRR: ${error.message}`);
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
@@ -1024,7 +1020,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // PANIC FORM BROADCAST HANDLER
+  // PANIC BUTTON MAIN CLICK (Hanya membuka modal, tidak mengirim apa pun otomatis)
+  const panicButton = $("#panicButton");
+  if (panicButton) {
+    panicButton.addEventListener("click", () => {
+      const panicDialog = $("#panicDialog");
+      if (panicDialog) panicDialog.showModal();
+    });
+  }
+
+  // PANIC FORM BROADCAST HANDLER (Mengirim hanya ketika tombol dalam modal ditekan)
   const panicForm = $("#panicForm");
   if (panicForm) {
     panicForm.addEventListener("submit", async (e) => {
@@ -1054,10 +1059,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
-
-  const panicButton = $("#panicButton");
-  if (panicButton)
-    panicButton.addEventListener("click", () => $("#panicDialog")?.showModal());
 
   const viewFinanceDetailBtn = document.getElementById("viewFinanceDetail");
   const financeDialog = document.getElementById("financeDialog");
@@ -1128,11 +1129,69 @@ document.addEventListener("DOMContentLoaded", () => {
   renderComplaints();
 });
 
+// --- LOGIKA PAKSA / PANDUAN ADD TO HOME SCREEN (PWA INSTALL) UNTUK MY PRR ---
+let deferredPrompt;
+const pwaBanner = $("#pwaInstallBanner");
+const pwaInstallBtn = $("#pwaInstallBtn");
+const pwaCloseBanner = $("#pwaCloseBanner");
+const pwaInstallDesc = $("#pwaInstallDesc");
+
+const isInStandaloneMode = () =>
+  window.matchMedia("(display-mode: standalone)").matches ||
+  window.navigator.standalone === true;
+
+if (!isInStandaloneMode()) {
+  const isIOS =
+    /ipad|iphone|ipod/.test(navigator.userAgent.toLowerCase()) &&
+    !window.MSStream;
+
+  if (isIOS) {
+    if (pwaInstallDesc) {
+      pwaInstallDesc.textContent =
+        "Ketuk tombol 'Share' (ikon panah kotak) lalu pilih 'Tambah ke Layar Utama'.";
+    }
+    if (pwaInstallBtn) {
+      pwaInstallBtn.style.display = "none";
+    }
+    if (pwaBanner) {
+      setTimeout(() => {
+        pwaBanner.style.display = "flex";
+      }, 3000);
+    }
+  } else {
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (pwaBanner) {
+        setTimeout(() => {
+          pwaBanner.style.display = "flex";
+        }, 2000);
+      }
+    });
+  }
+}
+
+if (pwaInstallBtn) {
+  pwaInstallBtn.addEventListener("click", async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === "accepted") {
+        console.log("Pengguna menerima instalasi MY PRR");
+      }
+      deferredPrompt = null;
+      if (pwaBanner) pwaBanner.style.display = "none";
+    }
+  });
+}
+
+if (pwaCloseBanner) {
+  pwaCloseBanner.addEventListener("click", () => {
+    if (pwaBanner) pwaBanner.style.display = "none";
+  });
+}
+
 // SATU-SATUNYA SERVICE WORKER: caching PWA + Firebase Cloud Messaging.
-// Registrasi ini terjadi lebih dulu (saat window load), lalu
-// requestNotificationPermission() di atas cukup menunggu (navigator.serviceWorker.ready)
-// registrasi ini alih-alih mendaftarkan file terpisah — sehingga tidak ada
-// konflik scope antar service worker.
 if ("serviceWorker" in navigator) {
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
