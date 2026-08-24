@@ -28,13 +28,13 @@ messaging.onMessage((payload) => {
 
   showToast(title + ": " + body);
 
-  // if (Notification.permission === "granted") {
-  //   new Notification(title, {
-  //     body: body,
-  //     icon: "https://i.ibb.co.com/b5VjvFGK/LOGO-PRR.jpg",
-  //     vibrate: [300, 100, 300, 100, 300],
-  //   });
-  // }
+  if (Notification.permission === "granted") {
+    new Notification(title, {
+      body: body,
+      icon: "https://i.ibb.co.com/b5VjvFGK/LOGO-PRR.jpg",
+      vibrate: [300, 100, 300, 100, 300],
+    });
+  }
 });
 
 async function requestNotificationPermission() {
