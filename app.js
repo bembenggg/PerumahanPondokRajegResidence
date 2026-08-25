@@ -354,6 +354,7 @@ function renderComplaints() {
     .join("");
 }
 
+// AKTIVITAS WARGA TERBARU: Jika database/localStorage kosong, render benar-benar kosong tanpa dummy items
 function renderActivities() {
   const list = $("#activityList");
   if (!list) return;
@@ -361,9 +362,8 @@ function renderActivities() {
 
   if (!payments.length) {
     list.innerHTML = `
-      <div class="activity">
-        <div class="activity-icon"><span class="material-symbols-rounded">check</span></div>
-        <div class="activity-text"><b>Belum ada pembayaran</b><small>Mulai dengan membayar IPL bulan ini.</small></div>
+      <div style="padding: 16px; text-align: center; color: var(--muted); font-size: 11px;">
+        Belum ada aktivitas pembayaran tercatat.
       </div>`;
     return;
   }
@@ -1235,7 +1235,7 @@ document.addEventListener("DOMContentLoaded", () => {
           loadingTitle.textContent = "MY AI PRR Memindai Struk...";
         if (loadingDesc)
           loadingDesc.textContent =
-            "Mengecek nominal, mencocokkan nama pengirim, & memvalidasi tahun transaksi...";
+            "Mengecek nominal, rekening Bank Jago (504460167350), nama pengirim, & tahun 2026...";
 
         const result = await sendToBackend("payment", {
           name: activeName,
