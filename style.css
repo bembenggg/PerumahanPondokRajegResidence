@@ -931,7 +931,7 @@ body {
   margin-top: 0 !important;
   border-radius: 20px !important;
   padding: 9px 14px !important;
-  font-size: 12px !important;
+  font-size: 16px !important; /* Disesuaikan untuk iOS */
 }
 .social-comment-form button {
   width: 38px;
@@ -1747,6 +1747,11 @@ label {
   margin: 12px 0 6px;
   color: #234639;
 }
+
+/* ==========================================================
+   PERBAIKAN UTAMA: UKURAN FONT INPUT DI MOBILE MINIMAL 16px
+   Mencegah Safari iOS melakukan Auto-Zoom saat form diklik/difokuskan.
+   ========================================================== */
 input:not([type="file"]),
 select,
 textarea {
@@ -1758,24 +1763,40 @@ textarea {
   padding: 12px 14px;
   color: var(--ink);
   background: #fff;
-  font-size: 14px;
+  font-size: 16px;
   outline: none;
   min-height: 46px;
+  box-sizing: border-box;
 }
+
 input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--green);
 }
 
+/* Kembalikan ukuran font ke 14px khusus untuk layar Desktop */
+@media (min-width: 1024px) {
+  input:not([type="file"]),
+  select,
+  textarea {
+    font-size: 14px;
+  }
+}
+
+/* ==========================================================
+   PERBAIKAN PRESISI INPUT DATE KHUSUS SAFARI / IOS
+   ========================================================== */
 input[type="date"] {
   -webkit-appearance: none;
   appearance: none;
+  box-sizing: border-box;
+  width: 100%;
   min-height: 46px;
   height: 46px;
-  line-height: 1.2;
+  line-height: normal;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 16px;
   padding: 0 14px;
   text-align: left;
   background-color: #fff;
@@ -1788,20 +1809,12 @@ input[type="date"]::-webkit-date-and-time-value {
 }
 input[type="date"]::-webkit-datetime-edit {
   padding: 0;
-  line-height: 1.2;
+  line-height: normal;
 }
 input[type="date"]::-webkit-calendar-picker-indicator {
-  opacity: 0.55;
-  margin-left: 4px;
+  opacity: 0.6;
   padding: 4px;
   cursor: pointer;
-}
-input[type="date"]:invalid,
-input[type="date"]:not(:valid) {
-  color: var(--muted);
-}
-input[type="date"]:focus {
-  color: var(--ink);
 }
 
 input[type="file"] {
@@ -2148,7 +2161,7 @@ input[type="file"]::file-selector-button {
 }
 
 /* ==========================================================
-   RESET DIALOG & TECH LOADING MODAL (PRESISI TANPA BORDER GANDA)
+   RESET DIALOG & TECH LOADING MODAL
    ========================================================== */
 dialog#aiLoadingModal {
   padding: 0;
