@@ -1175,7 +1175,7 @@ document.addEventListener("DOMContentLoaded", () => {
     btn.addEventListener("click", (e) => e.target.closest("dialog")?.close());
   });
 
-  // SUBMIT PEMBAYARAN IPL (MENGAMBIL NILAI DARI SESSION KARENA DISABLED INPUT)
+  // SUBMIT PEMBAYARAN IPL DENGAN MODAL LOADING DINAMIS (STEP-BY-STEP)
   const paymentForm = $("#paymentForm");
   if (paymentForm) {
     paymentForm.addEventListener("submit", async (event) => {
@@ -1193,14 +1193,27 @@ document.addEventListener("DOMContentLoaded", () => {
       const activeName =
         localStorage.getItem("pondok_rajeg_name") || activeUnit;
 
-      const submitBtn = paymentForm.querySelector("button[type='submit']");
-      const originalText = submitBtn.innerHTML;
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = "Memverifikasi bukti transfer dengan AI... 🤖";
+      const loadingModal = $("#aiLoadingModal");
+      const loadingTitle = $("#aiLoadingTitle");
+      const loadingDesc = $("#aiLoadingDesc");
+
+      // Tutup form IPL, buka modal loading interaktif
+      $("#iplDialog")?.close();
+      if (loadingModal) loadingModal.showModal();
 
       try {
+        if (loadingTitle) loadingTitle.textContent = "Menyiapkan Dokumen...";
+        if (loadingDesc)
+          loadingDesc.textContent = "Mengonversi file bukti transfer Anda...";
+
         const proofBase64 = await fileToBase64(proofFile);
         const proofMimeType = proofFile.type || "image/jpeg";
+
+        if (loadingTitle)
+          loadingTitle.textContent = "AI Sedang Memindai Struk...";
+        if (loadingDesc)
+          loadingDesc.textContent =
+            "Mengecek nominal, mencocokkan nama pengirim, & memvalidasi tanggal...";
 
         const result = await sendToBackend("payment", {
           name: activeName,
@@ -1210,6 +1223,9 @@ document.addEventListener("DOMContentLoaded", () => {
           proofBase64,
           proofMimeType,
         });
+
+        if (loadingModal) loadingModal.close();
+        paymentForm.reset();
 
         const record = {
           name: activeName,
@@ -1221,23 +1237,23 @@ document.addEventListener("DOMContentLoaded", () => {
             month: "short",
             year: "numeric",
           }),
-          status: result.status === "Lunas" ? "Lunas" : "Menunggu Verifikasi",
+          status: "Lunas",
           months: result.monthsCovered || [],
         };
         savePayments([record, ...getPayments()]);
 
-        $("#iplDialog")?.close();
-        paymentForm.reset();
-
         updateBill(activeUnit);
         updateCashFlow();
         renderActivities();
+
+        alert(`🎉 Berhasil!\n\n${result.message}`);
         showToast(result.message);
       } catch (error) {
-        showToast(`Gagal verifikasi: ${error.message}`);
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
+        if (loadingModal) loadingModal.close();
+        $("#iplDialog")?.showModal(); // Buka kembali form IPL agar warga bisa ganti file
+
+        alert(`❌ Verifikasi Gagal!\n\n${error.message}`);
+        showToast(`Gagal: ${error.message}`);
       }
     });
   }

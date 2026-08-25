@@ -1130,7 +1130,7 @@
       </form>
     </dialog>
 
-    <!-- MODAL IPL (DENGAN NAMA & UNIT TERKUNCI) -->
+    <!-- MODAL IPL (DENGAN NAMA & UNIT TERKUNCI OTOMATIS) -->
     <dialog id="iplDialog" class="modal">
       <form id="paymentForm" method="dialog">
         <button class="close" value="cancel" aria-label="Tutup">×</button>
@@ -1151,8 +1151,9 @@
             border-radius: 10px;
           "
         >
-          💡 Nominal & bulan yang lunas akan
-          <b>otomatis diverifikasi dari foto bukti transfer</b> menggunakan AI.
+          💡 AI akan memvalidasi otomatis
+          <b>nominal, nama pengirim (rekening pribadi), dan tanggal</b> dari
+          foto bukti transfer Anda.
         </p>
 
         <label
@@ -1205,6 +1206,43 @@
           Konfirmasi pembayaran <span>→</span>
         </button>
       </form>
+    </dialog>
+
+    <!-- MODAL LOADING AI INTERAKTIF (MENCEGAH PANIK / DIANGGAP BUG) -->
+    <dialog
+      id="aiLoadingModal"
+      class="modal interactive-modal"
+      style="padding: 36px 24px; text-align: center"
+    >
+      <div
+        class="spinner"
+        style="
+          width: 48px;
+          height: 48px;
+          border-width: 4px;
+          margin: 0 auto 16px;
+        "
+      ></div>
+      <p class="eyebrow" style="color: var(--green); margin-bottom: 6px">
+        KECERDASAN BUATAN (AI)
+      </p>
+      <h2
+        id="aiLoadingTitle"
+        style="font-size: 18px; margin-bottom: 8px; color: var(--dark)"
+      >
+        Memproses Struk...
+      </h2>
+      <p
+        id="aiLoadingDesc"
+        style="
+          font-size: 13px;
+          color: var(--muted);
+          margin: 0;
+          line-height: 1.4;
+        "
+      >
+        Mohon tunggu sebentar, sistem sedang memverifikasi pembayaran Anda.
+      </p>
     </dialog>
 
     <dialog id="panicDialog" class="modal panic-modal">
