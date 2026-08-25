@@ -1,7 +1,7 @@
 // service-worker.js
 // Gabungan: Caching PWA + Firebase Cloud Messaging (background push)
 
-const CACHE_NAME = "my-prr-warga-v18";
+const CACHE_NAME = "my-prr-warga-v20"; // dinaikkan supaya SW lama ter-replace
 const urlsToCache = ["./", "./index.html", "./style.css", "./app.js"];
 
 // ---------- FIREBASE MESSAGING (background push) ----------
@@ -23,6 +23,17 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// ====== PERBAIKAN #1: NOTIF DOBEL ======
+// "tag" membuat notifikasi dengan tag yang sama SALING MENGGANTI, bukan
+// menumpuk jadi 2 entri terpisah di notification tray.
+// "renotify: true" tetap membuat HP bergetar/berbunyi saat notif diganti,
+// jadi warga tetap sadar ada notif baru walau cuma 1 entri yang tampil.
+//
+// PENTING: solusi permanen ada di BACKEND (Apps Script). Pastikan request
+// ke FCM HANYA berisi field "data" (JANGAN sertakan field "notification").
+// Kalau field "notification" ikut dikirim, browser akan menampilkan
+// notifikasi otomatis DAN kode di bawah ini akan menampilkan notifikasi
+// lagi -> itulah sumber notif dobel yang Anda alami.
 messaging.onBackgroundMessage((payload) => {
   console.log("[service-worker.js] Menerima pesan latar belakang:", payload);
 
@@ -31,14 +42,20 @@ messaging.onBackgroundMessage((payload) => {
     (payload.data && payload.data.title) ||
     "🚨 DARURAT MY PRR";
 
+  const tag =
+    (payload.data && payload.data.tag) || payload.collapseKey || "my-prr-notif";
+
   const notificationOptions = {
     body:
       (payload.notification && payload.notification.body) ||
       (payload.data && payload.data.body) ||
       "Ada sinyal darurat dikirim oleh warga!",
-    icon: "https://i.ibb.co.com/b5VjvFGK/LOGO-PRR.jpg",
-    badge: "https://i.ibb.co.com/b5VjvFGK/LOGO-PRR.jpg",
+    // Ganti ke path lokal (lihat perbaikan #3) agar ikon konsisten di semua OS.
+    icon: "icons/icon-192.png",
+    badge: "icons/icon-96.png",
     vibrate: [300, 100, 300, 100, 300],
+    tag: tag,
+    renotify: true,
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);

@@ -20,11 +20,32 @@ if (!firebase.apps.length) {
 }
 const messaging = firebase.messaging();
 
+// ====== PERBAIKAN #1: NOTIF DOBEL ======
+// Setiap notifikasi sekarang diberi "tag" yang sama untuk 1 event yang sama.
+// Kalau server (Apps Script) mengirim pesan yang sama 2x (misalnya karena
+// payload masih memakai field "notification" + "data" bersamaan), browser
+// akan MENGGANTI notifikasi lama, bukan menumpuknya jadi 2.
+// CATATAN PENTING: perbaikan permanen tetap harus dilakukan di backend
+// (Apps Script) dengan HANYA mengirim field "data" (tanpa field "notification")
+// pada body request ke FCM. Lihat penjelasan di chat.
+function buildNotifTag(payload) {
+  return (
+    (payload.data && payload.data.tag) || payload.collapseKey || "my-prr-notif"
+  );
+}
+
 // MENANGKAP PESAN KETIKA WEBSITE SEDANG DIBUKA AKTIF (FOREGROUND)
 messaging.onMessage((payload) => {
   console.log("📥 Pesan diterima saat aplikasi aktif:", payload);
-  const title = payload.notification.title;
-  const body = payload.notification.body;
+  const title =
+    (payload.notification && payload.notification.title) ||
+    (payload.data && payload.data.title) ||
+    "Notifikasi MY PRR";
+  const body =
+    (payload.notification && payload.notification.body) ||
+    (payload.data && payload.data.body) ||
+    "";
+  const tag = buildNotifTag(payload);
 
   showToast(title + ": " + body);
 
@@ -33,6 +54,7 @@ messaging.onMessage((payload) => {
       body: body,
       icon: "https://i.ibb.co.com/b5VjvFGK/LOGO-PRR.jpg",
       vibrate: [300, 100, 300, 100, 300],
+      tag: tag, // <-- mencegah notif dobel muncul sebagai 2 entri terpisah
     });
   }
 });
@@ -1044,6 +1066,10 @@ document.addEventListener("DOMContentLoaded", () => {
       submitBtn.innerHTML = "Mengirim sinyal darurat ke seluruh warga... 🚨";
 
       try {
+        // "unit" (unit pengirim) dikirim ke backend supaya backend BISA
+        // mengecualikan unit ini sendiri dari daftar penerima broadcast.
+        // Filter pengecualian harus diterapkan di Apps Script (server),
+        // lihat catatan di chat untuk pola kodenya.
         const result = await sendToBackend("broadcastPanic", {
           unit,
           name,
