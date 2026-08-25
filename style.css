@@ -739,6 +739,189 @@ body {
   display: block;
 }
 
+/* ============================================================
+   UPDATE WARGA — FEED SOSIAL REAL-TIME (GAYA INSTAGRAM/FACEBOOK)
+   ============================================================ */
+.composer-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+.composer-trigger:hover {
+  background: var(--soft);
+}
+.composer-avatar,
+.social-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #075b3b, #0a9260);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.composer-placeholder {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.social-feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.social-post {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px;
+}
+.social-post-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.social-post-meta {
+  min-width: 0;
+}
+.social-post-meta b {
+  font-size: 12.5px;
+  display: block;
+}
+.social-post-meta small {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.social-post-text {
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.55;
+  margin: 0 0 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.social-post-image {
+  width: 100%;
+  border-radius: 14px;
+  margin-bottom: 10px;
+  display: block;
+  max-height: 420px;
+  object-fit: cover;
+  background: var(--soft);
+}
+.social-post-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 6px;
+}
+.social-post-actions {
+  display: flex;
+  gap: 8px;
+}
+.social-action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.social-action-btn:hover {
+  background: var(--soft);
+}
+.social-action-btn.liked {
+  color: #e0245e;
+}
+.social-action-btn .material-symbols-rounded {
+  font-size: 18px;
+}
+
+.social-comments {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.social-comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.social-comment {
+  font-size: 12px;
+  background: var(--soft);
+  border-radius: 10px;
+  padding: 8px 10px;
+  line-height: 1.4;
+}
+.social-comment b {
+  color: var(--dark);
+  margin-right: 4px;
+}
+.social-comment small {
+  display: block;
+  color: var(--muted);
+  font-size: 9.5px;
+  margin-top: 2px;
+}
+.social-comment-form {
+  display: flex;
+  gap: 8px;
+}
+.social-comment-form input {
+  flex: 1;
+  margin-top: 0 !important;
+  border-radius: 20px !important;
+  padding: 9px 14px !important;
+  font-size: 12px !important;
+}
+.social-comment-form button {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--green);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.social-comment-form button:hover {
+  opacity: 0.9;
+}
+
 .quick-section,
 .activity-section {
   padding: 22px 16px 0;
@@ -820,6 +1003,10 @@ body {
   background: #e7efff;
   color: #3774c9;
 }
+.admin {
+  background: #f3e8ff;
+  color: #7e22ce;
+}
 
 .activity-list {
   border: 1px solid var(--line);
@@ -886,7 +1073,7 @@ body {
   height: 68px;
   background: #fff;
   border-top: 1px solid var(--line);
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   padding: 6px 4px;
 }
 .nav-item {
@@ -906,6 +1093,30 @@ body {
 .nav-item.active {
   color: var(--green);
   font-weight: 800;
+}
+.nav-item-post {
+  position: relative;
+  justify-content: flex-end;
+  padding-bottom: 4px;
+}
+.nav-post-fab {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #075b3b, #0a9260);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 18px rgba(7, 91, 59, 0.35);
+  border: 4px solid #fff;
+}
+.nav-post-fab span {
+  font-size: 24px;
 }
 
 .panic-button {
@@ -1311,45 +1522,124 @@ body {
 /* ============================================================
    PEMILIH BULAN & CATATAN METODE PEMBAYARAN (FORM BAYAR IPL)
    ============================================================ */
+.months-picker-block {
+  margin: 12px 0 0;
+}
 .months-picker {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 8px;
-  max-height: 190px;
+  max-height: 280px;
   overflow-y: auto;
-  padding: 6px;
+  padding: 8px;
   margin-top: 4px;
   border: 1.5px solid var(--line);
-  border-radius: 14px;
+  border-radius: 16px;
   background: #f8fbf9;
 }
-.month-checkbox-item {
+.month-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 9px 10px;
-  border-radius: 10px;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
   background: #fff;
-  border: 1px solid var(--line);
+  border: 1.5px solid var(--line);
   cursor: pointer;
   margin: 0;
   transition:
     background 0.15s,
-    border-color 0.15s,
-    color 0.15s;
+    border-color 0.15s;
 }
-.month-checkbox-item input {
-  width: auto;
-  margin: 0;
-  accent-color: var(--green);
+.month-row input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
 }
-.month-checkbox-item.checked {
+.month-row-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.month-row-info b {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 700;
+}
+.month-badge {
+  display: inline-block;
+  width: fit-content;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  text-transform: uppercase;
+}
+.badge-overdue {
+  background: #fef2f2;
+  color: #dc2626;
+}
+.badge-current {
+  background: #fff7ed;
+  color: #b45309;
+}
+.badge-advance {
+  background: #eff6ff;
+  color: #2563eb;
+}
+.month-row-check {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  background: #fff;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.month-row-check span {
+  font-size: 16px;
+}
+.month-row.checked {
   background: var(--soft);
   border-color: var(--green);
+}
+.month-row.checked .month-row-check {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+
+.months-picker-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.chip-btn {
+  flex: 1;
+  border: 1.5px solid var(--line);
+  background: #fff;
   color: var(--green);
+  font-size: 11px;
   font-weight: 800;
+  padding: 10px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.chip-btn:hover {
+  background: var(--soft);
+}
+.chip-btn.ghost {
+  color: var(--muted);
 }
 
 .payment-method-note {
@@ -1749,6 +2039,101 @@ input[type="file"]::file-selector-button:hover {
     height: 64px;
     z-index: 999;
   }
+}
+
+/* ============================================================
+   PANEL ADMIN (ROLE: PETUGAS) — VERIFIKASI PEMBAYARAN TUNAI
+   ============================================================ */
+.pending-card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: #fff;
+}
+.pending-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.pending-card-header b {
+  font-size: 14px;
+  color: var(--dark);
+  display: block;
+}
+.pending-card-header small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.pending-amount {
+  font-weight: 800;
+  color: var(--dark);
+  font-size: 14px;
+  white-space: nowrap;
+}
+.pending-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+.pending-meta span {
+  color: var(--muted);
+}
+.admin-detail-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  font-size: 12px;
+  margin-bottom: 14px;
+}
+.admin-detail-meta div {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.admin-detail-meta span {
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 2px;
+}
+.admin-proof-preview {
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #f4f8f5;
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.admin-proof-preview iframe {
+  width: 100%;
+  height: 420px;
+  border: 0;
+  display: block;
+  background: #fff;
+}
+.pending-actions {
+  display: flex;
+  gap: 8px;
+}
+.pending-actions button {
+  flex: 1;
+  margin-top: 0 !important;
+}
+.btn-reject {
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
 }
 
 .pwa-install-banner {

@@ -29,7 +29,8 @@
     />
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
-    <link rel="stylesheet" href="style.css?v=13.0" />
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <link rel="stylesheet" href="style.css?v=15.0" />
     <title>MY PRR - Pondok Rajeg Residence</title>
   </head>
   <body>
@@ -49,7 +50,7 @@
       </div>
     </div>
 
-    <!-- 2. HALAMAN LOGIN WARGA -->
+    <!-- 2. HALAMAN LOGIN WARGA / PETUGAS (SATU PINTU — ROLE DIBACA DARI SERVER) -->
     <div id="loginView" class="auth-container">
       <div class="auth-split-box">
         <div class="auth-form-side">
@@ -66,7 +67,7 @@
           <h2>Masuk Warga</h2>
           <p class="auth-subtitle">
             Silakan masukkan Blok/Nomor rumah dan PIN Anda untuk mengakses
-            portal layanan.
+            portal layanan. Petugas RT juga masuk lewat form yang sama.
           </p>
 
           <form id="loginForm">
@@ -311,6 +312,17 @@
                 <strong>Info & AD/ART</strong>
                 <small>STP PBB & Dokumen PDF</small>
               </button>
+              <button
+                class="quick-card"
+                id="adminQuickBtn"
+                style="display: none"
+              >
+                <b class="quick-icon admin"
+                  ><span class="material-symbols-rounded">verified</span></b
+                >
+                <strong>Verifikasi Tunai</strong>
+                <small>Khusus Petugas RT</small>
+              </button>
             </div>
 
             <div class="security-duty-card modern-security">
@@ -414,12 +426,25 @@
             </div>
           </section>
 
-          <section class="activity-section">
+          <section class="activity-section feed-section">
             <div class="section-heading">
-              <h2>Aktivitas warga terbaru</h2>
+              <h2>Update Warga</h2>
+              <span>Real-time</span>
             </div>
-            <div id="activityList" class="activity-list">
-              <div class="empty-state-box">Memuat aktivitas terbaru...</div>
+
+            <button
+              type="button"
+              id="openPostComposerBtn"
+              class="composer-trigger"
+            >
+              <span class="composer-avatar" id="composerAvatarInitial">W</span>
+              <span class="composer-placeholder"
+                >Apa yang ingin Anda bagikan ke warga MY PRR?</span
+              >
+            </button>
+
+            <div id="socialFeedList" class="social-feed-list">
+              <div class="empty-state-box">Memuat postingan warga...</div>
             </div>
           </section>
         </div>
@@ -431,6 +456,15 @@
         </button>
         <button class="nav-item" data-page="ipl">
           <span class="material-symbols-rounded">receipt_long</span>IPL
+        </button>
+        <button
+          class="nav-item nav-item-post"
+          id="bottomNavPostBtn"
+          aria-label="Buat Postingan"
+        >
+          <span class="nav-post-fab"
+            ><span class="material-symbols-rounded">add</span></span
+          >
         </button>
         <button
           class="nav-item"
@@ -866,6 +900,99 @@
       </form>
     </dialog>
 
+    <dialog id="adminDialog" class="modal info-modal">
+      <form method="dialog">
+        <button class="close" value="cancel">×</button>
+        <p class="eyebrow">PANEL PETUGAS RT</p>
+        <h2>Verifikasi Pembayaran Tunai</h2>
+        <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px">
+          Daftar pembayaran IPL metode tunai yang menunggu konfirmasi manual.
+        </p>
+        <div
+          style="display: flex; justify-content: flex-end; margin-bottom: 8px"
+        >
+          <button type="button" id="adminRefreshBtn" class="text-link-btn">
+            <span
+              class="material-symbols-rounded"
+              style="font-size: 14px; vertical-align: middle"
+              >refresh</span
+            >
+            Muat ulang
+          </button>
+        </div>
+        <div id="pendingList" style="max-height: 380px; overflow-y: auto">
+          <div class="empty-state-box">Memuat data...</div>
+        </div>
+        <button class="primary-button" value="cancel" style="margin-top: 14px">
+          Tutup
+        </button>
+      </form>
+    </dialog>
+
+    <dialog id="adminDetailDialog" class="modal">
+      <form method="dialog">
+        <button type="button" class="close" value="cancel" aria-label="Tutup">
+          ×
+        </button>
+        <p class="eyebrow">DETAIL PEMBAYARAN TUNAI</p>
+        <h2 id="adminDetailTitle">Detail Pembayaran</h2>
+
+        <div class="admin-detail-meta" id="adminDetailMeta"></div>
+
+        <div class="admin-proof-preview" id="adminProofPreview">
+          <div class="empty-state-box" style="border: 0">
+            Memuat pratinjau...
+          </div>
+        </div>
+
+        <div class="pending-actions" style="margin-top: 14px">
+          <button
+            type="button"
+            class="primary-button"
+            id="adminDetailConfirmBtn"
+          >
+            Konfirmasi Lunas
+          </button>
+          <button
+            type="button"
+            class="primary-button btn-reject"
+            id="adminDetailRejectBtn"
+          >
+            Tolak
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="rejectReasonDialog" class="modal interactive-modal">
+      <form id="rejectReasonForm" method="dialog">
+        <button type="button" class="close" value="cancel" aria-label="Tutup">
+          ×
+        </button>
+        <div class="modal-icon-box danger-bg">
+          <span class="material-symbols-rounded">gpp_bad</span>
+        </div>
+        <p class="eyebrow" style="color: #dc2626">TOLAK PEMBAYARAN</p>
+        <h2>Alasan penolakan</h2>
+        <label style="text-align: left"
+          >Alasan (akan tersimpan di catatan)
+          <textarea
+            id="rejectReasonText"
+            rows="3"
+            placeholder="Contoh: Foto kwitansi buram, nominal tidak sesuai, dsb."
+            required
+          ></textarea>
+        </label>
+        <button
+          class="primary-button error-btn"
+          type="submit"
+          style="background: #dc2626"
+        >
+          Tolak Pembayaran
+        </button>
+      </form>
+    </dialog>
+
     <dialog id="tukangDialog" class="modal info-modal">
       <form method="dialog">
         <button class="close" value="cancel">×</button>
@@ -1112,15 +1239,24 @@
         <p class="eyebrow">PEMBAYARAN IPL</p>
         <h2>Bayar iuran lingkungan</h2>
 
-        <label
-          >Pilih bulan yang ingin dibayar
+        <div class="months-picker-block">
+          <label style="margin-bottom: 6px"
+            >Pilih bulan yang ingin dibayar</label
+          >
           <div id="monthsPickerContainer" class="months-picker">
-            <small
-              style="grid-column: 1 / -1; color: var(--muted); padding: 8px"
-              >Memuat daftar tagihan...</small
-            >
+            <div class="empty-state-box" style="border: 0">
+              Memuat daftar tagihan...
+            </div>
           </div>
-        </label>
+          <div class="months-picker-actions">
+            <button type="button" id="selectAllUnpaidBtn" class="chip-btn">
+              Pilih Semua Tunggakan
+            </button>
+            <button type="button" id="selectNoneBtn" class="chip-btn ghost">
+              Kosongkan Pilihan
+            </button>
+          </div>
+        </div>
 
         <div class="bill-summary">
           <span>Total tagihan terpilih</span
@@ -1295,6 +1431,48 @@
           style="background: #e84245; margin-top: 10px"
         >
           Kirim sinyal darurat ke Pos
+        </button>
+      </form>
+    </dialog>
+
+    <dialog id="postComposerDialog" class="modal">
+      <form id="postComposerForm" method="dialog">
+        <button type="button" class="close" value="cancel" aria-label="Tutup">
+          ×
+        </button>
+        <p class="eyebrow">POSTINGAN WARGA</p>
+        <h2>Bagikan sesuatu ke warga MY PRR</h2>
+        <label
+          >Tulis sesuatu
+          <textarea
+            name="text"
+            rows="4"
+            placeholder="Apa yang terjadi di lingkungan Anda hari ini?"
+            required
+          ></textarea>
+        </label>
+        <label
+          >Tambahkan Foto (Opsional)
+          <input
+            type="file"
+            name="photo"
+            accept="image/*"
+            id="postPhotoInput"
+          />
+        </label>
+        <div id="postPhotoPreviewWrap" style="display: none; margin-top: 8px">
+          <img
+            id="postPhotoPreview"
+            style="
+              width: 100%;
+              border-radius: 12px;
+              border: 1px solid var(--line);
+              display: block;
+            "
+          />
+        </div>
+        <button class="primary-button" type="submit" id="postSubmitBtn">
+          Posting Sekarang <span>→</span>
         </button>
       </form>
     </dialog>
@@ -1597,6 +1775,6 @@
     </div>
 
     <div id="toast" class="toast" role="status"></div>
-    <script src="app.js?v=13.0"></script>
+    <script src="app.js?v=15.0"></script>
   </body>
 </html>

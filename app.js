@@ -1,6 +1,7 @@
 const DEFAULT_BILL = 120000;
 const COMPLAINT_KEY = "pondok-rajeg-complaints";
 const PROFILE_KEY = "pondok-rajeg-profile-data";
+const ROLE_KEY = "pondok_rajeg_role"; // "admin" jika unit ini terdaftar sebagai petugas
 const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbxkooeosCRLUrNxw18RZF9Epzn4_gfjj6YhOD71wqLOJUBQ9Oq2t7AZvc6RicDTMhjXKg/exec";
 
@@ -17,6 +18,7 @@ if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 const messaging = firebase.messaging();
+const db = firebase.firestore();
 
 function buildNotifTag(payload) {
   return (
@@ -190,7 +192,6 @@ async function refreshDashboard(unit) {
   renderArrears(result.arrears);
   renderFinance(result.finance);
   renderMonthlyHistory(result.history);
-  renderActivities(result.activityFeed);
 
   return result;
 }
@@ -335,6 +336,14 @@ function renderFinance(finance) {
   }
 }
 
+function statusVisual(status) {
+  if (status === "Lunas")
+    return { icon: "event_available", cls: "text-success", iconCls: " income" };
+  if (status === "Ditolak")
+    return { icon: "cancel", cls: "text-danger", iconCls: "" };
+  return { icon: "hourglass_top", cls: "", iconCls: "" }; // Menunggu Verifikasi Petugas
+}
+
 function renderMonthlyHistory(history) {
   const list = $("#monthlyHistoryList");
   if (!list) return;
@@ -344,69 +353,330 @@ function renderMonthlyHistory(history) {
   }
   list.innerHTML = history
     .map((h) => {
-      const isLunas = h.status === "Lunas";
+      const v = statusVisual(h.status);
       return `
     <div class="activity">
-      <div class="activity-icon"><span class="material-symbols-rounded">${isLunas ? "event_available" : "hourglass_top"}</span></div>
+      <div class="activity-icon${v.iconCls}"><span class="material-symbols-rounded">${v.icon}</span></div>
       <div class="activity-text">
         <b>${h.months || "-"}</b>
         <small>${h.status} • ${h.method} • ${h.date}</small>
       </div>
-      <div class="activity-amount ${isLunas ? "text-success" : ""}">${rupiah(h.amount)}</div>
+      <div class="activity-amount ${v.cls}">${rupiah(h.amount)}</div>
     </div>`;
     })
     .join("");
 }
 
-function renderActivities(feed) {
-  const list = $("#activityList");
-  if (!list) return;
-  if (!feed || !feed.length) {
-    list.innerHTML = `<div class="empty-state-box">Belum ada aktivitas pembayaran tercatat.</div>`;
+// ============================================================
+// UPDATE WARGA — FEED SOSIAL REAL-TIME (FIRESTORE)
+// Posting/like/komentar tersimpan di Firestore (bukan Spreadsheet) supaya
+// bisa memakai onSnapshot: begitu ada warga lain posting/like/komentar,
+// semua warga yang sedang membuka app langsung melihatnya TANPA reload.
+// ============================================================
+let unsubscribePostsListener = null;
+let latestPostsSnapshotDocs = [];
+let feedTimeRefreshInterval = null;
+
+function escapeHtml(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// Format waktu relatif gaya Facebook: "Baru saja", "5 menit lalu",
+// "3 jam lalu", "Kemarin pukul 14:00", "3 hari lalu", atau tanggal lengkap.
+function formatRelativeTimeID(date) {
+  if (!date || isNaN(date.getTime())) return "";
+  const now = new Date();
+  const diffSec = Math.floor((now - date) / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+  const timeStr = date.toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  if (diffSec < 30) return "Baru saja";
+  if (diffMin < 1) return `${diffSec} detik lalu`;
+  if (diffMin < 60) return `${diffMin} menit lalu`;
+  if (diffHour < 24) return `${diffHour} jam lalu`;
+  if (diffDay === 1) return `Kemarin pukul ${timeStr}`;
+  if (diffDay < 7) return `${diffDay} hari lalu`;
+
+  const dateStr = date.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+  });
+  return `${dateStr} pukul ${timeStr}`;
+}
+
+// Kompres foto di sisi klien (maks lebar 900px, JPEG) sebelum disimpan
+// sebagai data-URL di dokumen Firestore, supaya ukurannya tetap kecil.
+function resizeImageToDataUrl(file, maxWidth, quality) {
+  maxWidth = maxWidth || 900;
+  quality = quality || 0.6;
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function attachPostsListener() {
+  if (unsubscribePostsListener) return; // sudah terpasang
+  unsubscribePostsListener = db
+    .collection("posts")
+    .orderBy("createdAt", "desc")
+    .limit(50)
+    .onSnapshot(
+      (snapshot) => {
+        latestPostsSnapshotDocs = snapshot.docs;
+        renderSocialFeed();
+      },
+      (err) => {
+        console.error("Gagal memuat feed real-time:", err);
+        const feedList = $("#socialFeedList");
+        if (feedList)
+          feedList.innerHTML = `<div class="empty-state-box">Gagal memuat postingan warga.</div>`;
+      },
+    );
+
+  if (!feedTimeRefreshInterval) {
+    // Perbarui label waktu ("5 menit lalu" -> "6 menit lalu") tiap menit
+    // tanpa perlu snapshot baru dari server.
+    feedTimeRefreshInterval = setInterval(() => {
+      if (latestPostsSnapshotDocs.length) renderSocialFeed();
+    }, 60000);
+  }
+}
+
+function detachPostsListener() {
+  if (unsubscribePostsListener) {
+    unsubscribePostsListener();
+    unsubscribePostsListener = null;
+  }
+  if (feedTimeRefreshInterval) {
+    clearInterval(feedTimeRefreshInterval);
+    feedTimeRefreshInterval = null;
+  }
+  latestPostsSnapshotDocs = [];
+}
+
+function renderSocialFeed() {
+  const feedList = $("#socialFeedList");
+  if (!feedList) return;
+  const myUnitKey = (localStorage.getItem("pondok_rajeg_user") || "")
+    .trim()
+    .toLowerCase();
+
+  if (!latestPostsSnapshotDocs.length) {
+    feedList.innerHTML = `<div class="empty-state-box">Belum ada postingan. Jadilah warga pertama yang berbagi! 👋</div>`;
     return;
   }
-  list.innerHTML = feed
-    .map((p) => {
-      const isLunas = p.status === "Lunas";
+
+  feedList.innerHTML = latestPostsSnapshotDocs
+    .map((doc) => {
+      const data = doc.data();
+      const id = doc.id;
+      const createdAtDate =
+        data.createdAt && data.createdAt.toDate
+          ? data.createdAt.toDate()
+          : new Date();
+      const likes = data.likes || {};
+      const likedByMe = !!likes[myUnitKey];
+      const likeCount = Object.keys(likes).length;
+      const comments = Array.isArray(data.comments)
+        ? data.comments.slice()
+        : [];
+      comments.sort(
+        (a, b) => (a.createdAtMillis || 0) - (b.createdAtMillis || 0),
+      );
+      const initial = (data.name || "W").trim().charAt(0).toUpperCase();
+
       return `
-    <div class="activity">
-      <div class="activity-icon${isLunas ? " income" : ""}"><span class="material-symbols-rounded">${isLunas ? "check" : "schedule"}</span></div>
-      <div class="activity-text">
-        <b>IPL ${p.unit} · ${p.name}</b>
-        <small>${p.date} · ${p.method}${p.months ? " · " + p.months : ""} · ${p.status}</small>
+    <article class="social-post" data-post-id="${id}">
+      <div class="social-post-header">
+        <span class="social-avatar">${escapeHtml(initial)}</span>
+        <div class="social-post-meta">
+          <b>${escapeHtml(data.name || "Warga")}</b>
+          <small>${escapeHtml(data.unit || "-")} · ${formatRelativeTimeID(createdAtDate)}</small>
+        </div>
       </div>
-      <div class="activity-amount ${isLunas ? "text-success" : ""}">${rupiah(p.amount)}</div>
-    </div>`;
+      ${data.text ? `<p class="social-post-text">${escapeHtml(data.text)}</p>` : ""}
+      ${data.imageDataUrl ? `<img class="social-post-image" src="${data.imageDataUrl}" alt="Foto postingan warga" loading="lazy" />` : ""}
+      <div class="social-post-stats">
+        <span>${likeCount} suka</span>
+        <button type="button" class="text-link-btn" data-comment-toggle="${id}">${comments.length} komentar</button>
+      </div>
+      <div class="social-post-actions">
+        <button type="button" class="social-action-btn${likedByMe ? " liked" : ""}" data-like="${id}">
+          <span class="material-symbols-rounded">${likedByMe ? "favorite" : "favorite_border"}</span> Suka
+        </button>
+        <button type="button" class="social-action-btn" data-comment-toggle="${id}">
+          <span class="material-symbols-rounded">chat_bubble_outline</span> Komentar
+        </button>
+      </div>
+      <div class="social-comments" id="comments-${id}" style="display: none;">
+        <div class="social-comments-list">
+          ${
+            comments.length
+              ? comments
+                  .map(
+                    (c) => `
+            <div class="social-comment">
+              <b>${escapeHtml(c.name)}</b> <span>${escapeHtml(c.text)}</span>
+              <small>${formatRelativeTimeID(new Date(c.createdAtMillis || Date.now()))}</small>
+            </div>`,
+                  )
+                  .join("")
+              : `<small style="color: var(--muted);">Belum ada komentar.</small>`
+          }
+        </div>
+        <form class="social-comment-form" data-comment-form="${id}">
+          <input type="text" name="commentText" placeholder="Tulis komentar..." required maxlength="300" />
+          <button type="submit"><span class="material-symbols-rounded">send</span></button>
+        </form>
+      </div>
+    </article>`;
     })
     .join("");
+
+  bindSocialFeedEvents();
+}
+
+function bindSocialFeedEvents() {
+  const feedList = $("#socialFeedList");
+  if (!feedList) return;
+
+  feedList.querySelectorAll("[data-like]").forEach((btn) => {
+    btn.addEventListener("click", () => toggleLike(btn.dataset.like));
+  });
+  feedList.querySelectorAll("[data-comment-toggle]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const box = $(`#comments-${btn.dataset.commentToggle}`);
+      if (box)
+        box.style.display = box.style.display === "none" ? "block" : "none";
+    });
+  });
+  feedList.querySelectorAll("[data-comment-form]").forEach((form) => {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const postId = form.dataset.commentForm;
+      const input = form.querySelector("input[name='commentText']");
+      const text = input.value.trim();
+      if (!text) return;
+      input.disabled = true;
+      try {
+        await submitComment(postId, text);
+        input.value = "";
+      } catch (err) {
+        showToast(`Gagal mengirim komentar: ${err.message}`);
+      } finally {
+        input.disabled = false;
+      }
+    });
+  });
+}
+
+async function toggleLike(postId) {
+  const unit = localStorage.getItem("pondok_rajeg_user");
+  if (!unit) return;
+  const unitKey = unit.trim().toLowerCase();
+  const postRef = db.collection("posts").doc(postId);
+  try {
+    await db.runTransaction(async (tx) => {
+      const docSnap = await tx.get(postRef);
+      if (!docSnap.exists) return;
+      const likes = Object.assign({}, docSnap.data().likes || {});
+      if (likes[unitKey]) {
+        delete likes[unitKey];
+      } else {
+        likes[unitKey] = true;
+      }
+      tx.update(postRef, { likes: likes });
+    });
+  } catch (err) {
+    showToast(`Gagal memproses suka: ${err.message}`);
+  }
+}
+
+async function submitComment(postId, text) {
+  const unit = localStorage.getItem("pondok_rajeg_user") || "";
+  const name = localStorage.getItem("pondok_rajeg_name") || unit;
+  const postRef = db.collection("posts").doc(postId);
+  await postRef.update({
+    comments: firebase.firestore.FieldValue.arrayUnion({
+      unit,
+      name,
+      text,
+      createdAtMillis: Date.now(),
+    }),
+  });
 }
 
 // ============================================================
 // MODAL BAYAR IPL: PILIH BULAN, LALU AI/PETUGAS MEMVERIFIKASI
 // ============================================================
+function monthBadgeMeta(category) {
+  if (category === "overdue")
+    return { text: "Tunggakan", cls: "badge-overdue" };
+  if (category === "current")
+    return { text: "Bulan Ini", cls: "badge-current" };
+  return { text: "Bayar di Muka", cls: "badge-advance" };
+}
+
 function renderMonthsPicker(unpaidMonths) {
   const container = $("#monthsPickerContainer");
   if (!container) return;
 
   if (!unpaidMonths || !unpaidMonths.length) {
-    container.innerHTML = `<small style="grid-column: 1 / -1; color: var(--muted); padding: 8px;">🎉 Semua tagihan IPL Anda sudah lunas.</small>`;
+    container.innerHTML = `<div class="empty-state-box" style="border: 0;">🎉 Semua tagihan IPL Anda sudah lunas.</div>`;
     updateSelectedMonthsSummary();
     return;
   }
 
   container.innerHTML = unpaidMonths
-    .map(
-      (m, idx) => `
-    <label class="month-checkbox-item" data-month="${m}">
-      <input type="checkbox" name="selectedMonth" value="${m}" ${idx === 0 ? "checked" : ""} />
-      ${m}
-    </label>`,
-    )
+    .map((item, idx) => {
+      const badge = monthBadgeMeta(item.category);
+      return `
+    <label class="month-row" data-month="${item.label}">
+      <input type="checkbox" name="selectedMonth" value="${item.label}" ${idx === 0 ? "checked" : ""} />
+      <span class="month-row-info">
+        <b>${item.label}</b>
+        <small class="month-badge ${badge.cls}">${badge.text}</small>
+      </span>
+      <span class="month-row-check"><span class="material-symbols-rounded">check</span></span>
+    </label>`;
+    })
     .join("");
 
-  container.querySelectorAll(".month-checkbox-item").forEach((item) => {
-    const checkbox = item.querySelector("input");
-    const syncState = () => item.classList.toggle("checked", checkbox.checked);
+  container.querySelectorAll(".month-row").forEach((row) => {
+    const checkbox = row.querySelector("input");
+    const syncState = () => row.classList.toggle("checked", checkbox.checked);
     syncState();
     checkbox.addEventListener("change", () => {
       syncState();
@@ -458,6 +728,192 @@ function updatePaymentMethodUI(method) {
   }
 }
 
+// ============================================================
+// AKSES PETUGAS (ROLE: ADMIN) — VERIFIKASI PEMBAYARAN TUNAI
+// Petugas login lewat form yang SAMA seperti warga (Blok/Unit + PIN).
+// Server yang menentukan role berdasarkan kolom "Role" di sheet Users.
+// Kalau role = admin, kartu "Verifikasi Tunai" muncul di Akses Cepat dan
+// membuka dialog verifikasi. Identitas admin untuk setiap aksi cukup
+// unit yang sedang login (server mengecek ulang rolenya tiap request).
+// ============================================================
+let currentPending = [];
+let rejectTarget = null;
+
+function applyRoleUI(role) {
+  const adminQuickBtn = $("#adminQuickBtn");
+  if (adminQuickBtn)
+    adminQuickBtn.style.display = role === "admin" ? "flex" : "none";
+}
+
+async function loadAdminPending() {
+  const adminUnit = localStorage.getItem("pondok_rajeg_user");
+  if (!adminUnit) return;
+  const listEl = $("#pendingList");
+  if (listEl)
+    listEl.innerHTML = `<div class="empty-state-box">Memuat data...</div>`;
+
+  try {
+    const result = await sendToBackend("adminListPending", { adminUnit });
+    currentPending = result.pending || [];
+    renderAdminPending();
+  } catch (err) {
+    if (listEl)
+      listEl.innerHTML = `<div class="empty-state-box">Gagal memuat: ${err.message}</div>`;
+  }
+}
+
+function extractDriveFileId(url) {
+  if (!url) return null;
+  const match = String(url).match(/\/d\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : null;
+}
+
+function showAdminDetail(item) {
+  const titleEl = $("#adminDetailTitle");
+  const metaEl = $("#adminDetailMeta");
+  const previewEl = $("#adminProofPreview");
+  const confirmBtn = $("#adminDetailConfirmBtn");
+  const rejectBtn = $("#adminDetailRejectBtn");
+
+  if (titleEl) titleEl.textContent = `${item.unit} · ${item.name}`;
+  if (metaEl) {
+    metaEl.innerHTML = `
+      <div><span>Nominal</span>${rupiah(item.amount)}</div>
+      <div><span>Bulan</span>${item.months || "-"}</div>
+      <div><span>Metode</span>${item.method}</div>
+      <div><span>Waktu Kirim</span>${item.timestamp}</div>
+    `;
+  }
+
+  if (previewEl) {
+    const fileId = extractDriveFileId(item.buktiUrl);
+    if (fileId) {
+      previewEl.innerHTML = `<iframe src="https://drive.google.com/file/d/${fileId}/preview" allow="autoplay"></iframe>`;
+    } else if (item.buktiUrl) {
+      previewEl.innerHTML = `<div class="empty-state-box" style="border: 0;">Pratinjau tidak tersedia. <a href="${item.buktiUrl}" target="_blank" rel="noopener">Buka bukti di tab baru</a></div>`;
+    } else {
+      previewEl.innerHTML = `<div class="empty-state-box" style="border: 0;">Tidak ada bukti terlampir.</div>`;
+    }
+  }
+
+  if (confirmBtn) {
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = "Konfirmasi Lunas";
+    confirmBtn.onclick = () => confirmAdminPayment(item, confirmBtn, true);
+  }
+  if (rejectBtn) {
+    rejectBtn.onclick = () => {
+      rejectTarget = item;
+      const reasonInput = $("#rejectReasonText");
+      if (reasonInput) reasonInput.value = "";
+      $("#adminDetailDialog")?.close();
+      $("#rejectReasonDialog")?.showModal();
+    };
+  }
+
+  $("#adminDetailDialog")?.showModal();
+}
+
+function renderAdminPending() {
+  const listEl = $("#pendingList");
+  if (!listEl) return;
+
+  if (!currentPending.length) {
+    listEl.innerHTML = `<div class="empty-state-box">🎉 Tidak ada pembayaran tunai yang menunggu verifikasi saat ini.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = currentPending
+    .map(
+      (p, idx) => `
+    <div class="pending-card">
+      <div class="pending-card-header">
+        <div>
+          <b>${p.unit} · ${p.name}</b>
+          <small>${p.timestamp}</small>
+        </div>
+        <div class="pending-amount">${rupiah(p.amount)}</div>
+      </div>
+      <div class="pending-meta">
+        <div><span>Bulan:</span> ${p.months || "-"}</div>
+        <div><span>Metode:</span> ${p.method}</div>
+      </div>
+      <button type="button" class="text-link-btn" data-detail="${idx}" style="margin-bottom: 10px;">
+        <span class="material-symbols-rounded" style="font-size: 14px; vertical-align: middle;">visibility</span>
+        Lihat Detail & Bukti
+      </button>
+      <div class="pending-actions">
+        <button type="button" class="primary-button" data-confirm="${idx}">Konfirmasi Lunas</button>
+        <button type="button" class="primary-button btn-reject" data-reject="${idx}">Tolak</button>
+      </div>
+    </div>`,
+    )
+    .join("");
+
+  listEl.querySelectorAll("[data-detail]").forEach((btn) => {
+    btn.addEventListener("click", () =>
+      showAdminDetail(currentPending[Number(btn.dataset.detail)]),
+    );
+  });
+  listEl.querySelectorAll("[data-confirm]").forEach((btn) => {
+    btn.addEventListener("click", () =>
+      confirmAdminPayment(currentPending[Number(btn.dataset.confirm)], btn),
+    );
+  });
+  listEl.querySelectorAll("[data-reject]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      rejectTarget = currentPending[Number(btn.dataset.reject)];
+      const reasonInput = $("#rejectReasonText");
+      if (reasonInput) reasonInput.value = "";
+      $("#rejectReasonDialog")?.showModal();
+    });
+  });
+}
+
+async function confirmAdminPayment(item, btnEl, closeDetail) {
+  const adminUnit = localStorage.getItem("pondok_rajeg_user");
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = "Memproses...";
+  }
+  try {
+    const result = await sendToBackend("adminConfirmPayment", {
+      adminUnit,
+      rowIndex: item.rowIndex,
+      timestamp: item.timestamp,
+      unit: item.unit,
+    });
+    if (closeDetail) $("#adminDetailDialog")?.close();
+    showToast(result.message);
+    loadAdminPending();
+  } catch (err) {
+    showToast(`Gagal: ${err.message}`);
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.textContent = "Konfirmasi Lunas";
+    }
+  }
+}
+
+function logoutToLoginView() {
+  localStorage.removeItem("pondok_rajeg_user");
+  localStorage.removeItem("pondok_rajeg_name");
+  localStorage.removeItem(PROFILE_KEY);
+  localStorage.removeItem(ROLE_KEY);
+  detachPostsListener();
+
+  const mainApp = $("#mainApp");
+  const loginView = $("#loginView");
+  if (mainApp) {
+    mainApp.style.display = "none";
+    mainApp.style.opacity = "0";
+  }
+  if (loginView) {
+    loginView.style.display = "flex";
+    loginView.style.opacity = "1";
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const splash = document.getElementById("splashScreen");
   const loginView = document.getElementById("loginView");
@@ -477,6 +933,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (savedUser && welcomeUser) {
       welcomeUser.textContent = `Selamat datang, ${savedName} (Rumah ${savedUser})`;
     }
+    const composerAvatarInitial = $("#composerAvatarInitial");
+    if (composerAvatarInitial && savedName) {
+      composerAvatarInitial.textContent = savedName
+        .trim()
+        .charAt(0)
+        .toUpperCase();
+    }
   };
 
   const safeRefreshDashboard = (unit) => {
@@ -495,10 +958,14 @@ document.addEventListener("DOMContentLoaded", () => {
       setTimeout(() => {
         splash.style.display = "none";
         const savedUser = localStorage.getItem("pondok_rajeg_user");
+        const savedRole = localStorage.getItem(ROLE_KEY) || "warga";
+
         if (savedUser) {
           if (mainApp) mainApp.style.display = "flex";
           refreshWelcomeHeader();
+          applyRoleUI(savedRole);
           safeRefreshDashboard(savedUser);
+          attachPostsListener();
           requestNotificationPermission();
         } else {
           if (loginView) loginView.style.display = "flex";
@@ -506,6 +973,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }, 500);
     }
   }, 2000);
+
+  // TAB ROLE LOGIN: WARGA vs PETUGAS/ADMIN
 
   if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
@@ -542,11 +1011,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
         localStorage.setItem("pondok_rajeg_user", unit);
         localStorage.setItem("pondok_rajeg_name", result.name);
+        localStorage.setItem(
+          ROLE_KEY,
+          result.role === "admin" ? "admin" : "warga",
+        );
 
         refreshWelcomeHeader();
 
-        if (loginSuccessMessageText)
-          loginSuccessMessageText.textContent = `Halo ${result.name}, verifikasi Rumah ${unit} berhasil.`;
+        if (loginSuccessMessageText) {
+          loginSuccessMessageText.textContent =
+            result.role === "admin"
+              ? `Halo ${result.name}, Anda masuk sebagai Petugas RT.`
+              : `Halo ${result.name}, verifikasi Rumah ${unit} berhasil.`;
+        }
         if (loginSuccessDialog) loginSuccessDialog.showModal();
 
         submitBtn.disabled = false;
@@ -562,6 +1039,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (enterDashboardBtn) {
     enterDashboardBtn.addEventListener("click", () => {
       const unit = localStorage.getItem("pondok_rajeg_user");
+      const role = localStorage.getItem(ROLE_KEY) || "warga";
       refreshWelcomeHeader();
       if (loginView) {
         loginView.style.opacity = "0";
@@ -571,7 +1049,9 @@ document.addEventListener("DOMContentLoaded", () => {
             mainApp.style.display = "flex";
             mainApp.style.opacity = "1";
           }
+          applyRoleUI(role);
           safeRefreshDashboard(unit);
+          attachPostsListener();
           requestNotificationPermission();
         }, 200);
       }
@@ -584,19 +1064,58 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (confirmLogoutAction) {
     confirmLogoutAction.addEventListener("click", () => {
-      localStorage.removeItem("pondok_rajeg_user");
-      localStorage.removeItem("pondok_rajeg_name");
-      localStorage.removeItem(PROFILE_KEY);
       if (logoutConfirmDialog) logoutConfirmDialog.close();
-      if (mainApp) {
-        mainApp.style.display = "none";
-        mainApp.style.opacity = "0";
-      }
-      if (loginView) {
-        loginView.style.display = "flex";
-        loginView.style.opacity = "1";
-      }
+      logoutToLoginView();
       showToast("Anda telah keluar dari akun.");
+    });
+  }
+
+  const adminQuickBtn = $("#adminQuickBtn");
+  const adminDialog = $("#adminDialog");
+  if (adminQuickBtn && adminDialog) {
+    adminQuickBtn.addEventListener("click", () => {
+      adminDialog.showModal();
+      loadAdminPending();
+    });
+  }
+
+  const adminRefreshBtn = $("#adminRefreshBtn");
+  if (adminRefreshBtn) {
+    adminRefreshBtn.addEventListener("click", () => loadAdminPending());
+  }
+
+  const rejectReasonForm = $("#rejectReasonForm");
+  const rejectReasonDialog = $("#rejectReasonDialog");
+  if (rejectReasonForm) {
+    rejectReasonForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!rejectTarget) return;
+      const adminUnit = localStorage.getItem("pondok_rajeg_user");
+      const reasonInput = $("#rejectReasonText");
+      const reason = reasonInput ? reasonInput.value.trim() : "";
+      const submitBtn = rejectReasonForm.querySelector("button[type='submit']");
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = "Memproses...";
+
+      try {
+        const result = await sendToBackend("adminRejectPayment", {
+          adminUnit,
+          rowIndex: rejectTarget.rowIndex,
+          timestamp: rejectTarget.timestamp,
+          unit: rejectTarget.unit,
+          reason,
+        });
+        rejectReasonDialog?.close();
+        showToast(result.message);
+        rejectTarget = null;
+        loadAdminPending();
+      } catch (err) {
+        showToast(`Gagal: ${err.message}`);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
     });
   }
 
@@ -620,7 +1139,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const monthsContainer = $("#monthsPickerContainer");
       if (monthsContainer) {
-        monthsContainer.innerHTML = `<small style="grid-column: 1 / -1; color: var(--muted); padding: 8px;">Memuat daftar tagihan...</small>`;
+        monthsContainer.innerHTML = `<div class="empty-state-box" style="border: 0;">Memuat daftar tagihan...</div>`;
       }
       updateSelectedMonthsSummary();
 
@@ -632,7 +1151,7 @@ document.addEventListener("DOMContentLoaded", () => {
           renderMonthsPicker((data && data.unpaidMonths) || []);
         } catch (err) {
           if (monthsContainer) {
-            monthsContainer.innerHTML = `<small style="grid-column: 1 / -1; color: #dc2626; padding: 8px;">Gagal memuat daftar tagihan. Tutup lalu buka kembali form ini.</small>`;
+            monthsContainer.innerHTML = `<div class="empty-state-box" style="border: 0; color: #dc2626;">Gagal memuat daftar tagihan. Tutup lalu buka kembali form ini.</div>`;
           }
         }
       }
@@ -644,6 +1163,31 @@ document.addEventListener("DOMContentLoaded", () => {
     paymentMethodSelect.addEventListener("change", (e) =>
       updatePaymentMethodUI(e.target.value),
     );
+  }
+
+  const selectAllUnpaidBtn = $("#selectAllUnpaidBtn");
+  const selectNoneBtn = $("#selectNoneBtn");
+  if (selectAllUnpaidBtn) {
+    selectAllUnpaidBtn.addEventListener("click", () => {
+      document
+        .querySelectorAll("#monthsPickerContainer input[name='selectedMonth']")
+        .forEach((cb) => {
+          cb.checked = true;
+          cb.closest(".month-row")?.classList.add("checked");
+        });
+      updateSelectedMonthsSummary();
+    });
+  }
+  if (selectNoneBtn) {
+    selectNoneBtn.addEventListener("click", () => {
+      document
+        .querySelectorAll("#monthsPickerContainer input[name='selectedMonth']")
+        .forEach((cb) => {
+          cb.checked = false;
+          cb.closest(".month-row")?.classList.remove("checked");
+        });
+      updateSelectedMonthsSummary();
+    });
   }
 
   const openProfileModalBtnMobile = $("#openProfileModalBtnMobile");
@@ -1154,6 +1698,86 @@ document.addEventListener("DOMContentLoaded", () => {
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = "Kirim sinyal darurat ke Pos";
+      }
+    });
+  }
+
+  // POSTINGAN WARGA (FEED SOSIAL REAL-TIME)
+  const postComposerDialog = $("#postComposerDialog");
+  const postComposerForm = $("#postComposerForm");
+  const openPostComposerBtn = $("#openPostComposerBtn");
+  const bottomNavPostBtn = $("#bottomNavPostBtn");
+  const postPhotoInput = $("#postPhotoInput");
+  const postPhotoPreviewWrap = $("#postPhotoPreviewWrap");
+  const postPhotoPreview = $("#postPhotoPreview");
+
+  const openPostComposer = () => {
+    if (postComposerForm) postComposerForm.reset();
+    if (postPhotoPreviewWrap) postPhotoPreviewWrap.style.display = "none";
+    postComposerDialog?.showModal();
+  };
+  if (openPostComposerBtn)
+    openPostComposerBtn.addEventListener("click", openPostComposer);
+  if (bottomNavPostBtn)
+    bottomNavPostBtn.addEventListener("click", openPostComposer);
+
+  if (postPhotoInput) {
+    postPhotoInput.addEventListener("change", async () => {
+      const file = postPhotoInput.files && postPhotoInput.files[0];
+      if (!file) {
+        if (postPhotoPreviewWrap) postPhotoPreviewWrap.style.display = "none";
+        return;
+      }
+      try {
+        const dataUrl = await resizeImageToDataUrl(file);
+        if (postPhotoPreview) postPhotoPreview.src = dataUrl;
+        if (postPhotoPreviewWrap) postPhotoPreviewWrap.style.display = "block";
+      } catch (err) {
+        showToast("Gagal memuat pratinjau foto.");
+      }
+    });
+  }
+
+  if (postComposerForm) {
+    postComposerForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const textInput = postComposerForm.querySelector("[name='text']");
+      const text = textInput ? textInput.value.trim() : "";
+      if (!text) {
+        showToast("Tulis sesuatu dulu sebelum posting.");
+        return;
+      }
+
+      const unit = localStorage.getItem("pondok_rajeg_user") || "";
+      const name = localStorage.getItem("pondok_rajeg_name") || unit;
+      const submitBtn = $("#postSubmitBtn");
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = "Memposting...";
+
+      try {
+        let imageDataUrl = null;
+        const file =
+          postPhotoInput && postPhotoInput.files && postPhotoInput.files[0];
+        if (file) imageDataUrl = await resizeImageToDataUrl(file);
+
+        await db.collection("posts").add({
+          unit,
+          name,
+          text,
+          imageDataUrl: imageDataUrl || null,
+          likes: {},
+          comments: [],
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+
+        postComposerDialog?.close();
+        showToast("Postingan berhasil dibagikan ke warga MY PRR.");
+      } catch (err) {
+        showToast(`Gagal posting: ${err.message}`);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
       }
     });
   }
