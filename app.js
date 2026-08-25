@@ -1,5 +1,4 @@
 const DEFAULT_BILL = 120000;
-const STORAGE_KEY = "pondok-rajeg-payments";
 const COMPLAINT_KEY = "pondok-rajeg-complaints";
 const PROFILE_KEY = "pondok-rajeg-profile-data";
 const APPS_SCRIPT_URL =
@@ -111,11 +110,8 @@ const rupiah = (value) =>
     style: "currency",
     currency: "IDR",
     maximumFractionDigits: 0,
-  }).format(Number(value));
+  }).format(Number(value) || 0);
 
-const getPayments = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-const savePayments = (data) =>
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 const getComplaints = () =>
   JSON.parse(localStorage.getItem(COMPLAINT_KEY) || "[]");
 const saveComplaints = (data) =>
@@ -163,48 +159,6 @@ function showAppModal(title, message, isSuccess = true) {
   if (dialog) dialog.showModal();
 }
 
-const MONTH_NAMES_ID = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
-
-function getCurrentMonthLabel() {
-  const now = new Date();
-  return MONTH_NAMES_ID[now.getMonth()] + " " + now.getFullYear();
-}
-
-function generateRecentMonthsWindow(count) {
-  const now = new Date();
-  const result = [];
-  for (let i = count - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    result.push(MONTH_NAMES_ID[d.getMonth()] + " " + d.getFullYear());
-  }
-  return result;
-}
-
-function unitHasMonthPaid(unit, monthLabel) {
-  const payments = getPayments();
-  return payments.some(
-    (p) =>
-      p.unit &&
-      p.unit.toLowerCase() === unit.toLowerCase() &&
-      p.status === "Lunas" &&
-      Array.isArray(p.months) &&
-      p.months.includes(monthLabel),
-  );
-}
-
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -217,12 +171,50 @@ function fileToBase64(file) {
   });
 }
 
-function latestStatus(unit) {
-  if (!unit) return getPayments().some((p) => p.status === "Lunas");
-  return unitHasMonthPaid(unit, getCurrentMonthLabel());
+// ============================================================
+// DASHBOARD: SEMUA DATA (TAGIHAN, KAS, HISTORY, AKTIVITAS)
+// SELALU DIAMBIL LANGSUNG DARI SPREADSHEET (BACKEND), BUKAN
+// DARI localStorage, AGAR TIDAK ADA DATA "BEKAS"/KEDALUWARSA.
+// ============================================================
+let latestUnpaidMonths = [];
+
+async function refreshDashboard(unit) {
+  if (!unit) return null;
+  const result = await sendToBackend("getDashboard", { unit });
+  if (!result || !result.ok)
+    throw new Error((result && result.message) || "Gagal memuat data.");
+
+  latestUnpaidMonths = result.unpaidMonths || [];
+
+  renderBillStatus(result.billStatus);
+  renderArrears(result.arrears);
+  renderFinance(result.finance);
+  renderMonthlyHistory(result.history);
+  renderActivities(result.activityFeed);
+
+  return result;
 }
 
-function checkArrears(unit) {
+function renderBillStatus(billStatus) {
+  const currentBillEl = $("#currentBill");
+  const chip = $("#billStatus");
+  if (!billStatus) return;
+
+  if (currentBillEl) {
+    currentBillEl.textContent = billStatus.currentMonthPaid
+      ? "Lunas"
+      : rupiah(billStatus.currentBillAmount);
+  }
+  if (chip) {
+    chip.textContent = billStatus.currentMonthPaid
+      ? "Pembayaran tercatat"
+      : "Belum dibayar";
+    chip.style.color = billStatus.currentMonthPaid ? "#087a4b" : "";
+    chip.style.background = billStatus.currentMonthPaid ? "#dcf8e6" : "";
+  }
+}
+
+function renderArrears(arrears) {
   const warningSection = $("#arrearsWarningSection");
   const warningCard = $("#warningCardContainer");
   const warningIconBox = warningCard
@@ -230,19 +222,15 @@ function checkArrears(unit) {
     : null;
   const warningTitle = $("#warningTitle");
   const warningDesc = $("#warningDesc");
-  const unpaidCountEl = $("#unpaidCount");
   const unpaidMonthsText = $("#unpaidMonthsText");
 
-  if (!warningSection || !unit) return;
-
-  const targetMonths = generateRecentMonthsWindow(8);
-  const unpaid = targetMonths.filter((m) => !unitHasMonthPaid(unit, m));
-  const count = unpaid.length;
+  if (!warningSection || !arrears) return;
+  const count = arrears.count || 0;
 
   if (count >= 3) {
     warningSection.style.display = "block";
-    if (unpaidCountEl) unpaidCountEl.textContent = count;
-    if (unpaidMonthsText) unpaidMonthsText.textContent = unpaid.join(", ");
+    if (unpaidMonthsText)
+      unpaidMonthsText.textContent = (arrears.months || []).join(", ");
 
     if (count >= 5) {
       if (warningCard) {
@@ -288,184 +276,186 @@ function checkArrears(unit) {
   }
 }
 
-function updateBill(unit) {
-  const paid = latestStatus(unit);
-  const currentBillEl = $("#currentBill");
-  const modalBillEl = $("#modalBill");
-  const chip = $("#billStatus");
-
-  if (currentBillEl)
-    currentBillEl.textContent = paid ? "Lunas" : rupiah(DEFAULT_BILL);
-  if (modalBillEl) modalBillEl.textContent = rupiah(DEFAULT_BILL);
-  if (chip) {
-    chip.textContent = paid ? "Pembayaran tercatat" : "Belum dibayar";
-    chip.style.color = paid ? "#087a4b" : "";
-    chip.style.background = paid ? "#dcf8e6" : "";
-  }
-  checkArrears(unit);
-}
-
-function updateCashFlow() {
-  const payments = getPayments();
-  const totalIncome =
-    payments
-      .filter((p) => p.status === "Lunas")
-      .reduce((acc, curr) => acc + curr.amount, 0) + 4500000;
-  const totalExpense = 1200000;
-  const net = totalIncome - totalExpense;
-
+function renderFinance(finance) {
+  if (!finance) return;
   const totalCashEl = $("#totalCashFlow");
   const totalExpenseEl = $("#totalExpense");
   const netBalanceEl = $("#netBalance");
 
-  if (totalCashEl) totalCashEl.textContent = rupiah(totalIncome);
-  if (totalExpenseEl) totalExpenseEl.textContent = rupiah(totalExpense);
-  if (netBalanceEl) netBalanceEl.textContent = rupiah(net);
-}
+  if (totalCashEl) totalCashEl.textContent = rupiah(finance.income);
+  if (totalExpenseEl) totalExpenseEl.textContent = rupiah(finance.expense);
+  if (netBalanceEl) netBalanceEl.textContent = rupiah(finance.net);
 
-function renderComplaints() {
-  const list = $("#complaintList");
-  if (!list) return;
-  const complaints = getComplaints();
-
-  if (!complaints.length) {
-    list.innerHTML = `
+  const reportList = $("#financeReportList");
+  if (reportList) {
+    const items = (finance.monthlyBreakdown || []).slice(0, 3);
+    reportList.innerHTML = items.length
+      ? items
+          .map(
+            (m) => `
       <div class="activity">
-        <div class="activity-icon"><span class="material-symbols-rounded">forum</span></div>
-        <div class="activity-text"><b>Belum ada pengaduan</b><small>Laporkan kendala fasilitas umum di sekitar Anda.</small></div>
-      </div>`;
-    return;
+        <div class="activity-icon income"><span class="material-symbols-rounded">trending_up</span></div>
+        <div class="activity-text">
+          <b>${m.label}</b>
+          <small>Masuk: ${rupiah(m.income)} • Keluar: ${rupiah(m.expense)}</small>
+        </div>
+        <div class="activity-amount text-success">${m.net >= 0 ? "+" : ""}${rupiah(m.net)}</div>
+      </div>`,
+          )
+          .join("")
+      : `<div class="empty-state-box">Belum ada data laporan keuangan.</div>`;
   }
 
-  list.innerHTML = complaints
-    .slice(0, 3)
-    .map(
-      (c) => `
+  const monthlyContent = $("#monthlyFinanceContent");
+  if (monthlyContent) {
+    const items = finance.monthlyBreakdown || [];
+    monthlyContent.innerHTML = items.length
+      ? items
+          .map(
+            (m) => `
+      <article class="finance-detail-item">
+        <b>${m.label}</b>
+        <p>Pemasukan: ${rupiah(m.income)} | Pengeluaran: ${rupiah(m.expense)}</p>
+        <small class="text-success">Saldo Bersih Bulan Ini: ${rupiah(m.net)}</small>
+      </article>`,
+          )
+          .join("")
+      : `<div class="empty-state-box">Belum ada data keuangan bulanan.</div>`;
+  }
+
+  const yearlyContent = $("#yearlyFinanceContent");
+  if (yearlyContent && finance.yearBreakdown) {
+    const y = finance.yearBreakdown;
+    yearlyContent.innerHTML = `
+      <article class="finance-detail-item">
+        <b>Tahun ${y.year} (Berjalan)</b>
+        <p>Total Pemasukan: ${rupiah(y.income)} | Total Pengeluaran: ${rupiah(y.expense)}</p>
+        <small class="text-success">Akumulasi Kas Bersih: ${rupiah(y.net)}</small>
+      </article>`;
+  }
+}
+
+function renderMonthlyHistory(history) {
+  const list = $("#monthlyHistoryList");
+  if (!list) return;
+  if (!history || !history.length) {
+    list.innerHTML = `<div class="empty-state-box">Belum ada riwayat pembayaran tercatat untuk rumah Anda.</div>`;
+    return;
+  }
+  list.innerHTML = history
+    .map((h) => {
+      const isLunas = h.status === "Lunas";
+      return `
     <div class="activity">
-      <div class="activity-icon"><span class="material-symbols-rounded">campaign</span></div>
+      <div class="activity-icon"><span class="material-symbols-rounded">${isLunas ? "event_available" : "hourglass_top"}</span></div>
       <div class="activity-text">
-        <b>${c.category} · ${c.location}</b>
-        <small>${c.description} (${c.date})</small>
+        <b>${h.months || "-"}</b>
+        <small>${h.status} • ${h.method} • ${h.date}</small>
       </div>
-      <div class="activity-amount" style="color: #a46404; background: #fff3d5; padding: 2px 6px; border-radius: 6px; font-size: 9px;">Menunggu</div>
-    </div>
-  `,
-    )
+      <div class="activity-amount ${isLunas ? "text-success" : ""}">${rupiah(h.amount)}</div>
+    </div>`;
+    })
     .join("");
 }
 
-// AKTIVITAS WARGA TERBARU: Jika database/localStorage kosong, render benar-benar kosong tanpa dummy items
-function renderActivities() {
+function renderActivities(feed) {
   const list = $("#activityList");
   if (!list) return;
-  const payments = getPayments();
-
-  if (!payments.length) {
-    list.innerHTML = `
-      <div style="padding: 16px; text-align: center; color: var(--muted); font-size: 11px;">
-        Belum ada aktivitas pembayaran tercatat.
-      </div>`;
+  if (!feed || !feed.length) {
+    list.innerHTML = `<div class="empty-state-box">Belum ada aktivitas pembayaran tercatat.</div>`;
     return;
   }
-
-  list.innerHTML = payments
-    .slice(0, 4)
-    .map(
-      (p) => `
+  list.innerHTML = feed
+    .map((p) => {
+      const isLunas = p.status === "Lunas";
+      return `
     <div class="activity">
-      <div class="activity-icon"><span class="material-symbols-rounded">check</span></div>
+      <div class="activity-icon${isLunas ? " income" : ""}"><span class="material-symbols-rounded">${isLunas ? "check" : "schedule"}</span></div>
       <div class="activity-text">
         <b>IPL ${p.unit} · ${p.name}</b>
-        <small>${p.date} · ${p.method}${p.months && p.months.length ? " · " + p.months.join(", ") : ""}</small>
+        <small>${p.date} · ${p.method}${p.months ? " · " + p.months : ""} · ${p.status}</small>
       </div>
-      <div class="activity-amount text-success">${rupiah(p.amount)}</div>
-    </div>
-  `,
-    )
+      <div class="activity-amount ${isLunas ? "text-success" : ""}">${rupiah(p.amount)}</div>
+    </div>`;
+    })
     .join("");
 }
 
-function setupWhatsAppFormatter(inputEl) {
-  if (!inputEl) return;
-  inputEl.addEventListener("input", (e) => {
-    let val = e.target.value.trim();
-    val = val.replace(/[^\d+]/g, "");
-    if (val.startsWith("08")) {
-      val = "+628" + val.slice(2);
-    } else if (val.startsWith("8")) {
-      val = "+62" + val;
-    } else if (val.startsWith("0")) {
-      val = "+62" + val.slice(1);
-    }
-    e.target.value = val;
-  });
-}
-
-function renderTanggunganInputs(tanggunganList = []) {
-  const container = $("#tanggunganContainer");
+// ============================================================
+// MODAL BAYAR IPL: PILIH BULAN, LALU AI/PETUGAS MEMVERIFIKASI
+// ============================================================
+function renderMonthsPicker(unpaidMonths) {
+  const container = $("#monthsPickerContainer");
   if (!container) return;
-  container.innerHTML = "";
 
-  if (typeof tanggunganList === "string") {
-    try {
-      tanggunganList = JSON.parse(tanggunganList);
-    } catch (e) {
-      tanggunganList = [];
-    }
-  }
-
-  if (!Array.isArray(tanggunganList) || tanggunganList.length === 0) {
-    container.innerHTML = `<small style="color: var(--muted);">Belum ada tanggungan / anggota serumah yang ditambahkan.</small>`;
+  if (!unpaidMonths || !unpaidMonths.length) {
+    container.innerHTML = `<small style="grid-column: 1 / -1; color: var(--muted); padding: 8px;">🎉 Semua tagihan IPL Anda sudah lunas.</small>`;
+    updateSelectedMonthsSummary();
     return;
   }
 
-  tanggunganList.forEach((item, index) => {
-    const card = document.createElement("div");
-    card.className = "tanggungan-item-card";
-    card.innerHTML = `
-      <div class="tanggungan-row-top">
-        <b style="font-size: 11px; color: var(--green);">Anggota #${index + 1}</b>
-        <button type="button" class="remove-tanggungan-btn" title="Hapus anggota">
-          <span class="material-symbols-rounded">delete</span>
-        </button>
-      </div>
-      <label style="margin:4px 0 2px;">Nama Lengkap
-        <input type="text" name="tanggunganName" value="${item.name || ""}" placeholder="Nama Anggota" required />
-      </label>
-      <div class="form-row" style="margin-top:4px;">
-        <label style="margin:4px 0 2px;">NIK KTP (16 Digit)
-          <input type="text" name="tanggunganNik" value="${item.nik || ""}" placeholder="NIK KTP" maxlength="16" required />
-        </label>
-        <label style="margin:4px 0 2px;">Tanggal Lahir
-          <input type="date" name="tanggunganDob" value="${item.dob || ""}" required />
-        </label>
-      </div>
-      <div class="form-row" style="margin-top:4px;">
-        <label style="margin:4px 0 2px;">Gender
-          <select name="tanggunganGender" required>
-            <option value="Laki-laki" ${item.gender === "Laki-laki" ? "selected" : ""}>Laki-laki</option>
-            <option value="Perempuan" ${item.gender === "Perempuan" ? "selected" : ""}>Perempuan</option>
-          </select>
-        </label>
-        <label style="margin:4px 0 2px;">Relasi
-          <select name="tanggunganRelation" required>
-            <option value="Anak" ${item.relation === "Anak" ? "selected" : ""}>Anak</option>
-            <option value="Orang Tua" ${item.relation === "Orang Tua" ? "selected" : ""}>Orang Tua</option>
-            <option value="Lainnya" ${item.relation === "Lainnya" ? "selected" : ""}>Lainnya</option>
-          </select>
-        </label>
-      </div>
-    `;
-    card
-      .querySelector(".remove-tanggungan-btn")
-      .addEventListener("click", () => {
-        card.remove();
-        if (container.children.length === 0) {
-          container.innerHTML = `<small style="color: var(--muted);">Belum ada tanggungan / anggota serumah yang ditambahkan.</small>`;
-        }
-      });
-    container.appendChild(card);
+  container.innerHTML = unpaidMonths
+    .map(
+      (m, idx) => `
+    <label class="month-checkbox-item" data-month="${m}">
+      <input type="checkbox" name="selectedMonth" value="${m}" ${idx === 0 ? "checked" : ""} />
+      ${m}
+    </label>`,
+    )
+    .join("");
+
+  container.querySelectorAll(".month-checkbox-item").forEach((item) => {
+    const checkbox = item.querySelector("input");
+    const syncState = () => item.classList.toggle("checked", checkbox.checked);
+    syncState();
+    checkbox.addEventListener("change", () => {
+      syncState();
+      updateSelectedMonthsSummary();
+    });
   });
+
+  updateSelectedMonthsSummary();
+}
+
+function getSelectedMonths() {
+  return Array.from(
+    document.querySelectorAll(
+      "#monthsPickerContainer input[name='selectedMonth']:checked",
+    ),
+  ).map((el) => el.value);
+}
+
+function updateSelectedMonthsSummary() {
+  const selected = getSelectedMonths();
+  const total = selected.length * DEFAULT_BILL;
+  const modalBillEl = $("#modalBill");
+  const countEl = $("#modalBillMonthsCount");
+  const hiddenAmount = $("#paymentAmountHidden");
+
+  if (modalBillEl) modalBillEl.textContent = rupiah(total);
+  if (countEl) {
+    countEl.textContent = selected.length
+      ? `${selected.length} bulan dipilih: ${selected.join(", ")}`
+      : "Belum ada bulan dipilih";
+  }
+  if (hiddenAmount) hiddenAmount.value = total;
+}
+
+function updatePaymentMethodUI(method) {
+  const note = $("#paymentMethodNote");
+  const proofLabelText = $("#proofLabelText");
+  if (!note || !proofLabelText) return;
+
+  if (method === "Tunai ke petugas") {
+    note.className = "payment-method-note cash-note";
+    note.innerHTML = `⚠️ <b>Metode Tunai:</b> Serahkan uang tunai kepada petugas keuangan RT, lalu foto kwitansi/tanda terima sebagai bukti. Pastikan foto <b>jelas & sesuai nominal</b> — bukti yang asal-asalan/buram akan ditolak petugas saat verifikasi manual dan status pembayaran Anda tidak akan berubah menjadi Lunas.`;
+    proofLabelText.textContent =
+      "Bukti Serah Terima Tunai (Foto Kwitansi) — Wajib";
+  } else {
+    note.className = "payment-method-note";
+    note.innerHTML = `💡 Transfer wajib ke <b>Bank Jago a.n Muhamad Kurnia Fauqou Nur (504460167350)</b>. MY AI PRR memvalidasi otomatis rekening tujuan, nominal, nama pengirim, & tahun 2026.`;
+    proofLabelText.textContent = "Bukti Transfer (Foto / PDF) — Wajib";
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -489,6 +479,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
+  const safeRefreshDashboard = (unit) => {
+    if (!unit) return;
+    refreshDashboard(unit).catch((err) => {
+      console.error("Gagal memuat dashboard:", err);
+      showToast(
+        "Gagal memuat data terbaru dari server. Coba muat ulang halaman.",
+      );
+    });
+  };
+
   setTimeout(() => {
     if (splash) {
       splash.style.opacity = "0";
@@ -498,7 +498,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (savedUser) {
           if (mainApp) mainApp.style.display = "flex";
           refreshWelcomeHeader();
-          updateBill(savedUser);
+          safeRefreshDashboard(savedUser);
           requestNotificationPermission();
         } else {
           if (loginView) loginView.style.display = "flex";
@@ -571,7 +571,7 @@ document.addEventListener("DOMContentLoaded", () => {
             mainApp.style.display = "flex";
             mainApp.style.opacity = "1";
           }
-          updateBill(unit);
+          safeRefreshDashboard(unit);
           requestNotificationPermission();
         }, 200);
       }
@@ -600,9 +600,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // AUTO-FILL & OPEN IPL MODAL
+  // BUKA MODAL IPL: AUTO-FILL, MUAT DAFTAR BULAN BELUM LUNAS DARI SERVER
   document.querySelectorAll("[data-page='ipl']").forEach((b) => {
-    b.addEventListener("click", () => {
+    b.addEventListener("click", async () => {
       const iplDialog = $("#iplDialog");
       const savedUser = localStorage.getItem("pondok_rajeg_user") || "";
       const savedName = localStorage.getItem("pondok_rajeg_name") || savedUser;
@@ -612,9 +612,39 @@ document.addEventListener("DOMContentLoaded", () => {
       if (unitField) unitField.value = savedUser;
       if (nameField) nameField.value = savedName;
 
+      const methodSelect = $("#paymentMethodSelect");
+      if (methodSelect) {
+        methodSelect.value = "Transfer Bank";
+        updatePaymentMethodUI("Transfer Bank");
+      }
+
+      const monthsContainer = $("#monthsPickerContainer");
+      if (monthsContainer) {
+        monthsContainer.innerHTML = `<small style="grid-column: 1 / -1; color: var(--muted); padding: 8px;">Memuat daftar tagihan...</small>`;
+      }
+      updateSelectedMonthsSummary();
+
       if (iplDialog) iplDialog.showModal();
+
+      if (savedUser) {
+        try {
+          const data = await refreshDashboard(savedUser);
+          renderMonthsPicker((data && data.unpaidMonths) || []);
+        } catch (err) {
+          if (monthsContainer) {
+            monthsContainer.innerHTML = `<small style="grid-column: 1 / -1; color: #dc2626; padding: 8px;">Gagal memuat daftar tagihan. Tutup lalu buka kembali form ini.</small>`;
+          }
+        }
+      }
     });
   });
+
+  const paymentMethodSelect = $("#paymentMethodSelect");
+  if (paymentMethodSelect) {
+    paymentMethodSelect.addEventListener("change", (e) =>
+      updatePaymentMethodUI(e.target.value),
+    );
+  }
 
   const openProfileModalBtnMobile = $("#openProfileModalBtnMobile");
   const topbarProfileBtn = $("#topbarProfileBtn");
@@ -1198,7 +1228,8 @@ document.addEventListener("DOMContentLoaded", () => {
     btn.addEventListener("click", (e) => e.target.closest("dialog")?.close());
   });
 
-  // SUBMIT PEMBAYARAN IPL DENGAN VALIDASI KETAT & MODAL "MY AI PRR"
+  // SUBMIT PEMBAYARAN IPL: WARGA PILIH BULAN, LALU AI (TRANSFER) ATAU
+  // PETUGAS (TUNAI) YANG MEMVERIFIKASI. TIDAK ADA LAGI CACHE LOKAL.
   const paymentForm = $("#paymentForm");
   if (paymentForm) {
     paymentForm.addEventListener("submit", async (event) => {
@@ -1206,9 +1237,20 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = Object.fromEntries(new FormData(paymentForm));
       const proofInput = paymentForm.querySelector("[name='proof']");
       const proofFile = proofInput && proofInput.files && proofInput.files[0];
+      const selectedMonths = getSelectedMonths();
+      const method = data.method;
+
+      if (!selectedMonths.length) {
+        showToast("Pilih minimal satu bulan yang ingin dibayar.");
+        return;
+      }
 
       if (!proofFile) {
-        showToast("Mohon lampirkan foto/PDF bukti transfer untuk verifikasi.");
+        showToast(
+          method === "Tunai ke petugas"
+            ? "Mohon lampirkan foto kwitansi/tanda terima tunai."
+            : "Mohon lampirkan foto/PDF bukti transfer untuk verifikasi.",
+        );
         return;
       }
 
@@ -1226,22 +1268,31 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         if (loadingTitle) loadingTitle.textContent = "Menyiapkan Dokumen...";
         if (loadingDesc)
-          loadingDesc.textContent = "Mengonversi file bukti transfer Anda...";
+          loadingDesc.textContent = "Mengonversi file bukti pembayaran Anda...";
 
         const proofBase64 = await fileToBase64(proofFile);
         const proofMimeType = proofFile.type || "image/jpeg";
 
-        if (loadingTitle)
-          loadingTitle.textContent = "MY AI PRR Memindai Struk...";
-        if (loadingDesc)
-          loadingDesc.textContent =
-            "Mengecek nominal, rekening Bank Jago (504460167350), nama pengirim, & tahun 2026...";
+        if (method === "Tunai ke petugas") {
+          if (loadingTitle)
+            loadingTitle.textContent = "Menyimpan Bukti Tunai...";
+          if (loadingDesc)
+            loadingDesc.textContent =
+              "Bukti pembayaran tunai Anda sedang dikirim untuk diverifikasi manual oleh petugas keuangan RT.";
+        } else {
+          if (loadingTitle)
+            loadingTitle.textContent = "MY AI PRR Memindai Struk...";
+          if (loadingDesc)
+            loadingDesc.textContent =
+              "Mengecek nominal, rekening Bank Jago (504460167350), nama pengirim, & tahun 2026...";
+        }
 
         const result = await sendToBackend("payment", {
           name: activeName,
           unit: activeUnit,
-          method: data.method,
-          amount: Number(data.amount),
+          method,
+          months: selectedMonths,
+          amount: Number(data.amount) || selectedMonths.length * DEFAULT_BILL,
           proofBase64,
           proofMimeType,
         });
@@ -1249,26 +1300,15 @@ document.addEventListener("DOMContentLoaded", () => {
         if (loadingModal) loadingModal.close();
         paymentForm.reset();
 
-        const record = {
-          name: activeName,
-          unit: activeUnit,
-          method: data.method,
-          amount: result.verifiedAmount || Number(data.amount),
-          date: new Date().toLocaleDateString("id-ID", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-          }),
-          status: "Lunas",
-          months: result.monthsCovered || [],
-        };
-        savePayments([record, ...getPayments()]);
+        safeRefreshDashboard(activeUnit);
 
-        updateBill(activeUnit);
-        updateCashFlow();
-        renderActivities();
-
-        showAppModal("Pembayaran Berhasil! 🎉", result.message, true);
+        showAppModal(
+          result.status === "Lunas"
+            ? "Pembayaran Berhasil! 🎉"
+            : "Bukti Terkirim ⏳",
+          result.message,
+          true,
+        );
         showToast(result.message);
       } catch (error) {
         if (loadingModal) loadingModal.close();
@@ -1281,11 +1321,125 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   refreshWelcomeHeader();
-  updateBill(localStorage.getItem("pondok_rajeg_user"));
-  updateCashFlow();
-  renderActivities();
   renderComplaints();
 });
+
+function setupWhatsAppFormatter(inputEl) {
+  if (!inputEl) return;
+  inputEl.addEventListener("input", (e) => {
+    let val = e.target.value.trim();
+    val = val.replace(/[^\d+]/g, "");
+    if (val.startsWith("08")) {
+      val = "+628" + val.slice(2);
+    } else if (val.startsWith("8")) {
+      val = "+62" + val;
+    } else if (val.startsWith("0")) {
+      val = "+62" + val.slice(1);
+    }
+    e.target.value = val;
+  });
+}
+
+function renderTanggunganInputs(tanggunganList = []) {
+  const container = $("#tanggunganContainer");
+  if (!container) return;
+  container.innerHTML = "";
+
+  if (typeof tanggunganList === "string") {
+    try {
+      tanggunganList = JSON.parse(tanggunganList);
+    } catch (e) {
+      tanggunganList = [];
+    }
+  }
+
+  if (!Array.isArray(tanggunganList) || tanggunganList.length === 0) {
+    container.innerHTML = `<small style="color: var(--muted);">Belum ada tanggungan / anggota serumah yang ditambahkan.</small>`;
+    return;
+  }
+
+  tanggunganList.forEach((item, index) => {
+    const card = document.createElement("div");
+    card.className = "tanggungan-item-card";
+    card.innerHTML = `
+      <div class="tanggungan-row-top">
+        <b style="font-size: 11px; color: var(--green);">Anggota #${index + 1}</b>
+        <button type="button" class="remove-tanggungan-btn" title="Hapus anggota">
+          <span class="material-symbols-rounded">delete</span>
+        </button>
+      </div>
+      <label style="margin:4px 0 2px;">Nama Lengkap
+        <input type="text" name="tanggunganName" value="${item.name || ""}" placeholder="Nama Anggota" required />
+      </label>
+      <div class="form-row" style="margin-top:4px;">
+        <label style="margin:4px 0 2px;">NIK KTP (16 Digit)
+          <input type="text" name="tanggunganNik" value="${item.nik || ""}" placeholder="NIK KTP" maxlength="16" required />
+        </label>
+        <label style="margin:4px 0 2px;">Tanggal Lahir
+          <input type="date" name="tanggunganDob" value="${item.dob || ""}" required />
+        </label>
+      </div>
+      <div class="form-row" style="margin-top:4px;">
+        <label style="margin:4px 0 2px;">Gender
+          <select name="tanggunganGender" required>
+            <option value="Laki-laki" ${item.gender === "Laki-laki" ? "selected" : ""}>Laki-laki</option>
+            <option value="Perempuan" ${item.gender === "Perempuan" ? "selected" : ""}>Perempuan</option>
+          </select>
+        </label>
+        <label style="margin:4px 0 2px;">Relasi
+          <select name="tanggunganRelation" required>
+            <option value="Anak" ${item.relation === "Anak" ? "selected" : ""}>Anak</option>
+            <option value="Orang Tua" ${item.relation === "Orang Tua" ? "selected" : ""}>Orang Tua</option>
+            <option value="Lainnya" ${item.relation === "Lainnya" ? "selected" : ""}>Lainnya</option>
+          </select>
+        </label>
+      </div>
+    `;
+    card
+      .querySelector(".remove-tanggungan-btn")
+      .addEventListener("click", () => {
+        card.remove();
+        if (container.children.length === 0) {
+          container.innerHTML = `<small style="color: var(--muted);">Belum ada tanggungan / anggota serumah yang ditambahkan.</small>`;
+        }
+      });
+    container.appendChild(card);
+  });
+}
+
+// AKTIVITAS/PENGADUAN: masih tersimpan lokal per perangkat (belum tersambung
+// ke sheet Complaints untuk dibaca kembali). Silakan minta pembaruan lanjutan
+// jika ingin daftar pengaduan juga sinkron lintas perangkat seperti data IPL.
+function renderComplaints() {
+  const list = $("#complaintList");
+  if (!list) return;
+  const complaints = getComplaints();
+
+  if (!complaints.length) {
+    list.innerHTML = `
+      <div class="activity">
+        <div class="activity-icon"><span class="material-symbols-rounded">forum</span></div>
+        <div class="activity-text"><b>Belum ada pengaduan</b><small>Laporkan kendala fasilitas umum di sekitar Anda.</small></div>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = complaints
+    .slice(0, 3)
+    .map(
+      (c) => `
+    <div class="activity">
+      <div class="activity-icon"><span class="material-symbols-rounded">campaign</span></div>
+      <div class="activity-text">
+        <b>${c.category} · ${c.location}</b>
+        <small>${c.description} (${c.date})</small>
+      </div>
+      <div class="activity-amount" style="color: #a46404; background: #fff3d5; padding: 2px 6px; border-radius: 6px; font-size: 9px;">Menunggu</div>
+    </div>
+  `,
+    )
+    .join("");
+}
 
 let deferredPrompt;
 const pwaBanner = $("#pwaInstallBanner");

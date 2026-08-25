@@ -29,7 +29,7 @@
     />
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
-    <link rel="stylesheet" href="style.css?v=12.2" />
+    <link rel="stylesheet" href="style.css?v=13.0" />
     <title>MY PRR - Pondok Rajeg Residence</title>
   </head>
   <body>
@@ -201,14 +201,13 @@
                 <b id="warningTitle">SURAT PERINGATAN RESMI RT</b>
                 <p id="warningDesc">
                   Tunggakan IPL terdeteksi selama
-                  <span id="unpaidCount">3</span> bulan. Layanan pengambilan
-                  sampah di rumah Anda ditangguhkan sementara waktu.
+                  <span id="unpaidCount">0</span> bulan.
                 </p>
                 <div class="unpaid-months-list">
                   <small
                     >History Nunggak:
                     <span id="unpaidMonthsText" class="text-danger-bold"
-                      >Juni, Juli, Agustus 2026</span
+                      >-</span
                     ></small
                   >
                 </div>
@@ -224,7 +223,7 @@
             <div class="net-balance-row">
               <div class="net-balance-info">
                 <span class="label">Saldo Kas Bersih Paguyuban Bulan ini</span>
-                <strong id="netBalance">Rp 3.300.000</strong>
+                <strong id="netBalance">Memuat...</strong>
               </div>
               <div class="house-icon cash">
                 <span class="material-symbols-rounded"
@@ -242,7 +241,7 @@
                   <span>Total Pemasukan</span>
                 </div>
                 <strong id="totalCashFlow" class="text-success"
-                  >Rp 4.500.000</strong
+                  >Memuat...</strong
                 >
               </div>
 
@@ -253,9 +252,7 @@
                   </div>
                   <span>Total Pengeluaran</span>
                 </div>
-                <strong id="totalExpense" class="text-danger"
-                  >Rp 1.200.000</strong
-                >
+                <strong id="totalExpense" class="text-danger">Memuat...</strong>
               </div>
             </div>
           </section>
@@ -265,8 +262,8 @@
             <div class="balance-card-top">
               <div class="balance-info">
                 <p>Tagihan IPL bulan ini</p>
-                <strong id="currentBill">Rp 120.000</strong>
-                <span id="billStatus" class="status-chip">Belum dibayar</span>
+                <strong id="currentBill">Memuat...</strong>
+                <span id="billStatus" class="status-chip">Memuat...</span>
               </div>
               <div class="house-icon">
                 <span class="material-symbols-rounded">home</span>
@@ -392,27 +389,8 @@
                 Lihat Detail →
               </button>
             </div>
-            <div class="activity-list">
-              <div class="activity">
-                <div class="activity-icon income">
-                  <span class="material-symbols-rounded">trending_up</span>
-                </div>
-                <div class="activity-text">
-                  <b>Agustus 2026</b>
-                  <small>Masuk: Rp 4.500.000 • Keluar: Rp 1.200.000</small>
-                </div>
-                <div class="activity-amount text-success">+Rp 3.300.000</div>
-              </div>
-              <div class="activity">
-                <div class="activity-icon income">
-                  <span class="material-symbols-rounded">trending_up</span>
-                </div>
-                <div class="activity-text">
-                  <b>Juli 2026</b>
-                  <small>Masuk: Rp 4.350.000 • Keluar: Rp 1.500.000</small>
-                </div>
-                <div class="activity-amount text-success">+Rp 2.850.000</div>
-              </div>
+            <div id="financeReportList" class="activity-list">
+              <div class="empty-state-box">Memuat laporan keuangan...</div>
             </div>
           </section>
 
@@ -432,16 +410,7 @@
               <span id="currentYearLabel">Tahun 2026</span>
             </div>
             <div id="monthlyHistoryList" class="activity-list">
-              <div class="activity">
-                <div class="activity-icon">
-                  <span class="material-symbols-rounded">event_available</span>
-                </div>
-                <div class="activity-text">
-                  <b>Agustus 2026</b>
-                  <small>Lunas • Transfer Bank</small>
-                </div>
-                <div class="activity-amount text-success">Rp 120.000</div>
-              </div>
+              <div class="empty-state-box">Memuat riwayat pembayaran...</div>
             </div>
           </section>
 
@@ -449,7 +418,9 @@
             <div class="section-heading">
               <h2>Aktivitas warga terbaru</h2>
             </div>
-            <div id="activityList" class="activity-list"></div>
+            <div id="activityList" class="activity-list">
+              <div class="empty-state-box">Memuat aktivitas terbaru...</div>
+            </div>
           </section>
         </div>
       </main>
@@ -1059,7 +1030,9 @@
 
     <dialog id="complaintDialog" class="modal">
       <form id="complaintForm" method="dialog">
-        <button class="close" value="cancel" aria-label="Tutup">×</button>
+        <button type="button" class="close" value="cancel" aria-label="Tutup">
+          ×
+        </button>
         <p class="eyebrow">LAYANAN PENGADUAN WARGA</p>
         <h2>Laporkan Masalah Lingkungan</h2>
         <label
@@ -1108,48 +1081,21 @@
         <h2>Rincian Kas MY PRR</h2>
         <div class="finance-tabs">
           <button type="button" class="tab-btn active" data-tab="monthly">
-            Bulanan (2026)
+            Bulanan
           </button>
           <button type="button" class="tab-btn" data-tab="yearly">
             Tahunan
           </button>
         </div>
         <div id="monthlyFinanceContent" class="tab-content active">
-          <article class="finance-detail-item">
-            <b>Agustus 2026</b>
-            <p>
-              Pemasukan: Rp 4.500.000 | Pengeluaran (Kebersihan & Keamanan): Rp
-              1.200.000
-            </p>
-            <small class="text-success"
-              >Saldo Bersih Bulan Ini: Rp 3.300.000</small
-            >
-          </article>
-          <article class="finance-detail-item">
-            <b>Juli 2026</b>
-            <p>
-              Pemasukan: Rp 4.350.000 | Pengeluaran (Perbaikan Pos): Rp
-              1.500.000
-            </p>
-            <small class="text-success"
-              >Saldo Bersih Bulan Ini: Rp 2.850.000</small
-            >
-          </article>
+          <div class="empty-state-box">Memuat data keuangan bulanan...</div>
         </div>
         <div
           id="yearlyFinanceContent"
           class="tab-content"
           style="display: none"
         >
-          <article class="finance-detail-item">
-            <b>Tahun 2026 (Berjalan)</b>
-            <p>
-              Total Pemasukan: Rp 36.000.000 | Total Pengeluaran: Rp 12.500.000
-            </p>
-            <small class="text-success"
-              >Akumulasi Kas Bersih: Rp 23.500.000</small
-            >
-          </article>
+          <div class="empty-state-box">Memuat data keuangan tahunan...</div>
         </div>
         <button class="primary-button" value="cancel" style="margin-top: 16px">
           Tutup
@@ -1160,29 +1106,34 @@
     <!-- MODAL IPL -->
     <dialog id="iplDialog" class="modal">
       <form id="paymentForm" method="dialog">
-        <button class="close" value="cancel" aria-label="Tutup">×</button>
+        <button type="button" class="close" value="cancel" aria-label="Tutup">
+          ×
+        </button>
         <p class="eyebrow">PEMBAYARAN IPL</p>
         <h2>Bayar iuran lingkungan</h2>
+
+        <label
+          >Pilih bulan yang ingin dibayar
+          <div id="monthsPickerContainer" class="months-picker">
+            <small
+              style="grid-column: 1 / -1; color: var(--muted); padding: 8px"
+              >Memuat daftar tagihan...</small
+            >
+          </div>
+        </label>
+
         <div class="bill-summary">
-          <span>Total tagihan</span><strong id="modalBill">Rp 120.000</strong>
-          <small>IPL per bulan</small>
+          <span>Total tagihan terpilih</span
+          ><strong id="modalBill">Rp 0</strong>
+          <small id="modalBillMonthsCount">0 bulan dipilih</small>
         </div>
-        <p
-          style="
-            font-size: 11px;
-            color: var(--muted);
-            line-height: 1.5;
-            margin: 0 0 12px;
-            background: var(--soft);
-            padding: 10px 12px;
-            border-radius: 10px;
-          "
-        >
+
+        <div id="paymentMethodNote" class="payment-method-note">
           💡 Transfer wajib ke
           <b>Bank Jago a.n Muhamad Kurnia Fauqou Nur (504460167350)</b>. MY AI
           PRR memvalidasi otomatis rekening tujuan, nominal, nama pengirim, &
           tahun 2026.
-        </p>
+        </div>
 
         <label
           >Nama pemilik rumah
@@ -1209,28 +1160,18 @@
           </label>
           <label
             >Metode pembayaran
-            <select name="method">
-              <option>Transfer Bank</option>
-              <option>QRIS</option>
-              <option>Tunai ke petugas</option>
+            <select name="method" id="paymentMethodSelect">
+              <option value="Transfer Bank">Transfer Bank</option>
+              <option value="Tunai ke petugas">Tunai ke petugas</option>
             </select>
           </label>
         </div>
-        <label
-          >Nominal yang Anda transfer (perkiraan)
-          <input
-            required
-            name="amount"
-            type="number"
-            min="1000"
-            value="120000"
-          />
-        </label>
-        <label
-          >Bukti transfer (Foto / PDF) — Wajib
+        <input type="hidden" name="amount" id="paymentAmountHidden" value="0" />
+        <label id="proofLabel"
+          ><span id="proofLabelText">Bukti Transfer (Foto / PDF) — Wajib</span>
           <input required type="file" name="proof" accept="image/*,.pdf" />
         </label>
-        <button class="primary-button" type="submit">
+        <button class="primary-button" type="submit" id="paymentSubmitBtn">
           Konfirmasi pembayaran <span>→</span>
         </button>
       </form>
@@ -1303,7 +1244,9 @@
         class="interactive-modal"
         style="text-align: center"
       >
-        <button class="close" value="cancel" aria-label="Tutup">×</button>
+        <button type="button" class="close" value="cancel" aria-label="Tutup">
+          ×
+        </button>
         <div
           class="panic-icon"
           style="
@@ -1654,6 +1597,6 @@
     </div>
 
     <div id="toast" class="toast" role="status"></div>
-    <script src="app.js?v=12.2"></script>
+    <script src="app.js?v=13.0"></script>
   </body>
 </html>
