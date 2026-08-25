@@ -23,7 +23,10 @@ const db = firebase.firestore();
 
 function buildNotifTag(payload) {
   return (
-    (payload.data && payload.data.tag) || payload.collapseKey || "my-prr-notif"
+    (payload.notification && payload.notification.tag) ||
+    (payload.data && payload.data.tag) ||
+    payload.collapseKey ||
+    "my-prr-notif"
   );
 }
 
