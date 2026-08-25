@@ -1181,12 +1181,18 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ====== PERBAIKAN #6: SUBMIT PEMBAYARAN IPL DENGAN VALIDASI AI ======
+  // CATATAN BUG FIX: sebelumnya pakai event.currentTarget SETELAH "await",
+  // padahal browser otomatis meng-null-kan event.currentTarget begitu event
+  // selesai di-dispatch (ini perilaku standar Event API, di luar kendali kita).
+  // Itu sumber error "Cannot read properties of null (reading 'reset')".
+  // Sekarang pakai variabel "paymentForm" yang ditangkap DI LUAR handler
+  // (sebelum ada await), jadi tetap valid walau nunggu proses AI selesai.
   const paymentForm = $("#paymentForm");
   if (paymentForm) {
     paymentForm.addEventListener("submit", async (event) => {
       event.preventDefault();
-      const data = Object.fromEntries(new FormData(event.currentTarget));
-      const proofInput = event.currentTarget.querySelector("[name='proof']");
+      const data = Object.fromEntries(new FormData(paymentForm));
+      const proofInput = paymentForm.querySelector("[name='proof']");
       const proofFile = proofInput && proofInput.files && proofInput.files[0];
 
       if (!proofFile) {
@@ -1194,9 +1200,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      const submitBtn = event.currentTarget.querySelector(
-        "button[type='submit']",
-      );
+      const submitBtn = paymentForm.querySelector("button[type='submit']");
       const originalText = submitBtn.innerHTML;
       submitBtn.disabled = true;
       submitBtn.innerHTML = "Memverifikasi bukti transfer dengan AI... 🤖";
@@ -1230,7 +1234,7 @@ document.addEventListener("DOMContentLoaded", () => {
         savePayments([record, ...getPayments()]);
 
         $("#iplDialog")?.close();
-        event.currentTarget.reset();
+        paymentForm.reset();
 
         const savedUser = localStorage.getItem("pondok_rajeg_user");
         updateBill(savedUser);
