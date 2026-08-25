@@ -982,6 +982,9 @@ body {
 
 .modal form {
   padding: 32px 26px 26px;
+  max-height: 85vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .modal h2 {
   font-size: 22px;
