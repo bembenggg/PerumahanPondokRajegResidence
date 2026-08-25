@@ -2147,7 +2147,24 @@ input[type="file"]::file-selector-button {
   border-radius: 14px;
 }
 
-/* ANIMASI SPINNER & TECH LOADING MODAL (BERLAKU DI SEMUA PERANGKAT) */
+/* ==========================================================
+   RESET DIALOG & TECH LOADING MODAL (PRESISI TANPA BORDER GANDA)
+   ========================================================== */
+dialog#aiLoadingModal {
+  padding: 0;
+  border: none;
+  background: transparent;
+  overflow: visible;
+  max-width: 360px;
+  width: 90%;
+  border-radius: 24px;
+}
+
+dialog#aiLoadingModal::backdrop {
+  background: rgba(6, 43, 28, 0.45);
+  backdrop-filter: blur(8px);
+}
+
 @keyframes modernSpin {
   0% {
     transform: rotate(0deg);

@@ -2232,7 +2232,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Tampilkan modal loading dengan teks kustom Anda + efek tech scanner
       if (loadingModal) {
         loadingModal.innerHTML = `
-<div class="cyber-modal-card">
+        <div class="cyber-modal-card" style="margin: 0 auto; width: 100%;">
           <div class="cyber-core-container">
             <div class="cyber-ring-outer"></div>
             <div class="cyber-ring-inner"></div>
@@ -2240,7 +2240,7 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
 
           <div class="cyber-badge">
-            <span class="cyber-dot"></span> NEURAL AI ENGINE v3.6
+            <span class="cyber-dot"></span> NEURAL AI Pondok Rajeg v0.6
           </div>
 
           <h3 style="font-size: 15px; margin: 12px 0 6px; color: #1f2937; font-weight: 700; letter-spacing: -0.2px; line-height: 1.4;">
