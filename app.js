@@ -35,6 +35,43 @@ function stopLoadingDotsAnimation() {
   }
 }
 
+let techScanInterval = null;
+
+function startTechScannerAnimation() {
+  const statusEl = document.getElementById("techStatusText");
+  const dotsEl = document.getElementById("loadingDots");
+  if (!statusEl) return;
+
+  const messages = [
+    "Membaca matrix piksel dokumen...",
+    "Mengekstrak parameter finansial...",
+    "Memvalidasi checksum referensi...",
+    "Mencocokkan enkripsi bank...",
+  ];
+
+  let msgIndex = 0;
+  let dotCount = 0;
+
+  if (techScanInterval) clearInterval(techScanInterval);
+  techScanInterval = setInterval(() => {
+    dotCount = (dotCount + 1) % 4;
+    if (dotsEl) dotsEl.textContent = ".".repeat(dotCount);
+
+    // Ganti teks status secara berkala setiap 1.2 detik
+    if (dotCount === 0) {
+      msgIndex = (msgIndex + 1) % messages.length;
+      statusEl.textContent = messages[msgIndex];
+    }
+  }, 400);
+}
+
+function stopTechScannerAnimation() {
+  if (techScanInterval) {
+    clearInterval(techScanInterval);
+    techScanInterval = null;
+  }
+}
+
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
@@ -2192,22 +2229,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
       $("#iplDialog")?.close();
 
-      // Tampilkan modal loading dengan spinner modern & teks dinamis
+      // Tampilkan modal loading dengan teks kustom Anda + efek tech scanner
       if (loadingModal) {
         loadingModal.innerHTML = `
-        <div style="text-align: center; padding: 28px 20px; min-width: 280px; font-family: inherit;">
-          <div style="position: relative; width: 68px; height: 68px; margin: 0 auto 18px; display: flex; align-items: center; justify-content: center;">
-            <div class="modern-spinner-ring"></div>
-            <span class="material-symbols-rounded" style="font-size: 30px; color: var(--green, #10b981);">receipt_long</span>
+        <div style="text-align: center; padding: 32px 24px; min-width: 300px; font-family: inherit;">
+          <div class="tech-scanner-box">
+            <div class="tech-radar-ring"></div>
+            <div class="tech-scan-beam"></div>
+            <span class="material-symbols-rounded" style="font-size: 32px; color: #10b981; position: relative; z-index: 2;">receipt_long</span>
           </div>
-          <h3 style="font-size: 16px; margin: 0 0 6px; color: var(--dark, #1f2937); font-weight: 700; letter-spacing: -0.2px;">Memverifikasi Bukti Transfer</h3>
-          <p style="font-size: 13px; color: var(--muted, #6b7280); margin: 0; line-height: 1.5;">
-            Sedang memeriksa dan memvalidasi data<span id="loadingDots" style="display: inline-block; width: 18px; text-align: left; font-weight: bold; color: var(--green, #10b981);">...</span>
+          <h3 style="font-size: 16px; margin: 0 0 6px; color: var(--dark, #1f2937); font-weight: 700; letter-spacing: -0.2px;">My PRR AI Sedang verifikasi awal attachment Bukti Transfer</h3>
+          <p id="techStatusText" style="font-size: 13px; color: var(--muted, #6b7280); margin: 0; line-height: 1.5; min-height: 20px;">
+            Sedang memeriksa dan memvalidasi data<span id="loadingDots" style="display: inline-block; width: 18px; text-align: left; font-weight: bold; color: #10b981;">...</span>
           </p>
+          <div class="tech-progress-bar">
+            <div class="tech-progress-fill"></div>
+          </div>
         </div>
       `;
         loadingModal.showModal();
-        startLoadingDotsAnimation();
+        startTechScannerAnimation();
       }
 
       try {
@@ -2224,14 +2265,14 @@ document.addEventListener("DOMContentLoaded", () => {
           proofMimeType,
         });
 
-        stopLoadingDotsAnimation();
+        stopTechScannerAnimation();
         if (loadingModal) loadingModal.close();
         paymentForm.reset();
         safeRefreshDashboard(activeUnit);
         loadNotifications();
         showAppModal("Berhasil!", result.message, true);
       } catch (error) {
-        stopLoadingDotsAnimation();
+        stopTechScannerAnimation();
         if (loadingModal) loadingModal.close();
         $("#iplDialog")?.showModal();
         showAppModal("Gagal", error.message, false);
