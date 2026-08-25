@@ -1,7 +1,7 @@
 // service-worker.js
 // Gabungan: Caching PWA + Firebase Cloud Messaging (background push)
 
-const CACHE_NAME = "my-prr-warga-v20"; // dinaikkan supaya SW lama ter-replace
+const CACHE_NAME = "my-prr-warga-v1.0"; // dinaikkan supaya SW lama ter-replace
 const urlsToCache = ["./", "./index.html", "./style.css", "./app.js"];
 
 // ---------- FIREBASE MESSAGING (background push) ----------
