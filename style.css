@@ -2370,4 +2370,149 @@ input[type="file"]::file-selector-button {
     box-shadow: 0 0 8px #10b981;
     animation: techBarMove 1.8s ease-in-out infinite;
   }
+
+  /* ==========================================================
+   2026 CLEAN LIGHT TECH LOADING MODAL
+   ================================================---------- */
+  .cyber-modal-card {
+    text-align: center;
+    padding: 36px 28px;
+    min-width: 320px;
+    max-width: 360px;
+    font-family: inherit;
+    background: #ffffff;
+    color: #1f2937;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 24px;
+    box-shadow:
+      0 20px 40px rgba(0, 0, 0, 0.08),
+      0 0 25px rgba(16, 185, 129, 0.1);
+  }
+
+  .cyber-core-container {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(16, 185, 129, 0.08);
+    border-radius: 20px;
+  }
+
+  .cyber-ring-outer {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: 2px dashed rgba(16, 185, 129, 0.4);
+    border-radius: 20px;
+    animation: spinClockwise 8s linear infinite;
+  }
+
+  .cyber-ring-inner {
+    position: absolute;
+    width: 52px;
+    height: 52px;
+    border: 2px solid rgba(16, 185, 129, 0.2);
+    border-top-color: #10b981;
+    border-radius: 50%;
+    animation: spinCounterClockwise 1s linear infinite;
+  }
+
+  .cyber-core-icon {
+    font-size: 26px;
+    color: #10b981;
+    position: relative;
+    z-index: 2;
+  }
+
+  .cyber-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-family: monospace;
+    color: #047857;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  .cyber-dot {
+    width: 6px;
+    height: 6px;
+    background: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 6px #10b981;
+    animation: corePulse 1s ease-in-out infinite;
+  }
+
+  .cyber-progress-track {
+    width: 100%;
+    height: 5px;
+    background: #f1f5f9;
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+    margin-top: 18px;
+    border: 1px solid #e2e8f0;
+  }
+
+  .cyber-progress-bar {
+    position: absolute;
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #34d399);
+    border-radius: 5px;
+    animation: cyberBarAnim 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  @keyframes spinClockwise {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes spinCounterClockwise {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(-360deg);
+    }
+  }
+
+  @keyframes corePulse {
+    0%,
+    100% {
+      transform: scale(0.9);
+      opacity: 0.6;
+    }
+    50% {
+      transform: scale(1.15);
+      opacity: 1;
+    }
+  }
+
+  @keyframes cyberBarAnim {
+    0% {
+      left: -50%;
+      width: 50%;
+    }
+    50% {
+      left: 20%;
+      width: 70%;
+    }
+    100% {
+      left: 100%;
+      width: 30%;
+    }
+  }
 }

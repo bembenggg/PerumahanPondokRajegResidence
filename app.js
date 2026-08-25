@@ -2232,18 +2232,27 @@ document.addEventListener("DOMContentLoaded", () => {
       // Tampilkan modal loading dengan teks kustom Anda + efek tech scanner
       if (loadingModal) {
         loadingModal.innerHTML = `
-        <div style="text-align: center; padding: 32px 24px; min-width: 300px; font-family: inherit;">
-          <div class="tech-scanner-box">
-            <div class="tech-radar-ring"></div>
-            <div class="tech-scan-beam"></div>
-            <span class="material-symbols-rounded" style="font-size: 32px; color: #10b981; position: relative; z-index: 2;">receipt_long</span>
+<div class="cyber-modal-card">
+          <div class="cyber-core-container">
+            <div class="cyber-ring-outer"></div>
+            <div class="cyber-ring-inner"></div>
+            <span class="material-symbols-rounded cyber-core-icon">auto_awesome</span>
           </div>
-          <h3 style="font-size: 16px; margin: 0 0 6px; color: var(--dark, #1f2937); font-weight: 700; letter-spacing: -0.2px;">My PRR AI Sedang verifikasi awal attachment Bukti Transfer</h3>
-          <p id="techStatusText" style="font-size: 13px; color: var(--muted, #6b7280); margin: 0; line-height: 1.5; min-height: 20px;">
-            Sedang memeriksa dan memvalidasi data<span id="loadingDots" style="display: inline-block; width: 18px; text-align: left; font-weight: bold; color: #10b981;">...</span>
+
+          <div class="cyber-badge">
+            <span class="cyber-dot"></span> NEURAL AI ENGINE v3.6
+          </div>
+
+          <h3 style="font-size: 15px; margin: 12px 0 6px; color: #1f2937; font-weight: 700; letter-spacing: -0.2px; line-height: 1.4;">
+            My PRR AI Sedang verifikasi awal attachment Bukti Transfer
+          </h3>
+
+          <p id="techStatusText" style="font-size: 12px; color: #64748b; margin: 0; line-height: 1.5; min-height: 18px; font-family: monospace;">
+            Menganalisis matriks piksel dokumen<span id="loadingDots" style="color: #10b981; font-weight: bold;">...</span>
           </p>
-          <div class="tech-progress-bar">
-            <div class="tech-progress-fill"></div>
+
+          <div class="cyber-progress-track">
+            <div class="cyber-progress-bar"></div>
           </div>
         </div>
       `;
