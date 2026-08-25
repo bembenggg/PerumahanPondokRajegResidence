@@ -739,9 +739,7 @@ body {
   display: block;
 }
 
-/* ============================================================
-   UPDATE WARGA — FEED SOSIAL REAL-TIME & TOMBOL HAPUS
-   ============================================================ */
+/* UPDATE WARGA — FEED SOSIAL */
 .composer-trigger {
   display: flex;
   align-items: center;
@@ -976,6 +974,7 @@ body {
   padding: 12px 14px;
   margin-bottom: 8px;
   text-align: left;
+  position: relative;
 }
 .notification-item-card b {
   font-size: 12.5px;
@@ -988,6 +987,31 @@ body {
   color: var(--muted);
   margin: 0;
   line-height: 1.4;
+}
+.notification-item-card.notif-new {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.notification-item-card.notif-new::after {
+  content: "Baru";
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--green);
+  padding: 2px 7px;
+  border-radius: 8px;
+}
+.notification-item-card .notif-time {
+  display: block;
+  margin-top: 6px;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--muted);
 }
 
 .quick-section,
@@ -1341,6 +1365,12 @@ body {
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
+}
+.tanggungan-item-card .form-row {
+  gap: 8px;
+}
+.tanggungan-item-card label {
+  font-size: 10.5px;
 }
 
 .interactive-modal {
@@ -1730,11 +1760,48 @@ textarea {
   background: #fff;
   font-size: 14px;
   outline: none;
+  min-height: 46px;
 }
 input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--green);
+}
+
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 46px;
+  height: 46px;
+  line-height: 1.2;
+  font-family: inherit;
+  font-size: 14px;
+  padding: 0 14px;
+  text-align: left;
+  background-color: #fff;
+  color: var(--ink);
+}
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+  min-height: 20px;
+}
+input[type="date"]::-webkit-datetime-edit {
+  padding: 0;
+  line-height: 1.2;
+}
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.55;
+  margin-left: 4px;
+  padding: 4px;
+  cursor: pointer;
+}
+input[type="date"]:invalid,
+input[type="date"]:not(:valid) {
+  color: var(--muted);
+}
+input[type="date"]:focus {
+  color: var(--ink);
 }
 
 input[type="file"] {
@@ -1772,6 +1839,14 @@ input[type="file"]::file-selector-button {
     grid-template-columns: 1fr 1fr;
     gap: 12px;
   }
+}
+.form-row > label {
+  min-width: 0;
+  margin-top: 0;
+}
+.form-row > label > input,
+.form-row > label > select {
+  max-width: 100%;
 }
 
 .primary-button,
@@ -1932,6 +2007,309 @@ input[type="file"]::file-selector-button {
   transform: translate(-50%, 0);
 }
 
+/* KARTU PENGELUARAN KAS & VERIFIKASI TUNAI (GLOBAL) */
+.quick-icon.cashout {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.expense-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  text-align: left;
+}
+.expense-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.expense-row-main b {
+  display: block;
+  font-size: 12.5px;
+  color: var(--dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.expense-row-main small {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.expense-row-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.expense-row-side span {
+  font-size: 12px;
+  font-weight: 800;
+}
+.expense-delete-btn {
+  border: 0;
+  background: #fef2f2;
+  color: #dc2626;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.expense-delete-btn .material-symbols-rounded {
+  font-size: 15px;
+}
+
+.pending-card {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 10px;
+  text-align: left;
+}
+.pending-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.pending-card-header b {
+  display: block;
+  font-size: 12.5px;
+  color: var(--dark);
+}
+.pending-card-header small {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.pending-amount {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--green);
+  white-space: nowrap;
+}
+.pending-meta {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.pending-meta span {
+  font-weight: 700;
+  color: var(--ink);
+}
+.pending-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.pending-actions .primary-button {
+  margin-top: 0;
+  padding: 10px;
+  font-size: 12px;
+  border-radius: 12px;
+}
+.btn-reject {
+  background: #dc2626 !important;
+}
+.admin-detail-meta {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.admin-detail-meta div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 6px;
+}
+.admin-detail-meta span {
+  color: var(--muted);
+  font-weight: 600;
+}
+.admin-proof-preview iframe {
+  width: 100%;
+  height: 300px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+/* ANIMASI SPINNER & TECH LOADING MODAL (BERLAKU DI SEMUA PERANGKAT) */
+@keyframes modernSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spinClockwise {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spinCounterClockwise {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes corePulse {
+  0%,
+  100% {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+@keyframes cyberBarAnim {
+  0% {
+    left: -50%;
+    width: 50%;
+  }
+  50% {
+    left: 20%;
+    width: 70%;
+  }
+  100% {
+    left: 100%;
+    width: 30%;
+  }
+}
+
+.modern-spinner-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 3px solid rgba(16, 185, 129, 0.15);
+  border-top-color: #10b981;
+  border-radius: 50%;
+  animation: modernSpin 0.8s linear infinite;
+}
+
+.cyber-modal-card {
+  text-align: center;
+  padding: 36px 28px;
+  min-width: 320px;
+  max-width: 360px;
+  font-family: inherit;
+  background: #ffffff;
+  color: #1f2937;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 24px;
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.08),
+    0 0 25px rgba(16, 185, 129, 0.1);
+}
+
+.cyber-core-container {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(16, 185, 129, 0.08);
+  border-radius: 20px;
+}
+
+.cyber-ring-outer {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 2px dashed rgba(16, 185, 129, 0.4);
+  border-radius: 20px;
+  animation: spinClockwise 8s linear infinite;
+}
+
+.cyber-ring-inner {
+  position: absolute;
+  width: 52px;
+  height: 52px;
+  border: 2px solid rgba(16, 185, 129, 0.2);
+  border-top-color: #10b981;
+  border-radius: 50%;
+  animation: spinCounterClockwise 1s linear infinite;
+}
+
+.cyber-core-icon {
+  font-size: 26px;
+  color: #10b981;
+  position: relative;
+  z-index: 2;
+}
+
+.cyber-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-family: monospace;
+  color: #047857;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.cyber-dot {
+  width: 6px;
+  height: 6px;
+  background: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #10b981;
+  animation: corePulse 1s ease-in-out infinite;
+}
+
+.cyber-progress-track {
+  width: 100%;
+  height: 5px;
+  background: #f1f5f9;
+  border-radius: 5px;
+  overflow: hidden;
+  position: relative;
+  margin-top: 18px;
+  border: 1px solid #e2e8f0;
+}
+
+.cyber-progress-bar {
+  position: absolute;
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #34d399);
+  border-radius: 5px;
+  animation: cyberBarAnim 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* PENGATURAN TAMPILAN KHUSUS DESKTOP LAYAR BESAR */
 @media (min-width: 1024px) {
   body {
     background: #e4ede7;
@@ -2004,515 +2382,5 @@ input[type="file"]::file-selector-button {
     width: 64px;
     height: 64px;
     z-index: 999;
-  }
-
-  /* =========================================================================
-   PATCH style.css — MY PRR
-   Tempel SELURUH isi file ini di BAGIAN PALING BAWAH style.css Anda,
-   setelah blok @media (min-width: 1024px) { ... } yang terakhir.
-   ========================================================================= */
-
-  /* -------------------------------------------------------------------------
-   [FIX 3] INPUT TANGGAL LAHIR — PRESISI DI MOBILE
-   Safari/iOS merender <input type="date"> dengan tinggi & baseline sendiri
-   sehingga terlihat lebih pendek dan teksnya menggantung dibanding input
-   lain. Blok ini menyamakan tinggi, padding, dan perataan teksnya.
-   ------------------------------------------------------------------------- */
-  input[type="date"] {
-    -webkit-appearance: none;
-    appearance: none;
-    min-height: 46px;
-    height: 46px;
-    line-height: 1.2;
-    font-family: inherit;
-    font-size: 14px;
-    padding: 0 14px;
-    text-align: left;
-    background-color: #fff;
-    color: var(--ink);
-  }
-  input[type="date"]::-webkit-date-and-time-value {
-    text-align: left;
-    margin: 0;
-    min-height: 20px;
-  }
-  input[type="date"]::-webkit-datetime-edit {
-    padding: 0;
-    line-height: 1.2;
-  }
-  input[type="date"]::-webkit-calendar-picker-indicator {
-    opacity: 0.55;
-    margin-left: 4px;
-    padding: 4px;
-    cursor: pointer;
-  }
-  /* Placeholder abu-abu saat tanggal belum diisi */
-  input[type="date"]:invalid,
-  input[type="date"]:not(:valid) {
-    color: var(--muted);
-  }
-  input[type="date"]:focus {
-    color: var(--ink);
-  }
-
-  /* Samakan tinggi select & input teks dengan input tanggal agar sebaris rapi */
-  select,
-  input:not([type="file"]):not([type="checkbox"]) {
-    min-height: 46px;
-  }
-
-  /* Cegah kolom kembar (NIK + Tanggal Lahir) meluber di layar sempit */
-  .form-row > label {
-    min-width: 0;
-    margin-top: 0;
-  }
-  .form-row > label > input,
-  .form-row > label > select {
-    max-width: 100%;
-  }
-
-  /* -------------------------------------------------------------------------
-   [FIX 2] KARTU TANGGUNGAN
-   ------------------------------------------------------------------------- */
-  .tanggungan-item-card .form-row {
-    gap: 8px;
-  }
-  .tanggungan-item-card label {
-    font-size: 10.5px;
-  }
-
-  /* -------------------------------------------------------------------------
-   [FIX 4 & 7] PUSAT NOTIFIKASI
-   ------------------------------------------------------------------------- */
-  .notification-item-card {
-    position: relative;
-  }
-  .notification-item-card.notif-new {
-    background: #f0fdf4;
-    border-color: #bbf7d0;
-  }
-  .notification-item-card.notif-new::after {
-    content: "Baru";
-    position: absolute;
-    top: 10px;
-    right: 12px;
-    font-size: 8.5px;
-    font-weight: 800;
-    letter-spacing: 0.4px;
-    text-transform: uppercase;
-    color: #fff;
-    background: var(--green);
-    padding: 2px 7px;
-    border-radius: 8px;
-  }
-  .notification-item-card .notif-time {
-    display: block;
-    margin-top: 6px;
-    font-size: 9.5px;
-    font-weight: 700;
-    color: var(--muted);
-  }
-
-  /* -------------------------------------------------------------------------
-   [FIX 6] PANEL PENGELUARAN KAS (PETUGAS RT)
-   ------------------------------------------------------------------------- */
-  .quick-icon.cashout {
-    background: #fee2e2;
-    color: #dc2626;
-  }
-
-  .expense-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--soft);
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    padding: 12px 14px;
-    margin-bottom: 8px;
-    text-align: left;
-  }
-  .expense-row-main {
-    flex: 1;
-    min-width: 0;
-  }
-  .expense-row-main b {
-    display: block;
-    font-size: 12.5px;
-    color: var(--dark);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .expense-row-main small {
-    display: block;
-    font-size: 10px;
-    color: var(--muted);
-    margin-top: 2px;
-  }
-  .expense-row-side {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-  .expense-row-side span {
-    font-size: 12px;
-    font-weight: 800;
-  }
-  .expense-delete-btn {
-    border: 0;
-    background: #fef2f2;
-    color: #dc2626;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-  }
-  .expense-delete-btn .material-symbols-rounded {
-    font-size: 15px;
-  }
-
-  /* -------------------------------------------------------------------------
-   KARTU VERIFIKASI TUNAI (tampilan sebelumnya belum punya style)
-   ------------------------------------------------------------------------- */
-  .pending-card {
-    background: var(--soft);
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    padding: 14px;
-    margin-bottom: 10px;
-    text-align: left;
-  }
-  .pending-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 10px;
-    margin-bottom: 8px;
-  }
-  .pending-card-header b {
-    display: block;
-    font-size: 12.5px;
-    color: var(--dark);
-  }
-  .pending-card-header small {
-    display: block;
-    font-size: 10px;
-    color: var(--muted);
-    margin-top: 2px;
-  }
-  .pending-amount {
-    font-size: 13px;
-    font-weight: 800;
-    color: var(--green);
-    white-space: nowrap;
-  }
-  .pending-meta {
-    font-size: 11px;
-    color: var(--muted);
-    margin-bottom: 8px;
-  }
-  .pending-meta span {
-    font-weight: 700;
-    color: var(--ink);
-  }
-  .pending-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-  .pending-actions .primary-button {
-    margin-top: 0;
-    padding: 10px;
-    font-size: 12px;
-    border-radius: 12px;
-  }
-  .btn-reject {
-    background: #dc2626 !important;
-  }
-  .admin-detail-meta {
-    display: grid;
-    gap: 6px;
-    margin-bottom: 12px;
-  }
-  .admin-detail-meta div {
-    display: flex;
-    justify-content: space-between;
-    font-size: 12px;
-    font-weight: 700;
-    border-bottom: 1px solid var(--line);
-    padding-bottom: 6px;
-  }
-  .admin-detail-meta span {
-    color: var(--muted);
-    font-weight: 600;
-  }
-  .admin-proof-preview iframe {
-    width: 100%;
-    height: 300px;
-    border: 1px solid var(--line);
-    border-radius: 14px;
-  }
-  /* ANIMASI SPINNER LOADING MODERN */
-  @keyframes modernSpin {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
-
-  .modern-spinner-ring {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    border: 3px solid rgba(16, 185, 129, 0.15);
-    border-top-color: #10b981;
-    border-radius: 50%;
-    animation: modernSpin 0.8s linear infinite;
-  }
-
-  /* EFEK CYBER TECH SCANNER LOADING */
-  .tech-scanner-box {
-    position: relative;
-    width: 72px;
-    height: 72px;
-    margin: 0 auto 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(16, 185, 129, 0.08);
-    border: 1px solid rgba(16, 185, 129, 0.25);
-    border-radius: 16px;
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
-    overflow: hidden;
-  }
-
-  @keyframes techRadarSpin {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
-
-  @keyframes techScanBeam {
-    0% {
-      top: 0%;
-      opacity: 0.8;
-    }
-    50% {
-      top: 100%;
-      opacity: 0.2;
-    }
-    100% {
-      top: 0%;
-      opacity: 0.8;
-    }
-  }
-
-  .tech-radar-ring {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    border: 2px dashed rgba(16, 185, 129, 0.4);
-    border-radius: 16px;
-    animation: techRadarSpin 6s linear infinite;
-  }
-
-  .tech-scan-beam {
-    position: absolute;
-    left: 0;
-    width: 100%;
-    height: 3px;
-    background: linear-gradient(90deg, transparent, #10b981, transparent);
-    box-shadow: 0 0 8px #10b981;
-    animation: techScanBeam 1.5s ease-in-out infinite;
-  }
-
-  /* PROGRESS BAR CYBER */
-  .tech-progress-bar {
-    width: 100%;
-    height: 4px;
-    background: rgba(16, 185, 129, 0.15);
-    border-radius: 4px;
-    overflow: hidden;
-    margin-top: 14px;
-    position: relative;
-  }
-
-  @keyframes techBarMove {
-    0% {
-      left: -40%;
-      width: 40%;
-    }
-    50% {
-      left: 40%;
-      width: 60%;
-    }
-    100% {
-      left: 100%;
-      width: 30%;
-    }
-  }
-
-  .tech-progress-fill {
-    position: absolute;
-    height: 100%;
-    background: #10b981;
-    border-radius: 4px;
-    box-shadow: 0 0 8px #10b981;
-    animation: techBarMove 1.8s ease-in-out infinite;
-  }
-
-  /* ==========================================================
-   2026 CLEAN LIGHT TECH LOADING MODAL
-   ================================================---------- */
-  .cyber-modal-card {
-    text-align: center;
-    padding: 36px 28px;
-    min-width: 320px;
-    max-width: 360px;
-    font-family: inherit;
-    background: #ffffff;
-    color: #1f2937;
-    border: 1px solid rgba(16, 185, 129, 0.3);
-    border-radius: 24px;
-    box-shadow:
-      0 20px 40px rgba(0, 0, 0, 0.08),
-      0 0 25px rgba(16, 185, 129, 0.1);
-  }
-
-  .cyber-core-container {
-    position: relative;
-    width: 72px;
-    height: 72px;
-    margin: 0 auto 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(16, 185, 129, 0.08);
-    border-radius: 20px;
-  }
-
-  .cyber-ring-outer {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    border: 2px dashed rgba(16, 185, 129, 0.4);
-    border-radius: 20px;
-    animation: spinClockwise 8s linear infinite;
-  }
-
-  .cyber-ring-inner {
-    position: absolute;
-    width: 52px;
-    height: 52px;
-    border: 2px solid rgba(16, 185, 129, 0.2);
-    border-top-color: #10b981;
-    border-radius: 50%;
-    animation: spinCounterClockwise 1s linear infinite;
-  }
-
-  .cyber-core-icon {
-    font-size: 26px;
-    color: #10b981;
-    position: relative;
-    z-index: 2;
-  }
-
-  .cyber-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: #ecfdf5;
-    border: 1px solid #a7f3d0;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 10px;
-    font-family: monospace;
-    color: #047857;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    font-weight: 600;
-  }
-
-  .cyber-dot {
-    width: 6px;
-    height: 6px;
-    background: #10b981;
-    border-radius: 50%;
-    box-shadow: 0 0 6px #10b981;
-    animation: corePulse 1s ease-in-out infinite;
-  }
-
-  .cyber-progress-track {
-    width: 100%;
-    height: 5px;
-    background: #f1f5f9;
-    border-radius: 5px;
-    overflow: hidden;
-    position: relative;
-    margin-top: 18px;
-    border: 1px solid #e2e8f0;
-  }
-
-  .cyber-progress-bar {
-    position: absolute;
-    height: 100%;
-    background: linear-gradient(90deg, #10b981, #34d399);
-    border-radius: 5px;
-    animation: cyberBarAnim 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  }
-
-  @keyframes spinClockwise {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
-
-  @keyframes spinCounterClockwise {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(-360deg);
-    }
-  }
-
-  @keyframes corePulse {
-    0%,
-    100% {
-      transform: scale(0.9);
-      opacity: 0.6;
-    }
-    50% {
-      transform: scale(1.15);
-      opacity: 1;
-    }
-  }
-
-  @keyframes cyberBarAnim {
-    0% {
-      left: -50%;
-      width: 50%;
-    }
-    50% {
-      left: 20%;
-      width: 70%;
-    }
-    100% {
-      left: 100%;
-      width: 30%;
-    }
   }
 }
