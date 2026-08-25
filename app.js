@@ -421,13 +421,35 @@ function renderNotificationList() {
 function updateNotifBadge() {
   const btn = $("#notificationBtn");
   if (!btn) return;
-  const dot = btn.querySelector("i");
-  if (!dot) return;
+
+  // Hitung jumlah notif yang belum dibaca (millis > lastSeen)
   const lastSeen = Number(localStorage.getItem(NOTIF_SEEN_KEY) || 0);
-  const hasNew = notificationCache.some(
+  const unreadCount = notificationCache.filter(
     (n) => Number(n.millis || 0) > lastSeen,
-  );
-  dot.style.display = hasNew ? "block" : "none";
+  ).length;
+
+  // Cari atau buat elemen badge angka merah secara otomatis
+  let badge = btn.querySelector(".notif-badge-count");
+  if (!badge) {
+    badge = document.createElement("span");
+    badge.className = "notif-badge-count";
+    badge.style.cssText =
+      "position: absolute; top: 6px; right: 6px; background: #dc2626; color: white; font-size: 10px; font-weight: bold; padding: 1px 5px; border-radius: 10px; min-width: 16px; text-align: center; line-height: 1.2; box-shadow: 0 2px 4px rgba(0,0,0,0.2);";
+
+    // Pastikan tombol lonceng memiliki posisi relative agar badge menempel dengan pas
+    if (getComputedStyle(btn).position === "static") {
+      btn.style.position = "relative";
+    }
+    btn.appendChild(badge);
+  }
+
+  // Tampilkan angka count jika ada notif baru, sembunyikan jika sudah dibaca semua
+  if (unreadCount > 0) {
+    badge.textContent = unreadCount > 99 ? "99+" : unreadCount;
+    badge.style.display = "inline-block";
+  } else {
+    badge.style.display = "none";
+  }
 }
 
 async function loadNotifications() {
