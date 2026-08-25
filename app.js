@@ -140,6 +140,29 @@ function showToast(message) {
   setTimeout(() => toast.classList.remove("show"), 4500);
 }
 
+function showAppModal(title, message, isSuccess = true) {
+  const dialog = $("#appMessageDialog");
+  const titleEl = $("#appMessageTitle");
+  const textEl = $("#appMessageText");
+  const eyebrowEl = $("#appMessageEyebrow");
+  const iconBox = $("#appMessageIconBox");
+  const iconEl = $("#appMessageIcon");
+  const closeBtn = $("#appMessageCloseBtn");
+
+  if (titleEl) titleEl.textContent = title;
+  if (textEl) textEl.textContent = message;
+  if (eyebrowEl) eyebrowEl.style.color = isSuccess ? "var(--green)" : "#dc2626";
+  if (iconBox) {
+    iconBox.className =
+      "modal-icon-box " + (isSuccess ? "success-bg" : "danger-bg");
+  }
+  if (iconEl) iconEl.textContent = isSuccess ? "verified_user" : "gpp_bad";
+  if (closeBtn)
+    closeBtn.style.background = isSuccess ? "var(--green)" : "#dc2626";
+
+  if (dialog) dialog.showModal();
+}
+
 const MONTH_NAMES_ID = [
   "Januari",
   "Februari",
@@ -1175,7 +1198,7 @@ document.addEventListener("DOMContentLoaded", () => {
     btn.addEventListener("click", (e) => e.target.closest("dialog")?.close());
   });
 
-  // SUBMIT PEMBAYARAN IPL DENGAN MODAL LOADING DINAMIS (STEP-BY-STEP)
+  // SUBMIT PEMBAYARAN IPL DENGAN MODAL LOADING DINAMIS & POPUP KUSTOM
   const paymentForm = $("#paymentForm");
   if (paymentForm) {
     paymentForm.addEventListener("submit", async (event) => {
@@ -1197,7 +1220,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const loadingTitle = $("#aiLoadingTitle");
       const loadingDesc = $("#aiLoadingDesc");
 
-      // Tutup form IPL, buka modal loading interaktif
       $("#iplDialog")?.close();
       if (loadingModal) loadingModal.showModal();
 
@@ -1246,13 +1268,13 @@ document.addEventListener("DOMContentLoaded", () => {
         updateCashFlow();
         renderActivities();
 
-        alert(`🎉 Berhasil!\n\n${result.message}`);
+        showAppModal("Pembayaran Berhasil! 🎉", result.message, true);
         showToast(result.message);
       } catch (error) {
         if (loadingModal) loadingModal.close();
-        $("#iplDialog")?.showModal(); // Buka kembali form IPL agar warga bisa ganti file
+        $("#iplDialog")?.showModal();
 
-        alert(`❌ Verifikasi Gagal!\n\n${error.message}`);
+        showAppModal("Verifikasi Gagal ❌", error.message, false);
         showToast(`Gagal: ${error.message}`);
       }
     });

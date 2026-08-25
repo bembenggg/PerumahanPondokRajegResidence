@@ -813,6 +813,33 @@
       </form>
     </dialog>
 
+    <!-- MODAL POPUP NOTIFIKASI KUSTOM (MENGGANTIKAN ALERT) -->
+    <dialog id="appMessageDialog" class="modal interactive-modal">
+      <form method="dialog">
+        <div id="appMessageIconBox" class="modal-icon-box success-bg">
+          <span class="material-symbols-rounded" id="appMessageIcon"
+            >verified_user</span
+          >
+        </div>
+        <p class="eyebrow" id="appMessageEyebrow" style="color: var(--green)">
+          INFORMASI SISTEM
+        </p>
+        <h2 id="appMessageTitle">Notifikasi</h2>
+        <p
+          id="appMessageText"
+          style="
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.5;
+            margin: 0 0 16px;
+          "
+        ></p>
+        <button class="primary-button" id="appMessageCloseBtn" value="confirm">
+          Mengerti
+        </button>
+      </form>
+    </dialog>
+
     <dialog id="loginSuccessDialog" class="modal interactive-modal">
       <form method="dialog" id="loginSuccessForm">
         <div class="modal-icon-box success-bg">
@@ -1208,7 +1235,7 @@
       </form>
     </dialog>
 
-    <!-- MODAL LOADING AI INTERAKTIF (MENCEGAH PANIK / DIANGGAP BUG) -->
+    <!-- MODAL LOADING AI INTERAKTIF -->
     <dialog
       id="aiLoadingModal"
       class="modal interactive-modal"
