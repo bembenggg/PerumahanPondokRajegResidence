@@ -15,6 +15,26 @@ const firebaseConfig = {
   appId: "1:995899929528:web:228b76fc6366ce2d0154d",
 };
 
+let loadingDotsInterval = null;
+
+function startLoadingDotsAnimation() {
+  const dotsEl = document.getElementById("loadingDots");
+  if (!dotsEl) return;
+  let count = 0;
+  if (loadingDotsInterval) clearInterval(loadingDotsInterval);
+  loadingDotsInterval = setInterval(() => {
+    count = (count + 1) % 4; // Berputar 0, 1, 2, 3 titik
+    dotsEl.textContent = ".".repeat(count);
+  }, 400);
+}
+
+function stopLoadingDotsAnimation() {
+  if (loadingDotsInterval) {
+    clearInterval(loadingDotsInterval);
+    loadingDotsInterval = null;
+  }
+}
+
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
@@ -2171,7 +2191,24 @@ document.addEventListener("DOMContentLoaded", () => {
       const loadingModal = $("#aiLoadingModal");
 
       $("#iplDialog")?.close();
-      if (loadingModal) loadingModal.showModal();
+
+      // Tampilkan modal loading dengan spinner modern & teks dinamis
+      if (loadingModal) {
+        loadingModal.innerHTML = `
+        <div style="text-align: center; padding: 28px 20px; min-width: 280px; font-family: inherit;">
+          <div style="position: relative; width: 68px; height: 68px; margin: 0 auto 18px; display: flex; align-items: center; justify-content: center;">
+            <div class="modern-spinner-ring"></div>
+            <span class="material-symbols-rounded" style="font-size: 30px; color: var(--green, #10b981);">receipt_long</span>
+          </div>
+          <h3 style="font-size: 16px; margin: 0 0 6px; color: var(--dark, #1f2937); font-weight: 700; letter-spacing: -0.2px;">Memverifikasi Bukti Transfer</h3>
+          <p style="font-size: 13px; color: var(--muted, #6b7280); margin: 0; line-height: 1.5;">
+            Sedang memeriksa dan memvalidasi data<span id="loadingDots" style="display: inline-block; width: 18px; text-align: left; font-weight: bold; color: var(--green, #10b981);">...</span>
+          </p>
+        </div>
+      `;
+        loadingModal.showModal();
+        startLoadingDotsAnimation();
+      }
 
       try {
         const proofBase64 = await fileToBase64(proofFile);
@@ -2187,12 +2224,14 @@ document.addEventListener("DOMContentLoaded", () => {
           proofMimeType,
         });
 
+        stopLoadingDotsAnimation();
         if (loadingModal) loadingModal.close();
         paymentForm.reset();
         safeRefreshDashboard(activeUnit);
         loadNotifications();
         showAppModal("Berhasil!", result.message, true);
       } catch (error) {
+        stopLoadingDotsAnimation();
         if (loadingModal) loadingModal.close();
         $("#iplDialog")?.showModal();
         showAppModal("Gagal", error.message, false);
