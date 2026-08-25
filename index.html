@@ -9,7 +9,6 @@
       content="Layanan digital Perumahan Pondok Rajeg Residence"
     />
 
-    <!-- PWA & Nama Aplikasi MY PRR -->
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
@@ -24,12 +23,10 @@
     <meta name="application-name" content="MY PRR" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <!-- Google Material Symbols -->
     <link
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"
     />
-    <!-- Firebase SDK Compat -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
     <link rel="stylesheet" href="style.css?v=11.0" />
@@ -319,7 +316,6 @@
               </button>
             </div>
 
-            <!-- SECURITY DUTY CARD -->
             <div class="security-duty-card modern-security">
               <div class="security-header-row">
                 <div class="security-badge-pulse">
@@ -458,7 +454,6 @@
         </div>
       </main>
 
-      <!-- BOTTOM NAV -->
       <nav class="bottom-nav" aria-label="Navigasi utama">
         <button class="nav-item active" data-page="home">
           <span class="material-symbols-rounded">home</span>Beranda
@@ -659,7 +654,6 @@
           <div id="tanggunganContainer" class="tanggungan-container"></div>
         </div>
 
-        <!-- UBAH PIN WARGA -->
         <div
           class="profile-card-section"
           style="margin-top: 12px; background: #f0fdf4; border-color: #bbf7d0"
@@ -712,7 +706,6 @@
       </form>
     </dialog>
 
-    <!-- MODAL KONFIRMASI BATAL / CLOSE PROFIL -->
     <dialog id="profileCloseConfirmDialog" class="modal interactive-modal">
       <form method="dialog">
         <div class="modal-icon-box danger-bg">
@@ -745,7 +738,6 @@
       </form>
     </dialog>
 
-    <!-- MODAL KESEHATAN & DARURAT MEDIS -->
     <dialog id="healthDialog" class="modal info-modal">
       <form method="dialog">
         <button class="close" value="cancel">×</button>
@@ -821,7 +813,6 @@
       </form>
     </dialog>
 
-    <!-- MODAL LOGIN BERHASIL / SUKSES -->
     <dialog id="loginSuccessDialog" class="modal interactive-modal">
       <form method="dialog" id="loginSuccessForm">
         <div class="modal-icon-box success-bg">
@@ -846,7 +837,6 @@
       </form>
     </dialog>
 
-    <!-- MODAL KONFIRMASI KELUAR -->
     <dialog id="logoutConfirmDialog" class="modal interactive-modal">
       <form method="dialog">
         <div class="modal-icon-box danger-bg">
@@ -878,7 +868,6 @@
       </form>
     </dialog>
 
-    <!-- MODAL JASA TUKANG & INTERNET -->
     <dialog id="tukangDialog" class="modal info-modal">
       <form method="dialog">
         <button class="close" value="cancel">×</button>
@@ -991,7 +980,6 @@
       </form>
     </dialog>
 
-    <!-- MODAL ERROR -->
     <dialog id="errorDialog" class="modal error-modal">
       <form
         method="dialog"
@@ -1042,7 +1030,6 @@
       </form>
     </dialog>
 
-    <!-- MODAL PENGADUAN -->
     <dialog id="complaintDialog" class="modal">
       <form id="complaintForm" method="dialog">
         <button class="close" value="cancel" aria-label="Tutup">×</button>
@@ -1087,7 +1074,6 @@
       </form>
     </dialog>
 
-    <!-- MODAL KEUANGAN -->
     <dialog id="financeDialog" class="modal finance-modal">
       <form method="dialog">
         <button class="close" value="cancel">×</button>
@@ -1144,7 +1130,7 @@
       </form>
     </dialog>
 
-    <!-- MODAL IPL (DENGAN VALIDASI AI) -->
+    <!-- MODAL IPL (DENGAN NAMA & UNIT TERKUNCI) -->
     <dialog id="iplDialog" class="modal">
       <form id="paymentForm" method="dialog">
         <button class="close" value="cancel" aria-label="Tutup">×</button>
@@ -1167,18 +1153,30 @@
         >
           💡 Nominal & bulan yang lunas akan
           <b>otomatis diverifikasi dari foto bukti transfer</b> menggunakan AI.
-          Kalau Anda transfer lebih dari Rp 120.000 (rapelan / bayar di muka),
-          sistem otomatis akan menandai lunas bulan-bulan tertunggak yang paling
-          lama dulu.
         </p>
+
         <label
           >Nama pemilik rumah
-          <input required name="name" placeholder="Contoh: Budi Santoso" />
+          <input
+            required
+            name="name"
+            id="paymentName"
+            placeholder="Memuat nama..."
+            disabled
+            style="background: #f4f8f5; color: var(--muted)"
+          />
         </label>
         <div class="form-row">
           <label
             >Blok / Nomor
-            <input required name="unit" placeholder="A-12" />
+            <input
+              required
+              name="unit"
+              id="paymentUnit"
+              placeholder="Blok"
+              disabled
+              style="background: #f4f8f5; color: var(--muted)"
+            />
           </label>
           <label
             >Metode pembayaran
@@ -1209,7 +1207,6 @@
       </form>
     </dialog>
 
-    <!-- MODAL PANIC -->
     <dialog id="panicDialog" class="modal panic-modal">
       <form
         id="panicForm"
@@ -1270,14 +1267,12 @@
       </form>
     </dialog>
 
-    <!-- MODAL INFO WARGA & AD/ART -->
     <dialog id="infoDialog" class="modal info-modal">
       <form method="dialog">
         <button class="close" value="cancel">×</button>
         <p class="eyebrow" id="infoModalEyebrow">PUSAT INFORMASI & DOKUMEN</p>
         <h2 id="infoModalTitle">Info Warga & Dokumen RT</h2>
 
-        <!-- TABS UTAMA -->
         <div id="infoMainTabs" class="tukang-tabs" style="margin-bottom: 14px">
           <button
             type="button"
@@ -1291,7 +1286,6 @@
           </button>
         </div>
 
-        <!-- VIEW DAFTAR PENGUMUMAN -->
         <div
           id="infoAnnouncementsContent"
           class="tukang-tab-pane active"
@@ -1332,7 +1326,6 @@
           </article>
         </div>
 
-        <!-- VIEW DETAIL ARTIKEL -->
         <div
           id="infoArticleDetailContent"
           class="tukang-tab-pane"
@@ -1354,7 +1347,6 @@
           <div id="articleDetailBody"></div>
         </div>
 
-        <!-- VIEW AD/ART -->
         <div
           id="infoAdartContent"
           class="tukang-tab-pane"
@@ -1395,7 +1387,6 @@
       </form>
     </dialog>
 
-    <!-- MODAL BANTUAN NOTIFIKASI TIDAK MASUK (KHUSUS HP RAWAN) -->
     <dialog id="batteryHelpDialog" class="modal info-modal">
       <form method="dialog">
         <button class="close" value="cancel">×</button>
@@ -1480,7 +1471,6 @@
       </form>
     </dialog>
 
-    <!-- BANNER OTOMATIS: DETEKSI HP RAWAN NOTIF DIBLOKIR -->
     <div
       id="batteryHelpBanner"
       class="pwa-install-banner"
@@ -1536,7 +1526,6 @@
       </div>
     </div>
 
-    <!-- BANNER PAKSA / PANDUAN INSTALL PWA (ADD TO HOME SCREEN) -->
     <div id="pwaInstallBanner" class="pwa-install-banner" style="display: none">
       <div class="pwa-banner-content">
         <img

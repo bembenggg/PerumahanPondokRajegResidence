@@ -1,11 +1,10 @@
-const DEFAULT_BILL = 120000; // Nominal IPL per bulan (diubah dari 150000 sesuai info terbaru)
+const DEFAULT_BILL = 120000;
 const STORAGE_KEY = "pondok-rajeg-payments";
 const COMPLAINT_KEY = "pondok-rajeg-complaints";
 const PROFILE_KEY = "pondok-rajeg-profile-data";
 const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbxkooeosCRLUrNxw18RZF9Epzn4_gfjj6YhOD71wqLOJUBQ9Oq2t7AZvc6RicDTMhjXKg/exec";
 
-// Konfigurasi Firebase MY PRR Warga
 const firebaseConfig = {
   apiKey: "AIzaSyAL3BJnxwEbNOQ-R-rJGC_w9o1c3ZVC9Fo",
   authDomain: "prr-warga-notification.firebaseapp.com",
@@ -20,7 +19,6 @@ if (!firebase.apps.length) {
 }
 const messaging = firebase.messaging();
 
-// ====== PERBAIKAN #1: NOTIF DOBEL ======
 function buildNotifTag(payload) {
   return (
     (payload.data && payload.data.tag) || payload.collapseKey || "my-prr-notif"
@@ -142,10 +140,6 @@ function showToast(message) {
   setTimeout(() => toast.classList.remove("show"), 4500);
 }
 
-// ====== PERBAIKAN #6: PEMBAYARAN MULTI-BULAN (BACKDATE & BAYAR DI MUKA) ======
-// Bulan sekarang disimpan sebagai array eksplisit (p.months) per transaksi,
-// bukan lagi ditebak dari format tanggal transaksi (yang sebelumnya buggy:
-// "25 Agu 2026".includes("Agustus 2026") selalu false karena beda format).
 const MONTH_NAMES_ID = [
   "Januari",
   "Februari",
@@ -166,8 +160,6 @@ function getCurrentMonthLabel() {
   return MONTH_NAMES_ID[now.getMonth()] + " " + now.getFullYear();
 }
 
-// Window bergulir otomatis (mis. 8 bulan terakhir termasuk bulan berjalan),
-// menggantikan daftar hardcode lama yang statis ke tahun 2026 saja.
 function generateRecentMonthsWindow(count) {
   const now = new Date();
   const result = [];
@@ -194,7 +186,6 @@ function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
-      // reader.result = "data:image/jpeg;base64,xxxxx" -> ambil bagian base64 saja
       const base64 = reader.result.split(",")[1];
       resolve(base64);
     };
@@ -586,14 +577,18 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // AUTO-FILL & OPEN IPL MODAL
   document.querySelectorAll("[data-page='ipl']").forEach((b) => {
     b.addEventListener("click", () => {
       const iplDialog = $("#iplDialog");
-      const savedUser = localStorage.getItem("pondok_rajeg_user");
-      if (savedUser) {
-        const unitField = $("#paymentForm [name='unit']");
-        if (unitField) unitField.value = savedUser;
-      }
+      const savedUser = localStorage.getItem("pondok_rajeg_user") || "";
+      const savedName = localStorage.getItem("pondok_rajeg_name") || savedUser;
+
+      const unitField = $("#paymentForm [name='unit']");
+      const nameField = $("#paymentForm [name='name']");
+      if (unitField) unitField.value = savedUser;
+      if (nameField) nameField.value = savedName;
+
       if (iplDialog) iplDialog.showModal();
     });
   });
@@ -1180,13 +1175,7 @@ document.addEventListener("DOMContentLoaded", () => {
     btn.addEventListener("click", (e) => e.target.closest("dialog")?.close());
   });
 
-  // ====== PERBAIKAN #6: SUBMIT PEMBAYARAN IPL DENGAN VALIDASI AI ======
-  // CATATAN BUG FIX: sebelumnya pakai event.currentTarget SETELAH "await",
-  // padahal browser otomatis meng-null-kan event.currentTarget begitu event
-  // selesai di-dispatch (ini perilaku standar Event API, di luar kendali kita).
-  // Itu sumber error "Cannot read properties of null (reading 'reset')".
-  // Sekarang pakai variabel "paymentForm" yang ditangkap DI LUAR handler
-  // (sebelum ada await), jadi tetap valid walau nunggu proses AI selesai.
+  // SUBMIT PEMBAYARAN IPL (MENGAMBIL NILAI DARI SESSION KARENA DISABLED INPUT)
   const paymentForm = $("#paymentForm");
   if (paymentForm) {
     paymentForm.addEventListener("submit", async (event) => {
@@ -1200,6 +1189,10 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      const activeUnit = localStorage.getItem("pondok_rajeg_user") || "";
+      const activeName =
+        localStorage.getItem("pondok_rajeg_name") || activeUnit;
+
       const submitBtn = paymentForm.querySelector("button[type='submit']");
       const originalText = submitBtn.innerHTML;
       submitBtn.disabled = true;
@@ -1210,8 +1203,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const proofMimeType = proofFile.type || "image/jpeg";
 
         const result = await sendToBackend("payment", {
-          name: data.name,
-          unit: data.unit,
+          name: activeName,
+          unit: activeUnit,
           method: data.method,
           amount: Number(data.amount),
           proofBase64,
@@ -1219,8 +1212,8 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         const record = {
-          name: data.name,
-          unit: data.unit,
+          name: activeName,
+          unit: activeUnit,
           method: data.method,
           amount: result.verifiedAmount || Number(data.amount),
           date: new Date().toLocaleDateString("id-ID", {
@@ -1236,8 +1229,7 @@ document.addEventListener("DOMContentLoaded", () => {
         $("#iplDialog")?.close();
         paymentForm.reset();
 
-        const savedUser = localStorage.getItem("pondok_rajeg_user");
-        updateBill(savedUser);
+        updateBill(activeUnit);
         updateCashFlow();
         renderActivities();
         showToast(result.message);
@@ -1257,7 +1249,6 @@ document.addEventListener("DOMContentLoaded", () => {
   renderComplaints();
 });
 
-// --- LOGIKA PAKSA / PANDUAN ADD TO HOME SCREEN (PWA INSTALL) UNTUK MY PRR ---
 let deferredPrompt;
 const pwaBanner = $("#pwaInstallBanner");
 const pwaInstallBtn = $("#pwaInstallBtn");

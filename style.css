@@ -44,7 +44,6 @@ body {
   line-height: 1;
 }
 
-/* --- PERBAIKAN PRESISI UKURAN LOGO --- */
 .brand-mark {
   width: 38px;
   height: 38px;
@@ -84,7 +83,6 @@ body {
   padding: 4px;
 }
 
-/* Splash Screen */
 .splash-screen {
   position: fixed;
   inset: 0;
@@ -128,7 +126,6 @@ body {
   }
 }
 
-/* Split-Screen Login Layout */
 .auth-container {
   display: none;
   position: fixed;
@@ -285,7 +282,6 @@ body {
   }
 }
 
-/* App Shell & Layout */
 .app-shell {
   display: none;
   width: 100%;
@@ -419,7 +415,6 @@ body {
   bottom: -90px;
 }
 
-/* ARREARS WARNING */
 .arrears-section {
   margin: 14px 16px 0 16px;
 }
@@ -465,7 +460,6 @@ body {
   font-weight: 800;
 }
 
-/* FINTECH CARD */
 .balance-card {
   position: relative;
   margin: 14px 16px 0 16px;
@@ -625,7 +619,6 @@ body {
   transition: background 0.2s;
 }
 
-/* SECURITY DUTY CARD */
 .security-duty-card.modern-security {
   margin: 14px 0 0 0;
   background: linear-gradient(135deg, #075b3b 0%, #0a9260 100%);
@@ -703,7 +696,6 @@ body {
   gap: 6px;
 }
 
-/* INVENTARIS & QUICK MENU */
 .inventory-section {
   padding: 22px 16px 0;
 }
@@ -884,7 +876,6 @@ body {
   color: #dc2626;
 }
 
-/* BOTTOM NAV & PANIC */
 .bottom-nav {
   display: grid;
   position: absolute;
@@ -944,7 +935,6 @@ body {
   margin-top: 1px;
 }
 
-/* MODALS & MODERN DIALOG STYLING */
 .modal {
   border: 0;
   border-radius: 28px;
@@ -1097,7 +1087,6 @@ body {
   border: 1px solid #fecaca;
 }
 
-/* PRESISI BUTTON GRID */
 .modal-btn-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1133,7 +1122,6 @@ body {
   background: #edf2ef;
 }
 
-/* EFEK SHIMMER LOADING */
 @keyframes shimmerLoading {
   0% {
     background-position: -400px 0;
@@ -1160,7 +1148,6 @@ body {
   color: transparent;
 }
 
-/* DIRECTORY & WHATSAPP BUTTONS */
 .tukang-tabs {
   display: flex;
   gap: 8px;
@@ -1448,7 +1435,6 @@ input[type="file"]::file-selector-button:hover {
   margin: 14px 6px 0;
 }
 
-/* STYLING KARTU INFO WARGA & ARTIKEL DETAIL */
 .info-modal form {
   padding: 32px 26px 26px;
   text-align: left;
@@ -1493,7 +1479,6 @@ input[type="file"]::file-selector-button:hover {
   line-height: 1.5;
 }
 
-/* PERBAIKAN FOTO ARTIKEL AGAR PRESISI TANPA TERPOTONG */
 .article-detail-image {
   width: 100%;
   height: auto;
@@ -1593,7 +1578,6 @@ input[type="file"]::file-selector-button:hover {
   font-size: 20px;
 }
 
-/* TOAST */
 .toast {
   position: fixed;
   z-index: 9999;
