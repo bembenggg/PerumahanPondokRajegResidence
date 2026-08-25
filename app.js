@@ -2201,30 +2201,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (loadingModal) {
         loadingModal.innerHTML = `
-        <div class="cyber-modal-card" style="margin: 0 auto; width: 100%;">
-          <div class="cyber-core-container">
-            <div class="cyber-ring-outer"></div>
-            <div class="cyber-ring-inner"></div>
-            <span class="material-symbols-rounded cyber-core-icon">auto_awesome</span>
-          </div>
+  <div class="cyber-modal-card">
+    <div class="cyber-core-container">
+      <div class="cyber-ring-outer"></div>
+      <div class="cyber-ring-inner"></div>
+      <span class="material-symbols-rounded cyber-core-icon">auto_awesome</span>
+    </div>
 
-          <div class="cyber-badge">
-            <span class="cyber-dot"></span> NEURAL AI Pondok Rajeg Residence v0.6
-          </div>
+    <div class="cyber-badge">
+      <span class="cyber-dot"></span> NEURAL AI Pondok Rajeg Residence v0.6
+    </div>
 
-          <h3 style="font-size: 15px; margin: 12px 0 6px; color: #1f2937; font-weight: 700; letter-spacing: -0.2px; line-height: 1.4;">
-            My PRR AI Sedang verifikasi awal attachment Bukti Transfer
-          </h3>
+    <h3 style="font-size: 15px; margin: 12px 0 6px; color: #1f2937; font-weight: 700; letter-spacing: -0.2px; line-height: 1.4;">
+      My PRR AI Sedang verifikasi awal attachment Bukti Transfer
+    </h3>
 
-          <p id="techStatusText" style="font-size: 12px; color: #64748b; margin: 0; line-height: 1.5; min-height: 18px; font-family: monospace;">
-            Menganalisis matriks piksel dokumen<span id="loadingDots" style="color: #10b981; font-weight: bold;">...</span>
-          </p>
+    <p id="techStatusText" style="font-size: 12px; color: #64748b; margin: 0; line-height: 1.5; min-height: 18px; font-family: monospace;">
+      Menganalisis matriks piksel dokumen<span id="loadingDots" style="color: #10b981; font-weight: bold;">...</span>
+    </p>
 
-          <div class="cyber-progress-track">
-            <div class="cyber-progress-bar"></div>
-          </div>
-        </div>
-      `;
+    <div class="cyber-progress-track">
+      <div class="cyber-progress-bar"></div>
+    </div>
+  </div>
+`;
         loadingModal.showModal();
         startTechScannerAnimation();
       }

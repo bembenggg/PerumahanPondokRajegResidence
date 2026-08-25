@@ -2292,6 +2292,9 @@ input[type="file"]::file-selector-button {
   border-radius: 14px;
 }
 
+/* ========================================================== */
+/* PERBAIKAN UTAMA: DIALOG AI LOADING MODAL (CENTERS PERFECTLY) */
+/* ========================================================== */
 dialog#aiLoadingModal {
   position: fixed;
   inset: 0;
@@ -2302,6 +2305,7 @@ dialog#aiLoadingModal {
   overflow: visible;
   max-width: 360px;
   width: 90%;
+  height: fit-content;
   border-radius: 24px;
 }
 
@@ -2309,7 +2313,6 @@ dialog#aiLoadingModal::backdrop {
   background: rgba(6, 43, 28, 0.45);
   backdrop-filter: blur(8px);
 }
-
 @keyframes modernSpin {
   0% {
     transform: rotate(0deg);
@@ -2377,8 +2380,7 @@ dialog#aiLoadingModal::backdrop {
 .cyber-modal-card {
   text-align: center;
   padding: 36px 28px;
-  min-width: 320px;
-  max-width: 360px;
+  width: 100%;
   font-family: inherit;
   background: #ffffff;
   color: #1f2937;
