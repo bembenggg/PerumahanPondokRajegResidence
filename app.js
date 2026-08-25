@@ -2240,7 +2240,7 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
 
           <div class="cyber-badge">
-            <span class="cyber-dot"></span> NEURAL AI Pondok Rajeg v0.6
+            <span class="cyber-dot"></span> NEURAL AI Pondok Rajeg Residence v0.6
           </div>
 
           <h3 style="font-size: 15px; margin: 12px 0 6px; color: #1f2937; font-weight: 700; letter-spacing: -0.2px; line-height: 1.4;">
