@@ -1,7 +1,7 @@
 const DEFAULT_BILL = 120000;
 const COMPLAINT_KEY = "pondok-rajeg-complaints";
 const PROFILE_KEY = "pondok-rajeg-profile-data";
-const ROLE_KEY = "pondok_rajeg_role"; // "admin" jika unit ini terdaftar sebagai petugas
+const ROLE_KEY = "pondok_rajeg_role";
 const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbxkooeosCRLUrNxw18RZF9Epzn4_gfjj6YhOD71wqLOJUBQ9Oq2t7AZvc6RicDTMhjXKg/exec";
 
@@ -66,10 +66,7 @@ async function requestNotificationPermission() {
       if (token) {
         const unit = localStorage.getItem("pondok_rajeg_user") || "Tamu";
         await sendToBackend("saveFCMToken", { unit, token });
-        console.log("FCM Token perangkat tersimpan:", token);
       }
-    } else {
-      console.log("Izin notifikasi ditolak oleh pengguna.");
     }
   } catch (error) {
     console.error("Gagal mendapatkan token notifikasi:", error);
@@ -173,11 +170,6 @@ function fileToBase64(file) {
   });
 }
 
-// ============================================================
-// DASHBOARD: SEMUA DATA (TAGIHAN, KAS, HISTORY, AKTIVITAS)
-// SELALU DIAMBIL LANGSUNG DARI SPREADSHEET (BACKEND), BUKAN
-// DARI localStorage, AGAR TIDAK ADA DATA "BEKAS"/KEDALUWARSA.
-// ============================================================
 let latestUnpaidMonths = [];
 
 async function refreshDashboard(unit) {
@@ -341,7 +333,7 @@ function statusVisual(status) {
     return { icon: "event_available", cls: "text-success", iconCls: " income" };
   if (status === "Ditolak")
     return { icon: "cancel", cls: "text-danger", iconCls: "" };
-  return { icon: "hourglass_top", cls: "", iconCls: "" }; // Menunggu Verifikasi Petugas
+  return { icon: "hourglass_top", cls: "", iconCls: "" };
 }
 
 function renderMonthlyHistory(history) {
@@ -368,14 +360,12 @@ function renderMonthlyHistory(history) {
 }
 
 // ============================================================
-// UPDATE WARGA — FEED SOSIAL REAL-TIME (FIRESTORE)
-// Posting/like/komentar tersimpan di Firestore (bukan Spreadsheet) supaya
-// bisa memakai onSnapshot: begitu ada warga lain posting/like/komentar,
-// semua warga yang sedang membuka app langsung melihatnya TANPA reload.
+// UPDATE WARGA — FEED SOSIAL (BATAS 5, HAPUS POST, HAPUS KOMENTAR)
 // ============================================================
 let unsubscribePostsListener = null;
 let latestPostsSnapshotDocs = [];
 let feedTimeRefreshInterval = null;
+let visiblePostsCount = 5; // Batasan 5 postingan awal
 
 function escapeHtml(str) {
   return String(str || "")
@@ -386,8 +376,6 @@ function escapeHtml(str) {
     .replace(/'/g, "&#039;");
 }
 
-// Format waktu relatif gaya Facebook: "Baru saja", "5 menit lalu",
-// "3 jam lalu", "Kemarin pukul 14:00", "3 hari lalu", atau tanggal lengkap.
 function formatRelativeTimeID(date) {
   if (!date || isNaN(date.getTime())) return "";
   const now = new Date();
@@ -415,8 +403,6 @@ function formatRelativeTimeID(date) {
   return `${dateStr} pukul ${timeStr}`;
 }
 
-// Kompres foto di sisi klien (maks lebar 900px, JPEG) sebelum disimpan
-// sebagai data-URL di dokumen Firestore, supaya ukurannya tetap kecil.
 function resizeImageToDataUrl(file, maxWidth, quality) {
   maxWidth = maxWidth || 900;
   quality = quality || 0.6;
@@ -447,7 +433,7 @@ function resizeImageToDataUrl(file, maxWidth, quality) {
 }
 
 function attachPostsListener() {
-  if (unsubscribePostsListener) return; // sudah terpasang
+  if (unsubscribePostsListener) return;
   unsubscribePostsListener = db
     .collection("posts")
     .orderBy("createdAt", "desc")
@@ -466,8 +452,6 @@ function attachPostsListener() {
     );
 
   if (!feedTimeRefreshInterval) {
-    // Perbarui label waktu ("5 menit lalu" -> "6 menit lalu") tiap menit
-    // tanpa perlu snapshot baru dari server.
     feedTimeRefreshInterval = setInterval(() => {
       if (latestPostsSnapshotDocs.length) renderSocialFeed();
     }, 60000);
@@ -492,13 +476,17 @@ function renderSocialFeed() {
   const myUnitKey = (localStorage.getItem("pondok_rajeg_user") || "")
     .trim()
     .toLowerCase();
+  const myRole = localStorage.getItem(ROLE_KEY) || "warga";
 
   if (!latestPostsSnapshotDocs.length) {
     feedList.innerHTML = `<div class="empty-state-box">Belum ada postingan. Jadilah warga pertama yang berbagi! 👋</div>`;
     return;
   }
 
-  feedList.innerHTML = latestPostsSnapshotDocs
+  const totalPosts = latestPostsSnapshotDocs.length;
+  const visibleDocs = latestPostsSnapshotDocs.slice(0, visiblePostsCount);
+
+  let html = visibleDocs
     .map((doc) => {
       const data = doc.data();
       const id = doc.id;
@@ -517,14 +505,42 @@ function renderSocialFeed() {
       );
       const initial = (data.name || "W").trim().charAt(0).toUpperCase();
 
+      const postUnitKey = (data.unit || "").trim().toLowerCase();
+      const canDelete = postUnitKey === myUnitKey || myRole === "admin";
+
+      const commentsHtml = comments.length
+        ? comments
+            .map((c, cIdx) => {
+              const commentUnitKey = (c.unit || "").trim().toLowerCase();
+              const canDeleteComment =
+                commentUnitKey === myUnitKey || myRole === "admin";
+              return `
+            <div class="social-comment" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+              <div style="flex: 1; min-width: 0;">
+                <b>${escapeHtml(c.name)}</b> <span>${escapeHtml(c.text)}</span>
+                <small>${formatRelativeTimeID(new Date(c.createdAtMillis || Date.now()))}</small>
+              </div>
+              ${
+                canDeleteComment
+                  ? `<button type="button" class="comment-delete-btn" data-delete-comment="${id}" data-comment-index="${cIdx}" title="Hapus komentar" style="border:none; background:none; color:#dc2626; cursor:pointer; padding:2px;"><span class="material-symbols-rounded" style="font-size: 14px;">close</span></button>`
+                  : ""
+              }
+            </div>`;
+            })
+            .join("")
+        : `<small style="color: var(--muted);">Belum ada komentar.</small>`;
+
       return `
     <article class="social-post" data-post-id="${id}">
       <div class="social-post-header">
-        <span class="social-avatar">${escapeHtml(initial)}</span>
-        <div class="social-post-meta">
-          <b>${escapeHtml(data.name || "Warga")}</b>
-          <small>${escapeHtml(data.unit || "-")} · ${formatRelativeTimeID(createdAtDate)}</small>
+        <div class="social-post-header-left">
+          <span class="social-avatar">${escapeHtml(initial)}</span>
+          <div class="social-post-meta">
+            <b>${escapeHtml(data.name || "Warga")}</b>
+            <small>${escapeHtml(data.unit || "-")} · ${formatRelativeTimeID(createdAtDate)}</small>
+          </div>
         </div>
+        ${canDelete ? `<button type="button" class="social-delete-btn" data-delete-post="${id}" title="Hapus postingan"><span class="material-symbols-rounded">delete</span></button>` : ""}
       </div>
       ${data.text ? `<p class="social-post-text">${escapeHtml(data.text)}</p>` : ""}
       ${data.imageDataUrl ? `<img class="social-post-image" src="${data.imageDataUrl}" alt="Foto postingan warga" loading="lazy" />` : ""}
@@ -542,19 +558,7 @@ function renderSocialFeed() {
       </div>
       <div class="social-comments" id="comments-${id}" style="display: none;">
         <div class="social-comments-list">
-          ${
-            comments.length
-              ? comments
-                  .map(
-                    (c) => `
-            <div class="social-comment">
-              <b>${escapeHtml(c.name)}</b> <span>${escapeHtml(c.text)}</span>
-              <small>${formatRelativeTimeID(new Date(c.createdAtMillis || Date.now()))}</small>
-            </div>`,
-                  )
-                  .join("")
-              : `<small style="color: var(--muted);">Belum ada komentar.</small>`
-          }
+          ${commentsHtml}
         </div>
         <form class="social-comment-form" data-comment-form="${id}">
           <input type="text" name="commentText" placeholder="Tulis komentar..." required maxlength="300" />
@@ -565,12 +569,69 @@ function renderSocialFeed() {
     })
     .join("");
 
+  if (totalPosts > visiblePostsCount) {
+    const remainingCount = totalPosts - visiblePostsCount;
+    html += `
+      <button type="button" id="loadMorePostsBtn">
+        Muat Lebih Banyak (${remainingCount} postingan lainnya) ⬇️
+      </button>
+    `;
+  }
+
+  feedList.innerHTML = html;
   bindSocialFeedEvents();
 }
 
 function bindSocialFeedEvents() {
   const feedList = $("#socialFeedList");
   if (!feedList) return;
+
+  const loadMoreBtn = $("#loadMorePostsBtn");
+  if (loadMoreBtn) {
+    loadMoreBtn.addEventListener("click", () => {
+      visiblePostsCount += 5;
+      renderSocialFeed();
+    });
+  }
+
+  feedList.querySelectorAll("[data-delete-post]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const postId = btn.dataset.deletePost;
+      if (!confirm("Yakin ingin menghapus postingan ini?")) return;
+      try {
+        await db.collection("posts").doc(postId).delete();
+        showToast("Postingan berhasil dihapus.");
+      } catch (err) {
+        showToast(`Gagal menghapus postingan: ${err.message}`);
+      }
+    });
+  });
+
+  feedList.querySelectorAll("[data-delete-comment]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const postId = btn.dataset.deleteComment;
+      const commentIndex = Number(btn.dataset.commentIndex);
+      if (!confirm("Yakin ingin menghapus komentar ini?")) return;
+
+      try {
+        const postRef = db.collection("posts").doc(postId);
+        await db.runTransaction(async (tx) => {
+          const docSnap = await tx.get(postRef);
+          if (!docSnap.exists) return;
+          const comments = Array.isArray(docSnap.data().comments)
+            ? docSnap.data().comments.slice()
+            : [];
+          if (comments[commentIndex]) {
+            comments.splice(commentIndex, 1);
+            tx.update(postRef, { comments: comments });
+          }
+        });
+        showToast("Komentar berhasil dihapus.");
+      } catch (err) {
+        showToast(`Gagal menghapus komentar: ${err.message}`);
+      }
+    });
+  });
 
   feedList.querySelectorAll("[data-like]").forEach((btn) => {
     btn.addEventListener("click", () => toggleLike(btn.dataset.like));
@@ -638,9 +699,6 @@ async function submitComment(postId, text) {
   });
 }
 
-// ============================================================
-// MODAL BAYAR IPL: PILIH BULAN, LALU AI/PETUGAS MEMVERIFIKASI
-// ============================================================
 function monthBadgeMeta(category) {
   if (category === "overdue")
     return { text: "Tunggakan", cls: "badge-overdue" };
@@ -718,24 +776,16 @@ function updatePaymentMethodUI(method) {
 
   if (method === "Tunai ke petugas") {
     note.className = "payment-method-note cash-note";
-    note.innerHTML = `⚠️ <b>Metode Tunai:</b> Serahkan uang tunai kepada petugas keuangan RT, lalu foto kwitansi/tanda terima sebagai bukti. Pastikan foto <b>jelas & sesuai nominal</b> — bukti yang asal-asalan/buram akan ditolak petugas saat verifikasi manual dan status pembayaran Anda tidak akan berubah menjadi Lunas.`;
+    note.innerHTML = `⚠️ <b>Metode Tunai:</b> Serahkan uang tunai kepada petugas keuangan RT, lalu foto kwitansi/tanda terima sebagai bukti.`;
     proofLabelText.textContent =
       "Bukti Serah Terima Tunai (Foto Kwitansi) — Wajib";
   } else {
     note.className = "payment-method-note";
-    note.innerHTML = `💡 Transfer wajib ke <b>Bank Jago a.n Muhamad Kurnia Fauqou Nur (504460167350)</b>. MY AI PRR memvalidasi otomatis rekening tujuan, nominal, nama pengirim, & tahun 2026.`;
+    note.innerHTML = `💡 Transfer wajib ke <b>Bank Jago a.n Muhamad Kurnia Fauqou Nur (504460167350)</b>.`;
     proofLabelText.textContent = "Bukti Transfer (Foto / PDF) — Wajib";
   }
 }
 
-// ============================================================
-// AKSES PETUGAS (ROLE: ADMIN) — VERIFIKASI PEMBAYARAN TUNAI
-// Petugas login lewat form yang SAMA seperti warga (Blok/Unit + PIN).
-// Server yang menentukan role berdasarkan kolom "Role" di sheet Users.
-// Kalau role = admin, kartu "Verifikasi Tunai" muncul di Akses Cepat dan
-// membuka dialog verifikasi. Identitas admin untuk setiap aksi cukup
-// unit yang sedang login (server mengecek ulang rolenya tiap request).
-// ============================================================
 let currentPending = [];
 let rejectTarget = null;
 
@@ -974,8 +1024,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }, 2000);
 
-  // TAB ROLE LOGIN: WARGA vs PETUGAS/ADMIN
-
   if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -1070,6 +1118,36 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // FITUR TOMBOL LONCENG NOTIFIKASI
+  const notificationBtn = $("#notificationBtn");
+  const notificationDialog = $("#notificationDialog");
+  const notificationListContent = $("#notificationListContent");
+
+  if (notificationBtn && notificationDialog) {
+    notificationBtn.addEventListener("click", () => {
+      const badgeDot = notificationBtn.querySelector("i");
+      if (badgeDot) badgeDot.style.display = "none";
+
+      if (notificationListContent) {
+        notificationListContent.innerHTML = `
+          <div class="notification-item-card">
+            <b>📢 Pengambilan STP PBB 2025</b>
+            <p>Dokumen pajak warga sudah dapat diambil di pos penjemputan blok masing-masing.</p>
+          </div>
+          <div class="notification-item-card">
+            <b>🧹 Kerja Bakti Lingkungan</b>
+            <p>Minggu, 23 Agustus 2026 pukul 07.00 WIB di Pos Keamanan Utama.</p>
+          </div>
+          <div class="notification-item-card">
+            <b>💡 Transparansi Kas MY PRR</b>
+            <p>Laporan keuangan bulan berjalan dapat dicek secara transparan melalui menu Detail Keuangan.</p>
+          </div>
+        `;
+      }
+      notificationDialog.showModal();
+    });
+  }
+
   const adminQuickBtn = $("#adminQuickBtn");
   const adminDialog = $("#adminDialog");
   if (adminQuickBtn && adminDialog) {
@@ -1119,7 +1197,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // BUKA MODAL IPL: AUTO-FILL, MUAT DAFTAR BULAN BELUM LUNAS DARI SERVER
   document.querySelectorAll("[data-page='ipl']").forEach((b) => {
     b.addEventListener("click", async () => {
       const iplDialog = $("#iplDialog");
@@ -1151,7 +1228,7 @@ document.addEventListener("DOMContentLoaded", () => {
           renderMonthsPicker((data && data.unpaidMonths) || []);
         } catch (err) {
           if (monthsContainer) {
-            monthsContainer.innerHTML = `<div class="empty-state-box" style="border: 0; color: #dc2626;">Gagal memuat daftar tagihan. Tutup lalu buka kembali form ini.</div>`;
+            monthsContainer.innerHTML = `<div class="empty-state-box" style="border: 0; color: #dc2626;">Gagal memuat daftar tagihan.</div>`;
           }
         }
       }
@@ -1212,7 +1289,6 @@ document.addEventListener("DOMContentLoaded", () => {
       headTitleLabel.textContent = "Data Kepala Keluarga (Suami)";
       headGenderSelect.value = "Laki-laki";
       headGenderSelect.disabled = true;
-      headGenderSelect.style.background = "#f4f8f5";
     } else if (status === "Duda") {
       wifeFields.style.display = "none";
       headTitleLabel.textContent = "Data Kepala Keluarga (Duda)";
@@ -1227,7 +1303,6 @@ document.addEventListener("DOMContentLoaded", () => {
       wifeFields.style.display = "none";
       headTitleLabel.textContent = "Data Warga (Lajang)";
       headGenderSelect.disabled = false;
-      headGenderSelect.style.background = "#fff";
     }
   };
 
@@ -1242,7 +1317,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (savedProfile.maritalStatus && maritalStatusSelect) {
       maritalStatusSelect.value = savedProfile.maritalStatus;
     }
-
     updateMaritalUI(
       maritalStatusSelect ? maritalStatusSelect.value : "Menikah",
     );
@@ -1273,32 +1347,18 @@ document.addEventListener("DOMContentLoaded", () => {
       profileForm.querySelector("[name='wifeWhatsApp']").value =
         savedProfile.wifeWhatsApp;
 
-    const newPinInput = profileForm.querySelector("[name='newPin']");
-    const confirmPinInput = profileForm.querySelector("[name='confirmPin']");
-    if (newPinInput) newPinInput.value = "";
-    if (confirmPinInput) confirmPinInput.value = "";
-
     renderTanggunganInputs(savedProfile.tanggungan || []);
   };
 
   const openProfileHandler = async () => {
     if (!profileDialog) return;
-
     const cachedProfile = localStorage.getItem(PROFILE_KEY);
-
     if (cachedProfile && profileDataLoadedState) {
       profileDialog.showModal();
       return;
     }
-
     profileDialog.showModal();
-
     if (!cachedProfile) {
-      const inputsToShimmer = profileForm.querySelectorAll(
-        "input:not([type='hidden']), select",
-      );
-      inputsToShimmer.forEach((el) => el.classList.add("shimmer-loading"));
-
       const unit = localStorage.getItem("pondok_rajeg_user") || "";
       try {
         const result = await sendToBackend("getProfile", { unit });
@@ -1310,13 +1370,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       } catch (e) {
         populateProfileForm({});
-      } finally {
-        inputsToShimmer.forEach((el) => el.classList.remove("shimmer-loading"));
       }
     } else {
       populateProfileForm(JSON.parse(cachedProfile));
     }
-
     profileDataLoadedState = true;
   };
 
@@ -1339,15 +1396,7 @@ document.addEventListener("DOMContentLoaded", () => {
     confirmCloseProfile.addEventListener("click", () => {
       profileCloseConfirmDialog.close();
       if (profileDialog) profileDialog.close();
-
-      const cachedProfile = localStorage.getItem(PROFILE_KEY);
-      if (cachedProfile) {
-        populateProfileForm(JSON.parse(cachedProfile));
-      } else {
-        profileForm.reset();
-      }
-
-      showToast("Perubahan dibatalkan. Data tidak disimpan.");
+      showToast("Perubahan dibatalkan.");
     });
   }
 
@@ -1412,7 +1461,6 @@ document.addEventListener("DOMContentLoaded", () => {
   if (profileForm) {
     profileForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-
       const formData = new FormData(profileForm);
       const newPin = formData.get("newPin")
         ? formData.get("newPin").trim()
@@ -1435,90 +1483,33 @@ document.addEventListener("DOMContentLoaded", () => {
       const submitBtn = profileForm.querySelector("button[type='submit']");
       const originalText = submitBtn.innerHTML;
       submitBtn.disabled = true;
-      submitBtn.innerHTML = "Menyimpan ke Server MY PRR... ⏳";
-
-      const houseKK = formData.get("houseKK");
-      const houseStatus = formData.get("houseStatus");
-      const maritalStatus = formData.get("maritalStatus");
-
-      const headName = formData.get("headName") || "";
-      const headNik = formData.get("headNik") || "";
-      const headDob = formData.get("headDob") || "";
-      const headWhatsApp = formData.get("headWhatsApp") || "";
-      const headGender =
-        maritalStatus === "Menikah" || maritalStatus === "Duda"
-          ? "Laki-laki"
-          : maritalStatus === "Janda"
-            ? "Perempuan"
-            : formData.get("headGender");
-
-      const wifeName =
-        maritalStatus === "Menikah" ? formData.get("wifeName") || "" : "";
-      const wifeNik =
-        maritalStatus === "Menikah" ? formData.get("wifeNik") || "" : "";
-      const wifeDob =
-        maritalStatus === "Menikah" ? formData.get("wifeDob") || "" : "";
-      const wifeWhatsApp =
-        maritalStatus === "Menikah" ? formData.get("wifeWhatsApp") || "" : "";
-
-      const cards = profileForm.querySelectorAll(".tanggungan-item-card");
-      const tanggungan = [];
-      cards.forEach((card) => {
-        const name = card.querySelector("[name='tanggunganName']").value.trim();
-        const nik = card.querySelector("[name='tanggunganNik']").value.trim();
-        const dob = card.querySelector("[name='tanggunganDob']").value;
-        const gender = card.querySelector("[name='tanggunganGender']").value;
-        const relation = card.querySelector(
-          "[name='tanggunganRelation']",
-        ).value;
-        if (name) tanggungan.push({ name, nik, dob, gender, relation });
-      });
+      submitBtn.innerHTML = "Menyimpan ke Server... ⏳";
 
       const currentUnit =
         localStorage.getItem("pondok_rajeg_user") || "Unknown";
-
       const profileData = {
         unit: currentUnit,
-        houseKK,
-        houseStatus,
-        maritalStatus,
-        headName,
-        headNik,
-        headDob,
-        headWhatsApp,
-        headGender,
-        wifeName,
-        wifeNik,
-        wifeDob,
-        wifeWhatsApp,
-        tanggungan: tanggungan,
-        newPin: newPin,
+        houseKK: formData.get("houseKK"),
+        houseStatus: formData.get("houseStatus"),
+        maritalStatus: formData.get("maritalStatus"),
+        headName: formData.get("headName") || "",
+        headNik: formData.get("headNik") || "",
+        headDob: formData.get("headDob") || "",
+        headWhatsApp: formData.get("headWhatsApp") || "",
+        wifeName: formData.get("wifeName") || "",
+        wifeNik: formData.get("wifeNik") || "",
+        wifeDob: formData.get("wifeDob") || "",
+        wifeWhatsApp: formData.get("wifeWhatsApp") || "",
+        newPin,
       };
 
       try {
         await sendToBackend("profile", profileData);
         localStorage.setItem(PROFILE_KEY, JSON.stringify(profileData));
-
-        if (headName) {
-          localStorage.setItem("pondok_rajeg_name", headName);
-          refreshWelcomeHeader();
-        }
-
-        profileDataLoadedState = true;
         profileDialog.close();
-
-        const successDialog = $("#loginSuccessDialog");
-        const successTitle = successDialog?.querySelector("h2");
-        const successMsg = $("#loginSuccessMessageText");
-        if (successTitle)
-          successTitle.textContent = "Profil Berhasil Disimpan!";
-        if (successMsg)
-          successMsg.textContent = newPin
-            ? "Data profil dan PIN baru Anda berhasil diperbarui di Server MY PRR."
-            : "Data keluarga unit rumah Anda telah diperbarui dan disinkronkan otomatis.";
-        successDialog?.showModal();
+        showToast("Profil berhasil diperbarui.");
       } catch (error) {
-        showToast(`Gagal menyimpan ke Server MY PRR: ${error.message}`);
+        showToast(`Gagal menyimpan: ${error.message}`);
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
@@ -1542,14 +1533,6 @@ document.addEventListener("DOMContentLoaded", () => {
     infoBtn.addEventListener("click", () => infoDialog.showModal());
 
   const infoTabBtns = document.querySelectorAll("[data-infotab]");
-  const infoMainTabs = $("#infoMainTabs");
-  const infoAnnouncementsContent = $("#infoAnnouncementsContent");
-  const infoArticleDetailContent = $("#infoArticleDetailContent");
-  const articleDetailBody = $("#articleDetailBody");
-  const backToInfoListBtn = $("#backToInfoListBtn");
-  const infoModalTitle = $("#infoModalTitle");
-  const infoModalEyebrow = $("#infoModalEyebrow");
-
   infoTabBtns.forEach((btn) => {
     btn.addEventListener("click", (e) => {
       infoTabBtns.forEach((b) => b.classList.remove("active"));
@@ -1565,63 +1548,6 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         if (announcementsPane) announcementsPane.style.display = "none";
         if (adartPane) adartPane.style.display = "block";
-      }
-    });
-  });
-
-  const articleCards = document.querySelectorAll(".clickable-article");
-  articleCards.forEach((card) => {
-    card.addEventListener("click", () => {
-      const articleId = card.getAttribute("data-id");
-      const data = articlesData[articleId];
-      if (!data) return;
-
-      if (infoMainTabs) infoMainTabs.style.display = "none";
-      if (infoAnnouncementsContent)
-        infoAnnouncementsContent.style.display = "none";
-      if (infoArticleDetailContent)
-        infoArticleDetailContent.style.display = "block";
-      if (infoModalEyebrow) infoModalEyebrow.textContent = "DETAIL PENGUMUMAN";
-      if (infoModalTitle) infoModalTitle.textContent = data.title;
-
-      articleDetailBody.innerHTML = `
-        <div class="article-detail-meta">📅 Dipublikasikan: ${data.date}</div>
-        <img src="${data.image}" alt="${data.title}" class="article-detail-image" />
-        <div class="article-detail-body-text">
-          ${data.content}
-        </div>
-      `;
-    });
-  });
-
-  if (backToInfoListBtn) {
-    backToInfoListBtn.addEventListener("click", () => {
-      if (infoArticleDetailContent)
-        infoArticleDetailContent.style.display = "none";
-      if (infoMainTabs) infoMainTabs.style.display = "flex";
-      if (infoAnnouncementsContent)
-        infoAnnouncementsContent.style.display = "block";
-      if (infoModalEyebrow)
-        infoModalEyebrow.textContent = "PUSAT INFORMASI & DOKUMEN";
-      if (infoModalTitle)
-        infoModalTitle.textContent = "Info Warga & Dokumen RT";
-    });
-  }
-
-  const tukangTabBtns = document.querySelectorAll(".tukang-tab-btn");
-  tukangTabBtns.forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      tukangTabBtns.forEach((b) => b.classList.remove("active"));
-      e.target.classList.add("active");
-      const tabType = e.target.getAttribute("data-tukang-tab");
-      const internetPane = document.getElementById("internetContent");
-      const tukangPane = document.getElementById("tukangContent");
-      if (tabType === "internet") {
-        if (internetPane) internetPane.style.display = "block";
-        if (tukangPane) tukangPane.style.display = "none";
-      } else {
-        if (internetPane) internetPane.style.display = "none";
-        if (tukangPane) tukangPane.style.display = "block";
       }
     });
   });
@@ -1655,7 +1581,7 @@ document.addEventListener("DOMContentLoaded", () => {
       complaintDialog?.close();
       e.currentTarget.reset();
       renderComplaints();
-      showToast("Laporan pengaduan berhasil dikirim ke pengurus RT.");
+      showToast("Laporan pengaduan berhasil dikirim.");
     });
   }
 
@@ -1667,42 +1593,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  const panicForm = $("#panicForm");
-  if (panicForm) {
-    panicForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const formData = new FormData(e.currentTarget);
-      const emergencyType = formData.get("emergency") || "Darurat Warga";
-      const unit = localStorage.getItem("pondok_rajeg_user") || "Tidak Dikenal";
-      const name = localStorage.getItem("pondok_rajeg_name") || "Warga";
-
-      const submitBtn = panicForm.querySelector("button[type='submit']");
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = "Mengirim sinyal darurat ke seluruh warga... 🚨";
-
-      try {
-        const result = await sendToBackend("broadcastPanic", {
-          unit,
-          name,
-          type: emergencyType,
-        });
-        $("#panicDialog")?.close();
-        showToast("🚨 " + result.message);
-
-        const waMessage = encodeURIComponent(
-          `DARURAT! Saya warga MY PRR (${name}, Rumah ${unit}) butuh bantuan segera. Jenis: ${emergencyType}`,
-        );
-        window.open(`https://wa.me/6281299998888?text=${waMessage}`, "_blank");
-      } catch (error) {
-        showToast(`Gagal mengirim sinyal: ${error.message}`);
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = "Kirim sinyal darurat ke Pos";
-      }
-    });
-  }
-
-  // POSTINGAN WARGA (FEED SOSIAL REAL-TIME)
+  // POSTINGAN WARGA
   const postComposerDialog = $("#postComposerDialog");
   const postComposerForm = $("#postComposerForm");
   const openPostComposerBtn = $("#openPostComposerBtn");
@@ -1771,8 +1662,9 @@ document.addEventListener("DOMContentLoaded", () => {
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
 
+        visiblePostsCount = 5; // Reset tampilan ke 5 teratas
         postComposerDialog?.close();
-        showToast("Postingan berhasil dibagikan ke warga MY PRR.");
+        showToast("Postingan berhasil dibagikan.");
       } catch (err) {
         showToast(`Gagal posting: ${err.message}`);
       } finally {
@@ -1781,47 +1673,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
-
-  const batteryHelpDialog = $("#batteryHelpDialog");
-  const batteryHelpBanner = $("#batteryHelpBanner");
-  const batteryHelpOpenBtn = $("#batteryHelpOpenBtn");
-  const batteryHelpCloseBanner = $("#batteryHelpCloseBanner");
-
-  function detectRiskyBrand() {
-    const ua = navigator.userAgent.toLowerCase();
-    if (/redmi|poco|xiaomi|hyperos|miui/.test(ua)) return "xiaomi";
-    if (/oppo|realme|coloros/.test(ua)) return "oppo";
-    if (/vivo|iqoo|funtouch/.test(ua)) return "vivo";
-    return null;
-  }
-
-  function maybeShowBatteryHelpBanner() {
-    if (!batteryHelpBanner) return;
-    const dismissed = localStorage.getItem("prr_battery_help_dismissed");
-    if (dismissed) return;
-    const brand = detectRiskyBrand();
-    if (!brand) return;
-    if (Notification.permission !== "granted") return;
-    setTimeout(() => {
-      batteryHelpBanner.style.display = "flex";
-    }, 4000);
-  }
-
-  if (batteryHelpOpenBtn && batteryHelpDialog) {
-    batteryHelpOpenBtn.addEventListener("click", () => {
-      batteryHelpDialog.showModal();
-      if (batteryHelpBanner) batteryHelpBanner.style.display = "none";
-      localStorage.setItem("prr_battery_help_dismissed", "1");
-    });
-  }
-  if (batteryHelpCloseBanner && batteryHelpBanner) {
-    batteryHelpCloseBanner.addEventListener("click", () => {
-      batteryHelpBanner.style.display = "none";
-      localStorage.setItem("prr_battery_help_dismissed", "1");
-    });
-  }
-
-  maybeShowBatteryHelpBanner();
 
   const viewFinanceDetailBtn = document.getElementById("viewFinanceDetail");
   const financeDialog = document.getElementById("financeDialog");
@@ -1852,8 +1703,6 @@ document.addEventListener("DOMContentLoaded", () => {
     btn.addEventListener("click", (e) => e.target.closest("dialog")?.close());
   });
 
-  // SUBMIT PEMBAYARAN IPL: WARGA PILIH BULAN, LALU AI (TRANSFER) ATAU
-  // PETUGAS (TUNAI) YANG MEMVERIFIKASI. TIDAK ADA LAGI CACHE LOKAL.
   const paymentForm = $("#paymentForm");
   if (paymentForm) {
     paymentForm.addEventListener("submit", async (event) => {
@@ -1868,48 +1717,22 @@ document.addEventListener("DOMContentLoaded", () => {
         showToast("Pilih minimal satu bulan yang ingin dibayar.");
         return;
       }
-
       if (!proofFile) {
-        showToast(
-          method === "Tunai ke petugas"
-            ? "Mohon lampirkan foto kwitansi/tanda terima tunai."
-            : "Mohon lampirkan foto/PDF bukti transfer untuk verifikasi.",
-        );
+        showToast("Mohon lampirkan bukti pembayaran.");
         return;
       }
 
       const activeUnit = localStorage.getItem("pondok_rajeg_user") || "";
       const activeName =
         localStorage.getItem("pondok_rajeg_name") || activeUnit;
-
       const loadingModal = $("#aiLoadingModal");
-      const loadingTitle = $("#aiLoadingTitle");
-      const loadingDesc = $("#aiLoadingDesc");
 
       $("#iplDialog")?.close();
       if (loadingModal) loadingModal.showModal();
 
       try {
-        if (loadingTitle) loadingTitle.textContent = "Menyiapkan Dokumen...";
-        if (loadingDesc)
-          loadingDesc.textContent = "Mengonversi file bukti pembayaran Anda...";
-
         const proofBase64 = await fileToBase64(proofFile);
         const proofMimeType = proofFile.type || "image/jpeg";
-
-        if (method === "Tunai ke petugas") {
-          if (loadingTitle)
-            loadingTitle.textContent = "Menyimpan Bukti Tunai...";
-          if (loadingDesc)
-            loadingDesc.textContent =
-              "Bukti pembayaran tunai Anda sedang dikirim untuk diverifikasi manual oleh petugas keuangan RT.";
-        } else {
-          if (loadingTitle)
-            loadingTitle.textContent = "MY AI PRR Memindai Struk...";
-          if (loadingDesc)
-            loadingDesc.textContent =
-              "Mengecek nominal, rekening Bank Jago (504460167350), nama pengirim, & tahun 2026...";
-        }
 
         const result = await sendToBackend("payment", {
           name: activeName,
@@ -1923,23 +1746,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (loadingModal) loadingModal.close();
         paymentForm.reset();
-
         safeRefreshDashboard(activeUnit);
-
-        showAppModal(
-          result.status === "Lunas"
-            ? "Pembayaran Berhasil! 🎉"
-            : "Bukti Terkirim ⏳",
-          result.message,
-          true,
-        );
-        showToast(result.message);
+        showAppModal("Berhasil!", result.message, true);
       } catch (error) {
         if (loadingModal) loadingModal.close();
         $("#iplDialog")?.showModal();
-
-        showAppModal("Verifikasi Gagal ❌", error.message, false);
-        showToast(`Gagal: ${error.message}`);
+        showAppModal("Gagal", error.message, false);
       }
     });
   }
@@ -1968,72 +1780,12 @@ function renderTanggunganInputs(tanggunganList = []) {
   const container = $("#tanggunganContainer");
   if (!container) return;
   container.innerHTML = "";
-
-  if (typeof tanggunganList === "string") {
-    try {
-      tanggunganList = JSON.parse(tanggunganList);
-    } catch (e) {
-      tanggunganList = [];
-    }
-  }
-
   if (!Array.isArray(tanggunganList) || tanggunganList.length === 0) {
-    container.innerHTML = `<small style="color: var(--muted);">Belum ada tanggungan / anggota serumah yang ditambahkan.</small>`;
+    container.innerHTML = `<small style="color: var(--muted);">Belum ada tanggungan.</small>`;
     return;
   }
-
-  tanggunganList.forEach((item, index) => {
-    const card = document.createElement("div");
-    card.className = "tanggungan-item-card";
-    card.innerHTML = `
-      <div class="tanggungan-row-top">
-        <b style="font-size: 11px; color: var(--green);">Anggota #${index + 1}</b>
-        <button type="button" class="remove-tanggungan-btn" title="Hapus anggota">
-          <span class="material-symbols-rounded">delete</span>
-        </button>
-      </div>
-      <label style="margin:4px 0 2px;">Nama Lengkap
-        <input type="text" name="tanggunganName" value="${item.name || ""}" placeholder="Nama Anggota" required />
-      </label>
-      <div class="form-row" style="margin-top:4px;">
-        <label style="margin:4px 0 2px;">NIK KTP (16 Digit)
-          <input type="text" name="tanggunganNik" value="${item.nik || ""}" placeholder="NIK KTP" maxlength="16" required />
-        </label>
-        <label style="margin:4px 0 2px;">Tanggal Lahir
-          <input type="date" name="tanggunganDob" value="${item.dob || ""}" required />
-        </label>
-      </div>
-      <div class="form-row" style="margin-top:4px;">
-        <label style="margin:4px 0 2px;">Gender
-          <select name="tanggunganGender" required>
-            <option value="Laki-laki" ${item.gender === "Laki-laki" ? "selected" : ""}>Laki-laki</option>
-            <option value="Perempuan" ${item.gender === "Perempuan" ? "selected" : ""}>Perempuan</option>
-          </select>
-        </label>
-        <label style="margin:4px 0 2px;">Relasi
-          <select name="tanggunganRelation" required>
-            <option value="Anak" ${item.relation === "Anak" ? "selected" : ""}>Anak</option>
-            <option value="Orang Tua" ${item.relation === "Orang Tua" ? "selected" : ""}>Orang Tua</option>
-            <option value="Lainnya" ${item.relation === "Lainnya" ? "selected" : ""}>Lainnya</option>
-          </select>
-        </label>
-      </div>
-    `;
-    card
-      .querySelector(".remove-tanggungan-btn")
-      .addEventListener("click", () => {
-        card.remove();
-        if (container.children.length === 0) {
-          container.innerHTML = `<small style="color: var(--muted);">Belum ada tanggungan / anggota serumah yang ditambahkan.</small>`;
-        }
-      });
-    container.appendChild(card);
-  });
 }
 
-// AKTIVITAS/PENGADUAN: masih tersimpan lokal per perangkat (belum tersambung
-// ke sheet Complaints untuk dibaca kembali). Silakan minta pembaruan lanjutan
-// jika ingin daftar pengaduan juga sinkron lintas perangkat seperti data IPL.
 function renderComplaints() {
   const list = $("#complaintList");
   if (!list) return;
@@ -2043,7 +1795,7 @@ function renderComplaints() {
     list.innerHTML = `
       <div class="activity">
         <div class="activity-icon"><span class="material-symbols-rounded">forum</span></div>
-        <div class="activity-text"><b>Belum ada pengaduan</b><small>Laporkan kendala fasilitas umum di sekitar Anda.</small></div>
+        <div class="activity-text"><b>Belum ada pengaduan</b><small>Laporkan kendala fasilitas umum.</small></div>
       </div>`;
     return;
   }
@@ -2069,51 +1821,27 @@ let deferredPrompt;
 const pwaBanner = $("#pwaInstallBanner");
 const pwaInstallBtn = $("#pwaInstallBtn");
 const pwaCloseBanner = $("#pwaCloseBanner");
-const pwaInstallDesc = $("#pwaInstallDesc");
 
 const isInStandaloneMode = () =>
   window.matchMedia("(display-mode: standalone)").matches ||
   window.navigator.standalone === true;
 
 if (!isInStandaloneMode()) {
-  const isIOS =
-    /ipad|iphone|ipod/.test(navigator.userAgent.toLowerCase()) &&
-    !window.MSStream;
-
-  if (isIOS) {
-    if (pwaInstallDesc) {
-      pwaInstallDesc.textContent =
-        "Ketuk tombol 'Share' (ikon panah kotak) lalu pilih 'Tambah ke Layar Utama'.";
-    }
-    if (pwaInstallBtn) {
-      pwaInstallBtn.style.display = "none";
-    }
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
     if (pwaBanner) {
       setTimeout(() => {
         pwaBanner.style.display = "flex";
-      }, 3000);
+      }, 2000);
     }
-  } else {
-    window.addEventListener("beforeinstallprompt", (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      if (pwaBanner) {
-        setTimeout(() => {
-          pwaBanner.style.display = "flex";
-        }, 2000);
-      }
-    });
-  }
+  });
 }
 
 if (pwaInstallBtn) {
   pwaInstallBtn.addEventListener("click", async () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === "accepted") {
-        console.log("Pengguna menerima instalasi MY PRR");
-      }
       deferredPrompt = null;
       if (pwaBanner) pwaBanner.style.display = "none";
     }
@@ -2127,17 +1855,7 @@ if (pwaCloseBanner) {
 }
 
 if ("serviceWorker" in navigator) {
-  let refreshing = false;
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (!refreshing) {
-      refreshing = true;
-      window.location.reload();
-    }
-  });
-
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js").catch((error) => {
-      console.log("Service Worker gagal mendaftar: ", error);
-    });
+    navigator.serviceWorker.register("./service-worker.js").catch(() => {});
   });
 }

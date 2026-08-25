@@ -30,7 +30,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <link rel="stylesheet" href="style.css?v=15.0" />
+    <link rel="stylesheet" href="style.css?v=15.1" />
     <title>MY PRR - Pondok Rajeg Residence</title>
   </head>
   <body>
@@ -50,7 +50,7 @@
       </div>
     </div>
 
-    <!-- 2. HALAMAN LOGIN WARGA / PETUGAS (SATU PINTU — ROLE DIBACA DARI SERVER) -->
+    <!-- 2. HALAMAN LOGIN WARGA / PETUGAS -->
     <div id="loginView" class="auth-container">
       <div class="auth-split-box">
         <div class="auth-form-side">
@@ -174,6 +174,7 @@
       </header>
 
       <main class="main-content">
+        <!-- KOLOM KIRI (DIPERKUAT DENGAN FEED SOSIAL UTAMA) -->
         <div class="dashboard-left">
           <section class="hero">
             <p class="eyebrow" id="welcomeUser">Selamat datang, Warga</p>
@@ -354,6 +355,29 @@
             </div>
           </section>
 
+          <!-- UPDATE WARGA (PINDAH KE KOLOM KIRI AGAR UTAMA) -->
+          <section class="activity-section feed-section">
+            <div class="section-heading">
+              <h2>Update Warga</h2>
+              <span>Real-time</span>
+            </div>
+
+            <button
+              type="button"
+              id="openPostComposerBtn"
+              class="composer-trigger"
+            >
+              <span class="composer-avatar" id="composerAvatarInitial">W</span>
+              <span class="composer-placeholder"
+                >Apa yang ingin Anda bagikan ke warga MY PRR?</span
+              >
+            </button>
+
+            <div id="socialFeedList" class="social-feed-list">
+              <div class="empty-state-box">Memuat postingan warga...</div>
+            </div>
+          </section>
+
           <!-- INVENTARIS PRR -->
           <section class="inventory-section">
             <div class="section-heading">
@@ -393,6 +417,7 @@
           </section>
         </div>
 
+        <!-- KOLOM KANAN -->
         <div class="dashboard-right">
           <section class="activity-section">
             <div class="section-heading">
@@ -423,28 +448,6 @@
             </div>
             <div id="monthlyHistoryList" class="activity-list">
               <div class="empty-state-box">Memuat riwayat pembayaran...</div>
-            </div>
-          </section>
-
-          <section class="activity-section feed-section">
-            <div class="section-heading">
-              <h2>Update Warga</h2>
-              <span>Real-time</span>
-            </div>
-
-            <button
-              type="button"
-              id="openPostComposerBtn"
-              class="composer-trigger"
-            >
-              <span class="composer-avatar" id="composerAvatarInitial">W</span>
-              <span class="composer-placeholder"
-                >Apa yang ingin Anda bagikan ke warga MY PRR?</span
-              >
-            </button>
-
-            <div id="socialFeedList" class="social-feed-list">
-              <div class="empty-state-box">Memuat postingan warga...</div>
             </div>
           </section>
         </div>
@@ -487,6 +490,29 @@
         <b>PANIC</b>
       </button>
     </div>
+
+    <!-- MODAL PUSAT NOTIFIKASI (LONCENG) -->
+    <dialog id="notificationDialog" class="modal info-modal">
+      <form method="dialog">
+        <button class="close" value="cancel">×</button>
+        <p class="eyebrow" style="color: var(--green)">PUSAT NOTIFIKASI</p>
+        <h2>Aktivitas & Pemberitahuan</h2>
+        <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px">
+          Ringkasan aktivitas penting, pengumuman warga, dan status pembayaran
+          Anda.
+        </p>
+        <div
+          id="notificationListContent"
+          class="tukang-tab-pane"
+          style="max-height: 340px; overflow-y: auto"
+        >
+          <div class="empty-state-box">Memuat notifikasi...</div>
+        </div>
+        <button class="primary-button" value="cancel" style="margin-top: 14px">
+          Tutup
+        </button>
+      </form>
+    </dialog>
 
     <!-- MODAL PROFIL UNIT WARGA -->
     <dialog id="profileDialog" class="modal profile-modal">
@@ -818,7 +844,6 @@
       </form>
     </dialog>
 
-    <!-- MODAL POPUP NOTIFIKASI KUSTOM -->
     <dialog id="appMessageDialog" class="modal interactive-modal">
       <form method="dialog">
         <div id="appMessageIconBox" class="modal-icon-box success-bg">
@@ -1313,7 +1338,7 @@
       </form>
     </dialog>
 
-    <!-- MODAL LOADING AI DENGAN BRANDING "MY AI PRR" -->
+    <!-- MODAL LOADING AI -->
     <dialog
       id="aiLoadingModal"
       class="modal interactive-modal"
@@ -1597,184 +1622,7 @@
       </form>
     </dialog>
 
-    <dialog id="batteryHelpDialog" class="modal info-modal">
-      <form method="dialog">
-        <button class="close" value="cancel">×</button>
-        <p class="eyebrow" style="color: #dc2626">NOTIFIKASI DARURAT</p>
-        <h2>Notifikasi Tidak Masuk?</h2>
-        <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px">
-          Sebagian HP (terutama Xiaomi/Redmi/POCO, Oppo, Vivo) suka mematikan
-          notifikasi aplikasi di latar belakang untuk hemat baterai. Tekan
-          tombol sesuai merk HP Anda untuk membuka pengaturan yang tepat (1 kali
-          saja):
-        </p>
-
-        <div class="tukang-tab-pane" style="max-height: 320px">
-          <article class="tukang-item">
-            <b>Xiaomi / Redmi / POCO (MIUI/HyperOS)</b>
-            <p>Aktifkan "Autostart" untuk Chrome.</p>
-            <a
-              href="intent:#Intent;action=miui.intent.action.HIDDEN_APPS_CONFIG_ACTIVITY;launchFlags=0x10000000;component=com.miui.securitycenter/com.miui.permcenter.autostart.AutoStartManagementActivity;end"
-              class="whatsapp-btn"
-              style="background: var(--green)"
-            >
-              <span class="material-symbols-rounded">bolt</span>
-              Buka Pengaturan Autostart
-            </a>
-          </article>
-
-          <article class="tukang-item">
-            <b>Xiaomi / Redmi / POCO — Battery Saver</b>
-            <p>Ubah battery saver Chrome jadi "No restrictions".</p>
-            <a
-              href="intent:#Intent;launchFlags=0x10000000;component=com.miui.securitycenter/com.miui.powercenter.PowerSettings;end"
-              class="whatsapp-btn"
-              style="background: var(--green)"
-            >
-              <span class="material-symbols-rounded"
-                >battery_charging_full</span
-              >
-              Buka Pengaturan Baterai
-            </a>
-          </article>
-
-          <article class="tukang-item">
-            <b>Oppo / Realme (ColorOS)</b>
-            <p>Aktifkan Chrome di daftar "Startup Manager".</p>
-            <a
-              href="intent:#Intent;launchFlags=0x10000000;component=com.coloros.safecenter/com.coloros.safecenter.permission.startup.StartupAppListActivity;end"
-              class="whatsapp-btn internet-btn"
-            >
-              <span class="material-symbols-rounded">bolt</span>
-              Buka Startup Manager
-            </a>
-          </article>
-
-          <article class="tukang-item">
-            <b>Vivo (Funtouch OS)</b>
-            <p>Tambahkan Chrome ke daftar "Autostart Whitelist".</p>
-            <a
-              href="intent:#Intent;launchFlags=0x10000000;component=com.vivo.permissionmanager/com.vivo.permissionmanager.activity.BgStartUpManagerActivity;end"
-              class="whatsapp-btn internet-btn"
-            >
-              <span class="material-symbols-rounded">bolt</span>
-              Buka Pengaturan Vivo
-            </a>
-          </article>
-
-          <article class="tukang-item emergency-item">
-            <b>Tombol di atas tidak berfungsi?</b>
-            <p style="margin: 0">
-              Buka manual:
-              <b
-                >Settings HP → Apps/Aplikasi → cari "Chrome" → Battery/Baterai →
-                pilih "No restrictions" / "Tanpa batasan"</b
-              >. Lalu cari juga menu terpisah bernama "Autostart" di Settings
-              atau di app Security/Keamanan bawaan HP, aktifkan untuk Chrome.
-            </p>
-          </article>
-        </div>
-
-        <button class="primary-button" value="cancel" style="margin-top: 14px">
-          Sudah Saya Lakukan
-        </button>
-      </form>
-    </dialog>
-
-    <div
-      id="batteryHelpBanner"
-      class="pwa-install-banner"
-      style="display: none; border-color: #fecaca"
-    >
-      <div class="pwa-banner-content">
-        <div
-          style="
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            background: #fef2f2;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-          "
-        >
-          <span
-            class="material-symbols-rounded"
-            style="color: #dc2626; font-size: 22px"
-            >notifications_off</span
-          >
-        </div>
-        <div class="pwa-banner-text">
-          <b>Amankan Notifikasi Darurat</b>
-          <small
-            >HP Anda terdeteksi sering memblokir notifikasi. Ketuk untuk
-            perbaiki.</small
-          >
-        </div>
-      </div>
-      <div class="pwa-banner-actions">
-        <button
-          id="batteryHelpOpenBtn"
-          class="primary-button"
-          style="padding: 6px 12px; font-size: 12px; background: #dc2626"
-        >
-          Perbaiki
-        </button>
-        <button
-          id="batteryHelpCloseBanner"
-          class="secondary-button"
-          style="
-            padding: 6px 8px;
-            font-size: 12px;
-            border: none;
-            background: transparent;
-          "
-        >
-          Nanti
-        </button>
-      </div>
-    </div>
-
-    <div id="pwaInstallBanner" class="pwa-install-banner" style="display: none">
-      <div class="pwa-banner-content">
-        <img
-          src="https://i.ibb.co.com/b5VjvFGK/LOGO-PRR.jpg"
-          alt="MY PRR Logo"
-          class="pwa-banner-logo"
-        />
-        <div class="pwa-banner-text">
-          <b>Install Aplikasi MY PRR</b>
-          <small id="pwaInstallDesc"
-            >Pasang aplikasi di layar utama HP Anda untuk akses lebih cepat &
-            stabil.</small
-          >
-        </div>
-      </div>
-      <div class="pwa-banner-actions">
-        <button
-          id="pwaInstallBtn"
-          class="primary-button"
-          style="padding: 6px 12px; font-size: 12px"
-        >
-          Install Sekarang
-        </button>
-        <button
-          id="pwaCloseBanner"
-          class="secondary-button"
-          style="
-            padding: 6px 8px;
-            font-size: 12px;
-            border: none;
-            background: transparent;
-          "
-        >
-          Nanti
-        </button>
-      </div>
-    </div>
-
     <div id="toast" class="toast" role="status"></div>
-    <script src="app.js?v=15.0"></script>
+    <script src="app.js?v=15.1"></script>
   </body>
 </html>
