@@ -1479,20 +1479,27 @@
     <div id="toast" class="toast" role="status"></div>
     <!-- BANNER INSTALL PWA -->
     <div id="pwaInstallBanner" class="pwa-install-banner" style="display: none">
-      <div class="pwa-banner-inner">
-        <div class="pwa-banner-icon">
-          <span class="material-symbols-rounded">phone_android</span>
-        </div>
+      <div class="pwa-banner-content">
+        <img src="icons/icon-512.png" alt="Logo PRR" class="pwa-banner-logo" />
         <div class="pwa-banner-text">
           <b>Pasang Aplikasi MY PRR</b>
           <small
-            >Agar akses warga lebih cepat seperti aplikasi native di HP
+            >Akses cepat & terima notifikasi darurat langsung dari HP
             Anda.</small
           >
         </div>
-        <button id="pwaInstallBtn" class="primary-button">Pasang</button>
-        <button id="pwaCloseBtn" class="close-banner-btn" aria-label="Tutup">
-          ×
+      </div>
+      <div class="pwa-banner-actions">
+        <button type="button" id="pwaInstallBtn" class="pwa-action-install">
+          Pasang
+        </button>
+        <button
+          type="button"
+          id="pwaCloseBanner"
+          class="pwa-action-close"
+          title="Tutup"
+        >
+          <span class="material-symbols-rounded">close</span>
         </button>
       </div>
     </div>
