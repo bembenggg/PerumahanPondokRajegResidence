@@ -427,9 +427,6 @@ function renderMonthlyHistory(history) {
     .join("");
 }
 
-// ============================================================
-// [FIX 4 & 5 & 7] PUSAT NOTIFIKASI (LONCENG) — SUMBER: SHEET "Notifications"
-// ============================================================
 let notificationCache = [];
 let notifPollInterval = null;
 
@@ -479,13 +476,11 @@ function updateNotifBadge() {
   const btn = $("#notificationBtn");
   if (!btn) return;
 
-  // Hitung jumlah notif yang belum dibaca (millis > lastSeen)
   const lastSeen = Number(localStorage.getItem(NOTIF_SEEN_KEY) || 0);
   const unreadCount = notificationCache.filter(
     (n) => Number(n.millis || 0) > lastSeen,
   ).length;
 
-  // Cari atau buat elemen badge angka merah secara otomatis
   let badge = btn.querySelector(".notif-badge-count");
   if (!badge) {
     badge = document.createElement("span");
@@ -493,14 +488,12 @@ function updateNotifBadge() {
     badge.style.cssText =
       "position: absolute; top: 6px; right: 6px; background: #dc2626; color: white; font-size: 10px; font-weight: bold; padding: 1px 5px; border-radius: 10px; min-width: 16px; text-align: center; line-height: 1.2; box-shadow: 0 2px 4px rgba(0,0,0,0.2);";
 
-    // Pastikan tombol lonceng memiliki posisi relative agar badge menempel dengan pas
     if (getComputedStyle(btn).position === "static") {
       btn.style.position = "relative";
     }
     btn.appendChild(badge);
   }
 
-  // Tampilkan angka count jika ada notif baru, sembunyikan jika sudah dibaca semua
   if (unreadCount > 0) {
     badge.textContent = unreadCount > 99 ? "99+" : unreadCount;
     badge.style.display = "inline-block";
@@ -534,13 +527,10 @@ function stopNotifPolling() {
   }
 }
 
-// ============================================================
-// UPDATE WARGA — FEED SOSIAL (BATAS 5, HAPUS POST, HAPUS KOMENTAR)
-// ============================================================
 let unsubscribePostsListener = null;
 let latestPostsSnapshotDocs = [];
 let feedTimeRefreshInterval = null;
-let visiblePostsCount = 5; // Batasan 5 postingan awal
+let visiblePostsCount = 5;
 
 function escapeHtml(str) {
   return String(str || "")
@@ -968,7 +958,6 @@ function applyRoleUI(role) {
   const adminQuickBtn = $("#adminQuickBtn");
   if (adminQuickBtn)
     adminQuickBtn.style.display = role === "admin" ? "flex" : "none";
-  // [FIX 6] Kartu pencatatan pengeluaran hanya untuk petugas RT.
   const expenseAdminBtn = $("#expenseAdminBtn");
   if (expenseAdminBtn)
     expenseAdminBtn.style.display = role === "admin" ? "flex" : "none";
@@ -1124,9 +1113,6 @@ async function confirmAdminPayment(item, btnEl, closeDetail) {
   }
 }
 
-// ============================================================
-// [FIX 6] PENCATATAN PENGELUARAN KAS (ROLE ADMIN)
-// ============================================================
 let currentExpenses = [];
 
 function renderExpenses() {
@@ -1217,9 +1203,6 @@ function logoutToLoginView() {
   }
 }
 
-// ============================================================
-// [FIX 1] DETAIL ARTIKEL "BACA SELENGKAPNYA" DI INFO WARGA
-// ============================================================
 function showInfoArticle(id) {
   const article = articlesData[id];
   if (!article) return;
@@ -1268,9 +1251,6 @@ function backToInfoList() {
   });
 }
 
-// ============================================================
-// [FIX 2] TANGGUNGAN / ANGGOTA SERUMAH
-// ============================================================
 function buildTanggunganCard(data) {
   const t = data || {};
   const card = document.createElement("div");
@@ -1521,7 +1501,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // [FIX 4 & 7] LONCENG NOTIFIKASI — ISI DINAMIS DARI SERVER
   const notificationBtn = $("#notificationBtn");
   const notificationDialog = $("#notificationDialog");
 
@@ -1533,7 +1512,6 @@ document.addEventListener("DOMContentLoaded", () => {
         box.innerHTML = `<div class="empty-state-box">Memuat notifikasi...</div>`;
       }
       await loadNotifications();
-      // Tandai semua sebagai sudah dibaca setelah dibuka.
       localStorage.setItem(NOTIF_SEEN_KEY, String(Date.now()));
       updateNotifBadge();
     });
@@ -1553,7 +1531,6 @@ document.addEventListener("DOMContentLoaded", () => {
     adminRefreshBtn.addEventListener("click", () => loadAdminPending());
   }
 
-  // [FIX 6] PANEL PENGELUARAN KAS
   const expenseAdminBtn = $("#expenseAdminBtn");
   const expenseDialog = $("#expenseDialog");
   const expenseForm = $("#expenseForm");
@@ -1895,9 +1872,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const currentUnit =
         localStorage.getItem("pondok_rajeg_user") || "Unknown";
 
-      // [FIX 2] Kumpulkan tanggungan + gender kepala keluarga.
-      // headGender dibaca langsung dari elemen karena select-nya bisa
-      // dalam kondisi disabled (FormData mengabaikan field disabled).
       const tanggungan = collectTanggungan();
       const headGender = headGenderSelect
         ? headGenderSelect.value
@@ -1960,7 +1934,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // [FIX 1] Klik kartu pengumuman => tampilkan detail artikel.
   const announcementsPaneEl = $("#infoAnnouncementsContent");
   if (announcementsPaneEl) {
     announcementsPaneEl.addEventListener("click", (e) => {
@@ -2035,7 +2008,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // [FIX 4] TOMBOL PANIK — KIRIM SINYAL DARURAT KE SELURUH WARGA
   const panicButton = $("#panicButton");
   const panicDialog = $("#panicDialog");
   const panicForm = $("#panicForm");
@@ -2080,7 +2052,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // POSTINGAN WARGA
   const postComposerDialog = $("#postComposerDialog");
   const postComposerForm = $("#postComposerForm");
   const openPostComposerBtn = $("#openPostComposerBtn");
@@ -2149,11 +2120,10 @@ document.addEventListener("DOMContentLoaded", () => {
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
 
-        visiblePostsCount = 5; // Reset tampilan ke 5 teratas
+        visiblePostsCount = 5;
         postComposerDialog?.close();
         showToast("Postingan berhasil dibagikan.");
 
-        // [FIX 5] Kirim push notification ke seluruh warga (kecuali pengirim).
         try {
           await sendToBackend("notifyPost", {
             unit,
@@ -2229,7 +2199,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       $("#iplDialog")?.close();
 
-      // Tampilkan modal loading dengan teks kustom Anda + efek tech scanner
       if (loadingModal) {
         loadingModal.innerHTML = `
         <div class="cyber-modal-card" style="margin: 0 auto; width: 100%;">
@@ -2340,6 +2309,9 @@ function renderComplaints() {
     .join("");
 }
 
+// ============================================================
+// PWA INSTALL BANNER LOGIC (DUAL-SUPPORT: ANDROID & IOS)
+// ============================================================
 let deferredPrompt;
 const pwaBanner = $("#pwaInstallBanner");
 const pwaInstallBtn = $("#pwaInstallBtn");
@@ -2350,21 +2322,41 @@ const isInStandaloneMode = () =>
   window.navigator.standalone === true;
 
 if (!isInStandaloneMode()) {
-  window.addEventListener("beforeinstallprompt", (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    if (pwaBanner) {
-      setTimeout(() => {
+  const isIos = /iphone|ipad|ipod/.test(
+    window.navigator.userAgent.toLowerCase(),
+  );
+
+  if (isIos) {
+    setTimeout(() => {
+      if (pwaBanner) {
+        const bannerSmall = pwaBanner.querySelector(".pwa-banner-text small");
+        if (bannerSmall) {
+          bannerSmall.innerHTML =
+            "Ketuk ikon <b>Bagikan (Share)</b> ➔ Pilih <b>Add to Home Screen</b>.";
+        }
+        if (pwaInstallBtn) pwaInstallBtn.style.display = "none";
         pwaBanner.style.display = "flex";
-      }, 2000);
-    }
-  });
+      }
+    }, 2500);
+  } else {
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (pwaBanner) {
+        setTimeout(() => {
+          pwaBanner.style.display = "flex";
+        }, 2000);
+      }
+    });
+  }
 }
 
 if (pwaInstallBtn) {
   pwaInstallBtn.addEventListener("click", async () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`PWA install outcome: ${outcome}`);
       deferredPrompt = null;
       if (pwaBanner) pwaBanner.style.display = "none";
     }
@@ -2376,6 +2368,11 @@ if (pwaCloseBanner) {
     if (pwaBanner) pwaBanner.style.display = "none";
   });
 }
+
+window.addEventListener("appinstalled", () => {
+  if (pwaBanner) pwaBanner.style.display = "none";
+  console.log("PWA berhasil diinstal.");
+});
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
