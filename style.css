@@ -1238,9 +1238,9 @@ body {
   margin-top: 1px;
 }
 
-/* ==========================================================
-   STYLE BANNER INSTALASI PWA (ADD TO HOME SCREEN)
-   ========================================================== */
+/* ========================================================== */
+/* STYLE BANNER INSTALASI PWA (ADD TO HOME SCREEN)            */
+/* ========================================================== */
 .pwa-install-banner {
   position: fixed;
   bottom: 24px;
@@ -1916,9 +1916,7 @@ textarea:focus {
   }
 }
 
-/* ========================================================== */
-/* PERBAIKAN: Presisi input date khusus Safari/iOS            */
-/* ========================================================== */
+/* Presisi input date khusus Safari/iOS */
 input[type="date"] {
   -webkit-appearance: none;
   appearance: none;
@@ -2295,6 +2293,9 @@ input[type="file"]::file-selector-button {
 }
 
 dialog#aiLoadingModal {
+  position: fixed;
+  inset: 0;
+  margin: auto;
   padding: 0;
   border: none;
   background: transparent;
