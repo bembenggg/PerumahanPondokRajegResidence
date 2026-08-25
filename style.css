@@ -2005,4 +2005,256 @@ input[type="file"]::file-selector-button {
     height: 64px;
     z-index: 999;
   }
+
+  /* =========================================================================
+   PATCH style.css — MY PRR
+   Tempel SELURUH isi file ini di BAGIAN PALING BAWAH style.css Anda,
+   setelah blok @media (min-width: 1024px) { ... } yang terakhir.
+   ========================================================================= */
+
+  /* -------------------------------------------------------------------------
+   [FIX 3] INPUT TANGGAL LAHIR — PRESISI DI MOBILE
+   Safari/iOS merender <input type="date"> dengan tinggi & baseline sendiri
+   sehingga terlihat lebih pendek dan teksnya menggantung dibanding input
+   lain. Blok ini menyamakan tinggi, padding, dan perataan teksnya.
+   ------------------------------------------------------------------------- */
+  input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-height: 46px;
+    height: 46px;
+    line-height: 1.2;
+    font-family: inherit;
+    font-size: 14px;
+    padding: 0 14px;
+    text-align: left;
+    background-color: #fff;
+    color: var(--ink);
+  }
+  input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+    margin: 0;
+    min-height: 20px;
+  }
+  input[type="date"]::-webkit-datetime-edit {
+    padding: 0;
+    line-height: 1.2;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    opacity: 0.55;
+    margin-left: 4px;
+    padding: 4px;
+    cursor: pointer;
+  }
+  /* Placeholder abu-abu saat tanggal belum diisi */
+  input[type="date"]:invalid,
+  input[type="date"]:not(:valid) {
+    color: var(--muted);
+  }
+  input[type="date"]:focus {
+    color: var(--ink);
+  }
+
+  /* Samakan tinggi select & input teks dengan input tanggal agar sebaris rapi */
+  select,
+  input:not([type="file"]):not([type="checkbox"]) {
+    min-height: 46px;
+  }
+
+  /* Cegah kolom kembar (NIK + Tanggal Lahir) meluber di layar sempit */
+  .form-row > label {
+    min-width: 0;
+    margin-top: 0;
+  }
+  .form-row > label > input,
+  .form-row > label > select {
+    max-width: 100%;
+  }
+
+  /* -------------------------------------------------------------------------
+   [FIX 2] KARTU TANGGUNGAN
+   ------------------------------------------------------------------------- */
+  .tanggungan-item-card .form-row {
+    gap: 8px;
+  }
+  .tanggungan-item-card label {
+    font-size: 10.5px;
+  }
+
+  /* -------------------------------------------------------------------------
+   [FIX 4 & 7] PUSAT NOTIFIKASI
+   ------------------------------------------------------------------------- */
+  .notification-item-card {
+    position: relative;
+  }
+  .notification-item-card.notif-new {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+  }
+  .notification-item-card.notif-new::after {
+    content: "Baru";
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    font-size: 8.5px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: #fff;
+    background: var(--green);
+    padding: 2px 7px;
+    border-radius: 8px;
+  }
+  .notification-item-card .notif-time {
+    display: block;
+    margin-top: 6px;
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--muted);
+  }
+
+  /* -------------------------------------------------------------------------
+   [FIX 6] PANEL PENGELUARAN KAS (PETUGAS RT)
+   ------------------------------------------------------------------------- */
+  .quick-icon.cashout {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+
+  .expense-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--soft);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    text-align: left;
+  }
+  .expense-row-main {
+    flex: 1;
+    min-width: 0;
+  }
+  .expense-row-main b {
+    display: block;
+    font-size: 12.5px;
+    color: var(--dark);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .expense-row-main small {
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .expense-row-side {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .expense-row-side span {
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .expense-delete-btn {
+    border: 0;
+    background: #fef2f2;
+    color: #dc2626;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .expense-delete-btn .material-symbols-rounded {
+    font-size: 15px;
+  }
+
+  /* -------------------------------------------------------------------------
+   KARTU VERIFIKASI TUNAI (tampilan sebelumnya belum punya style)
+   ------------------------------------------------------------------------- */
+  .pending-card {
+    background: var(--soft);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 10px;
+    text-align: left;
+  }
+  .pending-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .pending-card-header b {
+    display: block;
+    font-size: 12.5px;
+    color: var(--dark);
+  }
+  .pending-card-header small {
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .pending-amount {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--green);
+    white-space: nowrap;
+  }
+  .pending-meta {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .pending-meta span {
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .pending-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .pending-actions .primary-button {
+    margin-top: 0;
+    padding: 10px;
+    font-size: 12px;
+    border-radius: 12px;
+  }
+  .btn-reject {
+    background: #dc2626 !important;
+  }
+  .admin-detail-meta {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .admin-detail-meta div {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 700;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 6px;
+  }
+  .admin-detail-meta span {
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .admin-proof-preview iframe {
+    width: 100%;
+    height: 300px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
 }

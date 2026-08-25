@@ -2,6 +2,7 @@ const DEFAULT_BILL = 120000;
 const COMPLAINT_KEY = "pondok-rajeg-complaints";
 const PROFILE_KEY = "pondok-rajeg-profile-data";
 const ROLE_KEY = "pondok_rajeg_role";
+const NOTIF_SEEN_KEY = "pondok_rajeg_notif_seen";
 const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbxkooeosCRLUrNxw18RZF9Epzn4_gfjj6YhOD71wqLOJUBQ9Oq2t7AZvc6RicDTMhjXKg/exec";
 
@@ -48,6 +49,9 @@ messaging.onMessage((payload) => {
       tag: tag,
     });
   }
+
+  // Segarkan daftar lonceng begitu ada pesan masuk.
+  loadNotifications();
 });
 
 async function requestNotificationPermission() {
@@ -67,6 +71,10 @@ async function requestNotificationPermission() {
         const unit = localStorage.getItem("pondok_rajeg_user") || "Tamu";
         await sendToBackend("saveFCMToken", { unit, token });
       }
+    } else {
+      showToast(
+        "Izin notifikasi belum aktif. Aktifkan agar bisa menerima sinyal darurat warga.",
+      );
     }
   } catch (error) {
     console.error("Gagal mendapatkan token notifikasi:", error);
@@ -82,7 +90,7 @@ const articlesData = {
       <p>Surat Tagihan Pajak PBB (SPT PBB) tahun 2025 untuk seluruh warga MY PRR kini sudah didistribusikan oleh pengurus dan dapat diambil secara mandiri di pos penjemputan masing-masing wilayah blok.</p>
       <p>Berikut adalah rincian lokasi penjemputan dokumen berdasarkan blok rumah Anda:</p>
       <ul class="pbb-location-list" style="margin-bottom: 12px;">
-        <li><strong>Blok A & B:</strong> Rumah Bpk. Akhmad Tika (B9/6)</li>
+        <li><strong>Blok A &amp; B:</strong> Rumah Bpk. Akhmad Tika (B9/6)</li>
         <li><strong>Blok C:</strong> Rumah Bpk. Juhaeri (C8/15)</li>
       </ul>
       <p>Mohon membawa kartu identitas diri atau bukti pembayaran IPL terakhir saat mengambil dokumen guna kelancaran pendataan warga.</p>
@@ -94,7 +102,7 @@ const articlesData = {
     image: "https://i.ibb.co.com/b5VjvFGK/LOGO-PRR.jpg",
     content: `
       <p>Dalam rangka menjaga kebersihan lingkungan, keasrian kawasan, serta mengantisipasi saluran air menghadapi musim penghujan, pengurus RT bersama warga akan mengadakan kegiatan <strong>Kerja Bakti Lingkungan Serentak</strong>.</p>
-      <p><strong>Waktu & Tempat Pelaksanaan:</strong><br>
+      <p><strong>Waktu &amp; Tempat Pelaksanaan:</strong><br>
       📅 Minggu, 23 Agustus 2026<br>
       ⏰ Pukul 07.00 WIB s.d Selesai<br>
       📍 Titik Kumpul: Pos Keamanan Utama Kawasan Perumahan</p>
@@ -357,6 +365,91 @@ function renderMonthlyHistory(history) {
     </div>`;
     })
     .join("");
+}
+
+// ============================================================
+// [FIX 4 & 5 & 7] PUSAT NOTIFIKASI (LONCENG) — SUMBER: SHEET "Notifications"
+// ============================================================
+let notificationCache = [];
+let notifPollInterval = null;
+
+function notifIconFor(type) {
+  switch (String(type || "").toLowerCase()) {
+    case "panic":
+      return "🚨";
+    case "post":
+      return "📝";
+    case "trash":
+      return "🚛";
+    case "expense":
+      return "💸";
+    case "payment":
+      return "💳";
+    case "complaint":
+      return "📣";
+    default:
+      return "📢";
+  }
+}
+
+function renderNotificationList() {
+  const box = $("#notificationListContent");
+  if (!box) return;
+
+  if (!notificationCache.length) {
+    box.innerHTML = `<div class="empty-state-box">Belum ada notifikasi. Pengumuman pengurus dan sinyal darurat warga akan muncul di sini.</div>`;
+    return;
+  }
+
+  const lastSeen = Number(localStorage.getItem(NOTIF_SEEN_KEY) || 0);
+  box.innerHTML = notificationCache
+    .map((n) => {
+      const isNew = Number(n.millis || 0) > lastSeen;
+      return `
+      <div class="notification-item-card${isNew ? " notif-new" : ""}">
+        <b>${notifIconFor(n.type)} ${escapeHtml(n.title)}</b>
+        <p>${escapeHtml(n.body)}</p>
+        <span class="notif-time">${escapeHtml(n.date || "")}</span>
+      </div>`;
+    })
+    .join("");
+}
+
+function updateNotifBadge() {
+  const btn = $("#notificationBtn");
+  if (!btn) return;
+  const dot = btn.querySelector("i");
+  if (!dot) return;
+  const lastSeen = Number(localStorage.getItem(NOTIF_SEEN_KEY) || 0);
+  const hasNew = notificationCache.some(
+    (n) => Number(n.millis || 0) > lastSeen,
+  );
+  dot.style.display = hasNew ? "block" : "none";
+}
+
+async function loadNotifications() {
+  const unit = localStorage.getItem("pondok_rajeg_user") || "";
+  if (!unit) return;
+  try {
+    const result = await sendToBackend("getNotifications", { unit });
+    notificationCache = (result && result.notifications) || [];
+  } catch (err) {
+    console.error("Gagal memuat notifikasi:", err);
+  }
+  renderNotificationList();
+  updateNotifBadge();
+}
+
+function startNotifPolling() {
+  if (notifPollInterval) return;
+  notifPollInterval = setInterval(loadNotifications, 120000);
+}
+
+function stopNotifPolling() {
+  if (notifPollInterval) {
+    clearInterval(notifPollInterval);
+    notifPollInterval = null;
+  }
 }
 
 // ============================================================
@@ -793,6 +886,10 @@ function applyRoleUI(role) {
   const adminQuickBtn = $("#adminQuickBtn");
   if (adminQuickBtn)
     adminQuickBtn.style.display = role === "admin" ? "flex" : "none";
+  // [FIX 6] Kartu pencatatan pengeluaran hanya untuk petugas RT.
+  const expenseAdminBtn = $("#expenseAdminBtn");
+  if (expenseAdminBtn)
+    expenseAdminBtn.style.display = role === "admin" ? "flex" : "none";
 }
 
 async function loadAdminPending() {
@@ -945,12 +1042,86 @@ async function confirmAdminPayment(item, btnEl, closeDetail) {
   }
 }
 
+// ============================================================
+// [FIX 6] PENCATATAN PENGELUARAN KAS (ROLE ADMIN)
+// ============================================================
+let currentExpenses = [];
+
+function renderExpenses() {
+  const listEl = $("#expenseList");
+  if (!listEl) return;
+
+  if (!currentExpenses.length) {
+    listEl.innerHTML = `<div class="empty-state-box">Belum ada pengeluaran tercatat. Setiap kas keluar yang dicatat di sini langsung masuk ke laporan keuangan warga.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = currentExpenses
+    .map(
+      (e, idx) => `
+    <div class="expense-row">
+      <div class="expense-row-main">
+        <b>${escapeHtml(e.description || "-")}</b>
+        <small>${escapeHtml(e.category || "Lainnya")} • ${escapeHtml(e.date || "-")}</small>
+      </div>
+      <div class="expense-row-side">
+        <span class="text-danger">${rupiah(e.amount)}</span>
+        <button type="button" class="expense-delete-btn" data-expense-delete="${idx}" title="Hapus pengeluaran">
+          <span class="material-symbols-rounded">delete</span>
+        </button>
+      </div>
+    </div>`,
+    )
+    .join("");
+
+  listEl.querySelectorAll("[data-expense-delete]").forEach((btn) => {
+    btn.addEventListener("click", () =>
+      deleteExpense(currentExpenses[Number(btn.dataset.expenseDelete)]),
+    );
+  });
+}
+
+async function loadExpenses() {
+  const adminUnit = localStorage.getItem("pondok_rajeg_user");
+  const listEl = $("#expenseList");
+  if (!adminUnit || !listEl) return;
+  listEl.innerHTML = `<div class="empty-state-box">Memuat riwayat pengeluaran...</div>`;
+  try {
+    const result = await sendToBackend("adminListExpenses", { adminUnit });
+    currentExpenses = (result && result.expenses) || [];
+    renderExpenses();
+  } catch (err) {
+    listEl.innerHTML = `<div class="empty-state-box">Gagal memuat: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+async function deleteExpense(item) {
+  if (!item) return;
+  if (!confirm(`Hapus pengeluaran "${item.description}"?`)) return;
+  const adminUnit = localStorage.getItem("pondok_rajeg_user");
+  try {
+    const result = await sendToBackend("adminDeleteExpense", {
+      adminUnit,
+      rowIndex: item.rowIndex,
+      description: item.description,
+    });
+    showToast(result.message);
+    loadExpenses();
+    const unit = localStorage.getItem("pondok_rajeg_user");
+    if (unit) refreshDashboard(unit).catch(() => {});
+  } catch (err) {
+    showToast(`Gagal: ${err.message}`);
+  }
+}
+
 function logoutToLoginView() {
   localStorage.removeItem("pondok_rajeg_user");
   localStorage.removeItem("pondok_rajeg_name");
   localStorage.removeItem(PROFILE_KEY);
   localStorage.removeItem(ROLE_KEY);
   detachPostsListener();
+  stopNotifPolling();
+  notificationCache = [];
 
   const mainApp = $("#mainApp");
   const loginView = $("#loginView");
@@ -962,6 +1133,153 @@ function logoutToLoginView() {
     loginView.style.display = "flex";
     loginView.style.opacity = "1";
   }
+}
+
+// ============================================================
+// [FIX 1] DETAIL ARTIKEL "BACA SELENGKAPNYA" DI INFO WARGA
+// ============================================================
+function showInfoArticle(id) {
+  const article = articlesData[id];
+  if (!article) return;
+
+  const tabs = $("#infoMainTabs");
+  const listPane = $("#infoAnnouncementsContent");
+  const adartPane = $("#infoAdartContent");
+  const detailPane = $("#infoArticleDetailContent");
+  const bodyEl = $("#articleDetailBody");
+  const titleEl = $("#infoModalTitle");
+  const eyebrowEl = $("#infoModalEyebrow");
+
+  if (bodyEl) {
+    bodyEl.innerHTML = `
+      <img class="article-detail-image" src="${article.image}" alt="${escapeHtml(article.title)}" />
+      <h3 style="font-size:16px; margin:0 0 4px; color:var(--dark);">${escapeHtml(article.title)}</h3>
+      <div class="article-detail-meta">📅 Diterbitkan ${escapeHtml(article.date)}</div>
+      <div class="article-detail-body-text">${article.content}</div>`;
+  }
+
+  if (tabs) tabs.style.display = "none";
+  if (listPane) listPane.style.display = "none";
+  if (adartPane) adartPane.style.display = "none";
+  if (detailPane) detailPane.style.display = "block";
+  if (eyebrowEl) eyebrowEl.textContent = "DETAIL PENGUMUMAN";
+  if (titleEl) titleEl.textContent = article.title;
+}
+
+function backToInfoList() {
+  const tabs = $("#infoMainTabs");
+  const listPane = $("#infoAnnouncementsContent");
+  const adartPane = $("#infoAdartContent");
+  const detailPane = $("#infoArticleDetailContent");
+  const titleEl = $("#infoModalTitle");
+  const eyebrowEl = $("#infoModalEyebrow");
+
+  if (detailPane) detailPane.style.display = "none";
+  if (tabs) tabs.style.display = "flex";
+  if (adartPane) adartPane.style.display = "none";
+  if (listPane) listPane.style.display = "block";
+  if (eyebrowEl) eyebrowEl.textContent = "PUSAT INFORMASI & DOKUMEN";
+  if (titleEl) titleEl.textContent = "Info Warga & Dokumen RT";
+
+  document.querySelectorAll("[data-infotab]").forEach((b) => {
+    b.classList.toggle("active", b.dataset.infotab === "announcements");
+  });
+}
+
+// ============================================================
+// [FIX 2] TANGGUNGAN / ANGGOTA SERUMAH
+// ============================================================
+function buildTanggunganCard(data) {
+  const t = data || {};
+  const card = document.createElement("div");
+  card.className = "tanggungan-item-card";
+  card.innerHTML = `
+    <div class="tanggungan-row-top">
+      <b style="font-size: 11px; color: var(--green);">${t.name ? escapeHtml(t.name) : "Anggota Baru"}</b>
+      <button type="button" class="remove-tanggungan-btn" title="Hapus anggota">
+        <span class="material-symbols-rounded">delete</span>
+      </button>
+    </div>
+    <label style="margin:4px 0 2px;">Nama Lengkap
+      <input type="text" name="tanggunganName" placeholder="Nama Anggota" value="${escapeHtml(t.name || "")}" required />
+    </label>
+    <div class="form-row" style="margin-top:4px;">
+      <label style="margin:4px 0 2px;">NIK KTP (16 Digit)
+        <input type="text" name="tanggunganNik" placeholder="NIK KTP" maxlength="16" value="${escapeHtml(t.nik || "")}" required />
+      </label>
+      <label style="margin:4px 0 2px;">Tanggal Lahir
+        <input type="date" name="tanggunganDob" value="${escapeHtml(t.dob || "")}" required />
+      </label>
+    </div>
+    <div class="form-row" style="margin-top:4px;">
+      <label style="margin:4px 0 2px;">Gender
+        <select name="tanggunganGender" required>
+          <option value="Laki-laki">Laki-laki</option>
+          <option value="Perempuan">Perempuan</option>
+        </select>
+      </label>
+      <label style="margin:4px 0 2px;">Relasi
+        <select name="tanggunganRelation" required>
+          <option value="Anak">Anak</option>
+          <option value="Orang Tua">Orang Tua</option>
+          <option value="Lainnya">Lainnya</option>
+        </select>
+      </label>
+    </div>
+  `;
+
+  if (t.gender) {
+    const genderSelect = card.querySelector("[name='tanggunganGender']");
+    if (genderSelect) genderSelect.value = t.gender;
+  }
+  if (t.relation) {
+    const relationSelect = card.querySelector("[name='tanggunganRelation']");
+    if (relationSelect) relationSelect.value = t.relation;
+  }
+
+  const nameInput = card.querySelector("[name='tanggunganName']");
+  const label = card.querySelector(".tanggungan-row-top b");
+  if (nameInput && label) {
+    nameInput.addEventListener("input", () => {
+      label.textContent = nameInput.value.trim() || "Anggota Baru";
+    });
+  }
+
+  card.querySelector(".remove-tanggungan-btn").addEventListener("click", () => {
+    const container = $("#tanggunganContainer");
+    card.remove();
+    if (container && container.children.length === 0) {
+      container.innerHTML = `<small style="color: var(--muted);">Belum ada tanggungan / anggota serumah yang ditambahkan.</small>`;
+    }
+  });
+
+  return card;
+}
+
+function renderTanggunganInputs(tanggunganList) {
+  const container = $("#tanggunganContainer");
+  if (!container) return;
+  container.innerHTML = "";
+  const list = Array.isArray(tanggunganList) ? tanggunganList : [];
+  if (!list.length) {
+    container.innerHTML = `<small style="color: var(--muted);">Belum ada tanggungan / anggota serumah yang ditambahkan.</small>`;
+    return;
+  }
+  list.forEach((t) => container.appendChild(buildTanggunganCard(t)));
+}
+
+function collectTanggungan() {
+  return Array.from(
+    document.querySelectorAll("#tanggunganContainer .tanggungan-item-card"),
+  )
+    .map((card) => ({
+      name: (card.querySelector("[name='tanggunganName']")?.value || "").trim(),
+      nik: (card.querySelector("[name='tanggunganNik']")?.value || "").trim(),
+      dob: card.querySelector("[name='tanggunganDob']")?.value || "",
+      gender: card.querySelector("[name='tanggunganGender']")?.value || "",
+      relation: card.querySelector("[name='tanggunganRelation']")?.value || "",
+    }))
+    .filter((t) => t.name);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -1002,6 +1320,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
 
+  const bootSession = (unit, role) => {
+    applyRoleUI(role);
+    safeRefreshDashboard(unit);
+    attachPostsListener();
+    requestNotificationPermission();
+    loadNotifications();
+    startNotifPolling();
+  };
+
   setTimeout(() => {
     if (splash) {
       splash.style.opacity = "0";
@@ -1013,10 +1340,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (savedUser) {
           if (mainApp) mainApp.style.display = "flex";
           refreshWelcomeHeader();
-          applyRoleUI(savedRole);
-          safeRefreshDashboard(savedUser);
-          attachPostsListener();
-          requestNotificationPermission();
+          bootSession(savedUser, savedRole);
         } else {
           if (loginView) loginView.style.display = "flex";
         }
@@ -1097,10 +1421,7 @@ document.addEventListener("DOMContentLoaded", () => {
             mainApp.style.display = "flex";
             mainApp.style.opacity = "1";
           }
-          applyRoleUI(role);
-          safeRefreshDashboard(unit);
-          attachPostsListener();
-          requestNotificationPermission();
+          bootSession(unit, role);
         }, 200);
       }
     });
@@ -1118,33 +1439,21 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // FITUR TOMBOL LONCENG NOTIFIKASI
+  // [FIX 4 & 7] LONCENG NOTIFIKASI — ISI DINAMIS DARI SERVER
   const notificationBtn = $("#notificationBtn");
   const notificationDialog = $("#notificationDialog");
-  const notificationListContent = $("#notificationListContent");
 
   if (notificationBtn && notificationDialog) {
-    notificationBtn.addEventListener("click", () => {
-      const badgeDot = notificationBtn.querySelector("i");
-      if (badgeDot) badgeDot.style.display = "none";
-
-      if (notificationListContent) {
-        notificationListContent.innerHTML = `
-          <div class="notification-item-card">
-            <b>📢 Pengambilan STP PBB 2025</b>
-            <p>Dokumen pajak warga sudah dapat diambil di pos penjemputan blok masing-masing.</p>
-          </div>
-          <div class="notification-item-card">
-            <b>🧹 Kerja Bakti Lingkungan</b>
-            <p>Minggu, 23 Agustus 2026 pukul 07.00 WIB di Pos Keamanan Utama.</p>
-          </div>
-          <div class="notification-item-card">
-            <b>💡 Transparansi Kas MY PRR</b>
-            <p>Laporan keuangan bulan berjalan dapat dicek secara transparan melalui menu Detail Keuangan.</p>
-          </div>
-        `;
-      }
+    notificationBtn.addEventListener("click", async () => {
       notificationDialog.showModal();
+      const box = $("#notificationListContent");
+      if (box && !notificationCache.length) {
+        box.innerHTML = `<div class="empty-state-box">Memuat notifikasi...</div>`;
+      }
+      await loadNotifications();
+      // Tandai semua sebagai sudah dibaca setelah dibuka.
+      localStorage.setItem(NOTIF_SEEN_KEY, String(Date.now()));
+      updateNotifBadge();
     });
   }
 
@@ -1160,6 +1469,64 @@ document.addEventListener("DOMContentLoaded", () => {
   const adminRefreshBtn = $("#adminRefreshBtn");
   if (adminRefreshBtn) {
     adminRefreshBtn.addEventListener("click", () => loadAdminPending());
+  }
+
+  // [FIX 6] PANEL PENGELUARAN KAS
+  const expenseAdminBtn = $("#expenseAdminBtn");
+  const expenseDialog = $("#expenseDialog");
+  const expenseForm = $("#expenseForm");
+  const expenseRefreshBtn = $("#expenseRefreshBtn");
+  const expenseCloseBtn = $("#expenseCloseBtn");
+
+  if (expenseAdminBtn && expenseDialog) {
+    expenseAdminBtn.addEventListener("click", () => {
+      const dateField = expenseForm?.querySelector("[name='expenseDate']");
+      if (dateField && !dateField.value) {
+        dateField.value = new Date().toISOString().slice(0, 10);
+      }
+      expenseDialog.showModal();
+      loadExpenses();
+    });
+  }
+  if (expenseRefreshBtn) {
+    expenseRefreshBtn.addEventListener("click", () => loadExpenses());
+  }
+  if (expenseCloseBtn && expenseDialog) {
+    expenseCloseBtn.addEventListener("click", () => expenseDialog.close());
+  }
+
+  if (expenseForm) {
+    expenseForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(expenseForm));
+      const adminUnit = localStorage.getItem("pondok_rajeg_user");
+      const submitBtn = $("#expenseSubmitBtn");
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = "Menyimpan...";
+
+      try {
+        const result = await sendToBackend("adminAddExpense", {
+          adminUnit,
+          date: data.expenseDate,
+          description: data.expenseDescription,
+          category: data.expenseCategory,
+          amount: Number(data.expenseAmount) || 0,
+        });
+        showToast(result.message);
+        expenseForm.reset();
+        const dateField = expenseForm.querySelector("[name='expenseDate']");
+        if (dateField) dateField.value = new Date().toISOString().slice(0, 10);
+        loadExpenses();
+        safeRefreshDashboard(adminUnit);
+        loadNotifications();
+      } catch (err) {
+        showToast(`Gagal: ${err.message}`);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
+    });
   }
 
   const rejectReasonForm = $("#rejectReasonForm");
@@ -1409,52 +1776,10 @@ document.addEventListener("DOMContentLoaded", () => {
   if (addTanggunganBtn) {
     addTanggunganBtn.addEventListener("click", () => {
       const container = $("#tanggunganContainer");
+      if (!container) return;
       if (container.querySelector("small")) container.innerHTML = "";
-      const card = document.createElement("div");
-      card.className = "tanggungan-item-card";
-      card.innerHTML = `
-        <div class="tanggungan-row-top">
-          <b style="font-size: 11px; color: var(--green);">Anggota Baru</b>
-          <button type="button" class="remove-tanggungan-btn" title="Hapus anggota">
-            <span class="material-symbols-rounded">delete</span>
-          </button>
-        </div>
-        <label style="margin:4px 0 2px;">Nama Lengkap
-          <input type="text" name="tanggunganName" placeholder="Nama Anggota" required />
-        </label>
-        <div class="form-row" style="margin-top:4px;">
-          <label style="margin:4px 0 2px;">NIK KTP (16 Digit)
-            <input type="text" name="tanggunganNik" placeholder="NIK KTP" maxlength="16" required />
-          </label>
-          <label style="margin:4px 0 2px;">Tanggal Lahir
-            <input type="date" name="tanggunganDob" required />
-          </label>
-        </div>
-        <div class="form-row" style="margin-top:4px;">
-          <label style="margin:4px 0 2px;">Gender
-            <select name="tanggunganGender" required>
-              <option value="Laki-laki">Laki-laki</option>
-              <option value="Perempuan">Perempuan</option>
-            </select>
-          </label>
-          <label style="margin:4px 0 2px;">Relasi
-            <select name="tanggunganRelation" required>
-              <option value="Anak">Anak</option>
-              <option value="Orang Tua">Orang Tua</option>
-              <option value="Lainnya">Lainnya</option>
-            </select>
-          </label>
-        </div>
-      `;
-      card
-        .querySelector(".remove-tanggungan-btn")
-        .addEventListener("click", () => {
-          card.remove();
-          if (container.children.length === 0) {
-            container.innerHTML = `<small style="color: var(--muted);">Belum ada tanggungan / anggota serumah yang ditambahkan.</small>`;
-          }
-        });
-      container.appendChild(card);
+      container.appendChild(buildTanggunganCard({}));
+      container.scrollTop = container.scrollHeight;
     });
   }
 
@@ -1487,6 +1812,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const currentUnit =
         localStorage.getItem("pondok_rajeg_user") || "Unknown";
+
+      // [FIX 2] Kumpulkan tanggungan + gender kepala keluarga.
+      // headGender dibaca langsung dari elemen karena select-nya bisa
+      // dalam kondisi disabled (FormData mengabaikan field disabled).
+      const tanggungan = collectTanggungan();
+      const headGender = headGenderSelect
+        ? headGenderSelect.value
+        : formData.get("headGender") || "Laki-laki";
+
       const profileData = {
         unit: currentUnit,
         houseKK: formData.get("houseKK"),
@@ -1495,19 +1829,27 @@ document.addEventListener("DOMContentLoaded", () => {
         headName: formData.get("headName") || "",
         headNik: formData.get("headNik") || "",
         headDob: formData.get("headDob") || "",
+        headGender: headGender,
         headWhatsApp: formData.get("headWhatsApp") || "",
         wifeName: formData.get("wifeName") || "",
         wifeNik: formData.get("wifeNik") || "",
         wifeDob: formData.get("wifeDob") || "",
         wifeWhatsApp: formData.get("wifeWhatsApp") || "",
+        tanggungan: tanggungan,
         newPin,
       };
 
       try {
         await sendToBackend("profile", profileData);
-        localStorage.setItem(PROFILE_KEY, JSON.stringify(profileData));
+        const cacheCopy = Object.assign({}, profileData);
+        delete cacheCopy.newPin;
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(cacheCopy));
         profileDialog.close();
-        showToast("Profil berhasil diperbarui.");
+        showToast(
+          tanggungan.length
+            ? `Profil tersimpan beserta ${tanggungan.length} anggota serumah.`
+            : "Profil berhasil diperbarui.",
+        );
       } catch (error) {
         showToast(`Gagal menyimpan: ${error.message}`);
       } finally {
@@ -1529,19 +1871,39 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const infoBtn = $("#infoBtn");
   const infoDialog = $("#infoDialog");
-  if (infoBtn && infoDialog)
-    infoBtn.addEventListener("click", () => infoDialog.showModal());
+  if (infoBtn && infoDialog) {
+    infoBtn.addEventListener("click", () => {
+      backToInfoList();
+      infoDialog.showModal();
+    });
+  }
+
+  // [FIX 1] Klik kartu pengumuman => tampilkan detail artikel.
+  const announcementsPaneEl = $("#infoAnnouncementsContent");
+  if (announcementsPaneEl) {
+    announcementsPaneEl.addEventListener("click", (e) => {
+      const card = e.target.closest(".clickable-article");
+      if (!card) return;
+      showInfoArticle(card.dataset.id);
+    });
+  }
+
+  const backToInfoListBtn = $("#backToInfoListBtn");
+  if (backToInfoListBtn) {
+    backToInfoListBtn.addEventListener("click", backToInfoList);
+  }
 
   const infoTabBtns = document.querySelectorAll("[data-infotab]");
   infoTabBtns.forEach((btn) => {
     btn.addEventListener("click", (e) => {
       infoTabBtns.forEach((b) => b.classList.remove("active"));
-      e.target.classList.add("active");
-      const tabType = e.target.getAttribute("data-infotab");
-      const announcementsPane = document.getElementById(
-        "infoAnnouncementsContent",
-      );
-      const adartPane = document.getElementById("infoAdartContent");
+      const target = e.currentTarget;
+      target.classList.add("active");
+      const tabType = target.getAttribute("data-infotab");
+      const announcementsPane = $("#infoAnnouncementsContent");
+      const adartPane = $("#infoAdartContent");
+      const detailPane = $("#infoArticleDetailContent");
+      if (detailPane) detailPane.style.display = "none";
       if (tabType === "announcements") {
         if (announcementsPane) announcementsPane.style.display = "block";
         if (adartPane) adartPane.style.display = "none";
@@ -1563,7 +1925,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const complaintForm = $("#complaintForm");
   if (complaintForm) {
-    complaintForm.addEventListener("submit", (e) => {
+    complaintForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(e.currentTarget));
       const record = {
@@ -1582,14 +1944,57 @@ document.addEventListener("DOMContentLoaded", () => {
       e.currentTarget.reset();
       renderComplaints();
       showToast("Laporan pengaduan berhasil dikirim.");
+
+      try {
+        await sendToBackend("complaint", record);
+      } catch (err) {
+        console.error("Gagal mengirim pengaduan ke server:", err);
+      }
     });
   }
 
+  // [FIX 4] TOMBOL PANIK — KIRIM SINYAL DARURAT KE SELURUH WARGA
   const panicButton = $("#panicButton");
-  if (panicButton) {
-    panicButton.addEventListener("click", () => {
-      const panicDialog = $("#panicDialog");
-      if (panicDialog) panicDialog.showModal();
+  const panicDialog = $("#panicDialog");
+  const panicForm = $("#panicForm");
+
+  if (panicButton && panicDialog) {
+    panicButton.addEventListener("click", () => panicDialog.showModal());
+  }
+
+  if (panicForm) {
+    panicForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = new FormData(panicForm);
+      const type = formData.get("emergency") || "Darurat";
+      const unit = localStorage.getItem("pondok_rajeg_user") || "";
+      const name = localStorage.getItem("pondok_rajeg_name") || unit;
+
+      if (!unit) {
+        showToast("Sesi tidak dikenali. Silakan masuk ulang.");
+        return;
+      }
+
+      const submitBtn = panicForm.querySelector("button[type='submit']");
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = "Mengirim sinyal... ⏳";
+
+      try {
+        const result = await sendToBackend("broadcastPanic", {
+          unit,
+          name,
+          type,
+        });
+        panicDialog?.close();
+        showAppModal("Sinyal Darurat Terkirim", result.message, true);
+        loadNotifications();
+      } catch (err) {
+        showAppModal("Sinyal Gagal Terkirim", err.message, false);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
     });
   }
 
@@ -1665,6 +2070,19 @@ document.addEventListener("DOMContentLoaded", () => {
         visiblePostsCount = 5; // Reset tampilan ke 5 teratas
         postComposerDialog?.close();
         showToast("Postingan berhasil dibagikan.");
+
+        // [FIX 5] Kirim push notification ke seluruh warga (kecuali pengirim).
+        try {
+          await sendToBackend("notifyPost", {
+            unit,
+            name,
+            text,
+            hasPhoto: !!imageDataUrl,
+          });
+          loadNotifications();
+        } catch (notifErr) {
+          console.error("Gagal mengirim notifikasi postingan:", notifErr);
+        }
       } catch (err) {
         showToast(`Gagal posting: ${err.message}`);
       } finally {
@@ -1747,6 +2165,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (loadingModal) loadingModal.close();
         paymentForm.reset();
         safeRefreshDashboard(activeUnit);
+        loadNotifications();
         showAppModal("Berhasil!", result.message, true);
       } catch (error) {
         if (loadingModal) loadingModal.close();
@@ -1774,16 +2193,6 @@ function setupWhatsAppFormatter(inputEl) {
     }
     e.target.value = val;
   });
-}
-
-function renderTanggunganInputs(tanggunganList = []) {
-  const container = $("#tanggunganContainer");
-  if (!container) return;
-  container.innerHTML = "";
-  if (!Array.isArray(tanggunganList) || tanggunganList.length === 0) {
-    container.innerHTML = `<small style="color: var(--muted);">Belum ada tanggungan.</small>`;
-    return;
-  }
 }
 
 function renderComplaints() {

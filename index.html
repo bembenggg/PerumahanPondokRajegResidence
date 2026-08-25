@@ -30,7 +30,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <link rel="stylesheet" href="style.css?v=15.1" />
+    <link rel="stylesheet" href="style.css?v=16.0" />
     <title>MY PRR - Pondok Rajeg Residence</title>
   </head>
   <body>
@@ -50,7 +50,7 @@
       </div>
     </div>
 
-    <!-- 2. HALAMAN LOGIN WARGA / PETUGAS -->
+    <!-- 2. HALAMAN LOGIN -->
     <div id="loginView" class="auth-container">
       <div class="auth-split-box">
         <div class="auth-form-side">
@@ -174,7 +174,7 @@
       </header>
 
       <main class="main-content">
-        <!-- KOLOM KIRI (DIPERKUAT DENGAN FEED SOSIAL UTAMA) -->
+        <!-- KOLOM KIRI -->
         <div class="dashboard-left">
           <section class="hero">
             <p class="eyebrow" id="welcomeUser">Selamat datang, Warga</p>
@@ -324,6 +324,20 @@
                 <strong>Verifikasi Tunai</strong>
                 <small>Khusus Petugas RT</small>
               </button>
+
+              <button
+                class="quick-card"
+                id="expenseAdminBtn"
+                style="display: none"
+              >
+                <b class="quick-icon cashout"
+                  ><span class="material-symbols-rounded"
+                    >request_quote</span
+                  ></b
+                >
+                <strong>Catat Pengeluaran</strong>
+                <small>Kas keluar Paguyuban</small>
+              </button>
             </div>
 
             <div class="security-duty-card modern-security">
@@ -355,7 +369,7 @@
             </div>
           </section>
 
-          <!-- UPDATE WARGA (PINDAH KE KOLOM KIRI AGAR UTAMA) -->
+          <!-- UPDATE WARGA -->
           <section class="activity-section feed-section">
             <div class="section-heading">
               <h2>Update Warga</h2>
@@ -491,7 +505,7 @@
       </button>
     </div>
 
-    <!-- MODAL PUSAT NOTIFIKASI (LONCENG) -->
+    <!-- MODAL NOTIFIKASI -->
     <dialog id="notificationDialog" class="modal info-modal">
       <form method="dialog">
         <button class="close" value="cancel">×</button>
@@ -514,7 +528,7 @@
       </form>
     </dialog>
 
-    <!-- MODAL PROFIL UNIT WARGA -->
+    <!-- MODAL PROFIL UNIT -->
     <dialog id="profileDialog" class="modal profile-modal">
       <form id="profileForm" method="dialog">
         <button
@@ -807,35 +821,6 @@
               Panggil Ambulans WA
             </a>
           </article>
-
-          <article class="tukang-item">
-            <b>Klinik Pratama Sehat 24 Jam Pondok Rajeg</b>
-            <p>
-              Layanan dokter umum, IGD ringan, nebulizer, dan tebus resep obat.
-            </p>
-            <a
-              href="https://wa.me/6281122334455?text=Halo%20Klinik%20Sehat,%20saya%20warga%20MY%20PRR%20ingin%20konsultasi..."
-              target="_blank"
-              class="whatsapp-btn"
-            >
-              <span class="material-symbols-rounded">chat</span> Chat Klinik WA
-            </a>
-          </article>
-
-          <article class="tukang-item">
-            <b>Bidan Desa / KIA (Bidan Adinda Rizki Fitrianisa)</b>
-            <p>
-              Pemeriksaan kehamilan, imunisasi balita, KB, dan konsultasi
-              kesehatan keluarga.
-            </p>
-            <a
-              href="https://wa.me/6281366778899?text=Halo%20Bidan%20Adinda,%20saya%20warga%20MY%20PRR%20ingin%20konsultasi..."
-              target="_blank"
-              class="whatsapp-btn"
-            >
-              <span class="material-symbols-rounded">chat</span> Chat Bidan WA
-            </a>
-          </article>
         </div>
 
         <button class="primary-button" value="cancel" style="margin-top: 14px">
@@ -930,9 +915,6 @@
         <button class="close" value="cancel">×</button>
         <p class="eyebrow">PANEL PETUGAS RT</p>
         <h2>Verifikasi Pembayaran Tunai</h2>
-        <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px">
-          Daftar pembayaran IPL metode tunai yang menunggu konfirmasi manual.
-        </p>
         <div
           style="display: flex; justify-content: flex-end; margin-bottom: 8px"
         >
@@ -961,15 +943,8 @@
         </button>
         <p class="eyebrow">DETAIL PEMBAYARAN TUNAI</p>
         <h2 id="adminDetailTitle">Detail Pembayaran</h2>
-
         <div class="admin-detail-meta" id="adminDetailMeta"></div>
-
-        <div class="admin-proof-preview" id="adminProofPreview">
-          <div class="empty-state-box" style="border: 0">
-            Memuat pratinjau...
-          </div>
-        </div>
-
+        <div class="admin-proof-preview" id="adminProofPreview"></div>
         <div class="pending-actions" style="margin-top: 14px">
           <button
             type="button"
@@ -989,6 +964,87 @@
       </form>
     </dialog>
 
+    <dialog id="expenseDialog" class="modal">
+      <form id="expenseForm" method="dialog">
+        <button type="button" class="close" value="cancel" aria-label="Tutup">
+          ×
+        </button>
+        <p class="eyebrow">PANEL PETUGAS RT</p>
+        <h2>Catat Pengeluaran Kas</h2>
+        <p style="font-size: 12px; color: var(--muted); margin: 0 0 4px">
+          Setiap pengeluaran yang dicatat di sini langsung mengurangi saldo kas
+          bersih di dashboard seluruh warga.
+        </p>
+
+        <div class="form-row">
+          <label
+            >Tanggal Pengeluaran
+            <input type="date" name="expenseDate" required />
+          </label>
+          <label
+            >Kategori
+            <select name="expenseCategory" required>
+              <option value="Kebersihan">Kebersihan / Sampah</option>
+              <option value="Keamanan">Keamanan / Honor Satpam</option>
+              <option value="Listrik & Air">Listrik &amp; Air</option>
+              <option value="Perbaikan Fasilitas">Perbaikan Fasilitas</option>
+              <option value="Kegiatan Warga">Kegiatan Warga</option>
+              <option value="Lainnya">Lainnya</option>
+            </select>
+          </label>
+        </div>
+
+        <label
+          >Deskripsi Pengeluaran
+          <input
+            type="text"
+            name="expenseDescription"
+            placeholder="Contoh: Honor petugas kebersihan Agustus"
+            required
+          />
+        </label>
+
+        <label
+          >Nominal (Rp)
+          <input
+            type="number"
+            name="expenseAmount"
+            min="1"
+            step="1000"
+            inputmode="numeric"
+            placeholder="Contoh: 500000"
+            required
+          />
+        </label>
+
+        <button class="primary-button" type="submit" id="expenseSubmitBtn">
+          Simpan Pengeluaran <span>→</span>
+        </button>
+
+        <div class="section-heading" style="margin-top: 20px">
+          <h2 style="font-size: 14px">Riwayat Pengeluaran</h2>
+          <button type="button" id="expenseRefreshBtn" class="text-link-btn">
+            <span
+              class="material-symbols-rounded"
+              style="font-size: 14px; vertical-align: middle"
+              >refresh</span
+            >
+            Muat ulang
+          </button>
+        </div>
+        <div id="expenseList" style="max-height: 260px; overflow-y: auto"></div>
+
+        <button
+          class="secondary-button"
+          type="button"
+          id="expenseCloseBtn"
+          style="margin-top: 14px"
+        >
+          Tutup
+        </button>
+      </form>
+    </dialog>
+
     <dialog id="rejectReasonDialog" class="modal interactive-modal">
       <form id="rejectReasonForm" method="dialog">
         <button type="button" class="close" value="cancel" aria-label="Tutup">
@@ -1000,11 +1056,11 @@
         <p class="eyebrow" style="color: #dc2626">TOLAK PEMBAYARAN</p>
         <h2>Alasan penolakan</h2>
         <label style="text-align: left"
-          >Alasan (akan tersimpan di catatan)
+          >Alasan
           <textarea
             id="rejectReasonText"
             rows="3"
-            placeholder="Contoh: Foto kwitansi buram, nominal tidak sesuai, dsb."
+            placeholder="Contoh: Foto kwitansi buram"
             required
           ></textarea>
         </label>
@@ -1023,107 +1079,6 @@
         <button class="close" value="cancel">×</button>
         <p class="eyebrow">DIREKTORI WARGA</p>
         <h2>Jasa Tukang & Internet</h2>
-        <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px">
-          Pilih kategori layanan yang Anda butuhkan di area perumahan:
-        </p>
-
-        <div class="tukang-tabs">
-          <button
-            type="button"
-            class="tukang-tab-btn active"
-            data-tukang-tab="internet"
-          >
-            Internet (ISP)
-          </button>
-          <button type="button" class="tukang-tab-btn" data-tukang-tab="tukang">
-            Jasa Tukang
-          </button>
-        </div>
-
-        <div id="internetContent" class="tukang-tab-pane active">
-          <article class="tukang-item internet-provider">
-            <b>Bnetfit Fiber Internet (Pemasangan Baru)</b>
-            <p>
-              Internet rumah unlimited stabil khusus area perumahan. Promo
-              pasang baru.
-            </p>
-            <a
-              href="https://wa.me/628111222333?text=Halo%20Sales%20Bnetfit,%20saya%20warga%20MY%20PRR%20ingin%20pasang%20baru..."
-              target="_blank"
-              class="whatsapp-btn internet-btn"
-            >
-              <span class="material-symbols-rounded">router</span> Daftar
-              Bnetfit WA
-            </a>
-          </article>
-
-          <article class="tukang-item internet-provider">
-            <b>Biznet Home (Fiber Optic & WiFi)</b>
-            <p>
-              Layanan internet super cepat & hiburan TV digital berkualitas
-              tinggi.
-            </p>
-            <a
-              href="https://wa.me/6281244445555?text=Halo%20Sales%20Biznet,%20saya%20warga%20MY%20PRR%20ingin%20pasang%20Biznet..."
-              target="_blank"
-              class="whatsapp-btn internet-btn"
-            >
-              <span class="material-symbols-rounded">wifi</span> Daftar Biznet
-              WA
-            </a>
-          </article>
-        </div>
-
-        <div id="tukangContent" class="tukang-tab-pane" style="display: none">
-          <article class="tukang-item">
-            <b>Pak Joko (Spesialis Mesin Air & Pompa)</b>
-            <p>
-              Perbaikan pompa air mati, gulung dinamo, sedot sumur bor,
-              otomatisasi.
-            </p>
-            <a
-              href="https://wa.me/6281298765432?text=Halo%20Pak%20Joko,%20saya%20warga%20MY%20PRR%20butuh%20bantuan%20mesin%20air..."
-              target="_blank"
-              class="whatsapp-btn"
-            >
-              <span class="material-symbols-rounded">chat</span> Hubungi WA Pak
-              Joko
-            </a>
-          </article>
-
-          <article class="tukang-item">
-            <b>Pak Budi (Spesialis Sumur Bor & Titik Air)</b>
-            <p>
-              Pembuatan sumur bor baru, pengeboran jet pump, mengatasi air
-              keruh/kuning.
-            </p>
-            <a
-              href="https://wa.me/6281211223344?text=Halo%20Pak%20Budi,%20saya%20warga%20MY%20PRR%20ingin%20konsultasi%20sumur%20bor..."
-              target="_blank"
-              class="whatsapp-btn"
-            >
-              <span class="material-symbols-rounded">chat</span> Hubungi WA Pak
-              Budi
-            </a>
-          </article>
-
-          <article class="tukang-item">
-            <b>Pak Deni (Tukang Bangunan, Atap & Ledeng)</b>
-            <p>
-              Perbaikan genteng bocor, instalasi pipa air / saluran mampet,
-              renovasi ringan.
-            </p>
-            <a
-              href="https://wa.me/6281355667788?text=Halo%20Pak%20Deni,%20saya%20warga%20MY%20PRR%20butuh%20bantuan%20perbaikan..."
-              target="_blank"
-              class="whatsapp-btn"
-            >
-              <span class="material-symbols-rounded">chat</span> Hubungi WA Pak
-              Deni
-            </a>
-          </article>
-        </div>
-
         <button class="primary-button" value="cancel" style="margin-top: 14px">
           Tutup
         </button>
@@ -1137,24 +1092,8 @@
         style="text-align: center"
       >
         <button class="close" value="cancel">×</button>
-        <div
-          class="error-icon"
-          style="
-            width: 58px;
-            height: 58px;
-            margin: 0 auto 14px;
-            border-radius: 18px;
-            color: #dc2626;
-            background: #fef2f2;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid #fecaca;
-          "
-        >
-          <span class="material-symbols-rounded" style="font-size: 28px"
-            >gpp_bad</span
-          >
+        <div class="modal-icon-box danger-bg">
+          <span class="material-symbols-rounded">gpp_bad</span>
         </div>
         <p class="eyebrow" style="color: #dc2626">AKSES DITOLAK</p>
         <h2>Verifikasi Gagal</h2>
@@ -1167,8 +1106,7 @@
             margin: 0 0 16px;
           "
         >
-          Kamu bukan warga MY PRR. Pastikan rumah kamu sudah terdaftar oleh
-          ketua paguyuban.
+          Kamu bukan warga MY PRR atau PIN salah.
         </p>
         <button
           class="primary-button error-btn"
@@ -1191,21 +1129,15 @@
           >Kategori Masalah
           <select name="category" required>
             <option value="Lampu Jalan Mati">Lampu Jalan Mati</option>
-            <option value="Taman / Kebersihan">
-              Taman Belum Dibersihkan / Sampah
-            </option>
-            <option value="Fasilitas Umum Rusak">Fasilitas Umum Rusak</option>
-            <option value="Keamanan / Ketertiban">Keamanan / Ketertiban</option>
+            <option value="Kebersihan">Kebersihan / Sampah</option>
+            <option value="Fasilitas Umum">Fasilitas Umum Rusak</option>
+            <option value="Keamanan">Keamanan / Ketertiban</option>
             <option value="Lainnya">Lainnya</option>
           </select>
         </label>
         <label
           >Lokasi / Blok Rumah Terkait
-          <input
-            required
-            name="location"
-            placeholder="Contoh: Blok B-05 / Samping Pos Satpam"
-          />
+          <input required name="location" placeholder="Contoh: Blok B-05" />
         </label>
         <label
           >Keterangan Lengkap
@@ -1213,12 +1145,8 @@
             required
             name="description"
             rows="3"
-            placeholder="Jelaskan detail kendala yang ditemukan..."
+            placeholder="Jelaskan detail kendala..."
           ></textarea>
-        </label>
-        <label
-          >Foto Pendukung (Opsional)
-          <input type="file" name="photo" accept="image/*" />
         </label>
         <button class="primary-button" type="submit">
           Kirim Pengaduan <span>→</span>
@@ -1239,16 +1167,12 @@
             Tahunan
           </button>
         </div>
-        <div id="monthlyFinanceContent" class="tab-content active">
-          <div class="empty-state-box">Memuat data keuangan bulanan...</div>
-        </div>
+        <div id="monthlyFinanceContent" class="tab-content active"></div>
         <div
           id="yearlyFinanceContent"
           class="tab-content"
           style="display: none"
-        >
-          <div class="empty-state-box">Memuat data keuangan tahunan...</div>
-        </div>
+        ></div>
         <button class="primary-button" value="cancel" style="margin-top: 16px">
           Tutup
         </button>
@@ -1291,9 +1215,7 @@
 
         <div id="paymentMethodNote" class="payment-method-note">
           💡 Transfer wajib ke
-          <b>Bank Jago a.n Muhamad Kurnia Fauqou Nur (504460167350)</b>. MY AI
-          PRR memvalidasi otomatis rekening tujuan, nominal, nama pengirim, &
-          tahun 2026.
+          <b>Bank Jago a.n Muhamad Kurnia Fauqou Nur (504460167350)</b>.
         </div>
 
         <label
@@ -1302,7 +1224,6 @@
             required
             name="name"
             id="paymentName"
-            placeholder="Memuat nama..."
             disabled
             style="background: #f4f8f5; color: var(--muted)"
           />
@@ -1314,7 +1235,6 @@
               required
               name="unit"
               id="paymentUnit"
-              placeholder="Blok"
               disabled
               style="background: #f4f8f5; color: var(--muted)"
             />
@@ -1349,63 +1269,18 @@
       </form>
     </dialog>
 
-    <!-- MODAL LOADING AI -->
     <dialog
       id="aiLoadingModal"
       class="modal interactive-modal"
       style="padding: 36px 24px; text-align: center"
     >
-      <div class="ai-modal-branding" style="margin-bottom: 14px">
-        <div
-          class="modal-icon-box success-bg"
-          style="
-            margin: 0 auto 8px;
-            width: 48px;
-            height: 48px;
-            border-radius: 14px;
-          "
-        >
-          <span class="material-symbols-rounded" style="font-size: 24px"
-            >auto_awesome</span
-          >
-        </div>
-        <span
-          class="ai-brand-title"
-          style="
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 2px;
-            color: var(--green);
-            text-transform: uppercase;
-          "
-          >MY AI PRR</span
-        >
-      </div>
       <div
         class="spinner"
-        style="
-          width: 44px;
-          height: 44px;
-          border-width: 4px;
-          margin: 0 auto 16px;
-        "
+        style="width: 44px; height: 44px; margin: 0 auto 16px"
       ></div>
-      <h2
-        id="aiLoadingTitle"
-        style="font-size: 18px; margin-bottom: 8px; color: var(--dark)"
-      >
-        Memproses Struk...
-      </h2>
-      <p
-        id="aiLoadingDesc"
-        style="
-          font-size: 13px;
-          color: var(--muted);
-          margin: 0;
-          line-height: 1.4;
-        "
-      >
-        Mohon tunggu sebentar, sistem sedang memverifikasi pembayaran Anda.
+      <h2>Memproses Struk...</h2>
+      <p style="font-size: 13px; color: var(--muted)">
+        Sistem sedang memverifikasi pembayaran Anda.
       </p>
     </dialog>
 
@@ -1419,23 +1294,8 @@
         <button type="button" class="close" value="cancel" aria-label="Tutup">
           ×
         </button>
-        <div
-          class="panic-icon"
-          style="
-            width: 58px;
-            height: 58px;
-            margin: 0 auto 14px;
-            border-radius: 18px;
-            color: #fff;
-            background: #e84245;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          "
-        >
-          <span class="material-symbols-rounded" style="font-size: 28px"
-            >emergency</span
-          >
+        <div class="modal-icon-box danger-bg">
+          <span class="material-symbols-rounded">emergency</span>
         </div>
         <p class="eyebrow" style="color: #e84245">BANTUAN DARURAT</p>
         <h2>Butuh bantuan segera?</h2>
@@ -1445,28 +1305,14 @@
             <option>Darurat Medis / Panggil Ambulans</option>
             <option>Keamanan / kejadian mencurigakan</option>
             <option>Kebakaran</option>
-            <option>Gangguan kesehatan lainnya</option>
           </select>
         </label>
-        <a
-          href="https://wa.me/6281299998888?text=DARURAT!%20Saya%20warga%20MY%20PRR%20butuh%20bantuan%20segera..."
-          target="_blank"
-          class="whatsapp-btn emergency-wa-btn"
-          style="
-            margin-top: 14px;
-            justify-content: center;
-            text-decoration: none;
-          "
-        >
-          <span class="material-symbols-rounded">phone_in_talk</span> Hubungi
-          Ambulans / Satpam via WA
-        </a>
         <button
           class="panic-confirm primary-button"
           type="submit"
-          style="background: #e84245; margin-top: 10px"
+          style="background: #e84245; margin-top: 14px"
         >
-          Kirim sinyal darurat ke Pos
+          Kirim Sinyal Darurat ke Pos
         </button>
       </form>
     </dialog>
@@ -1499,12 +1345,7 @@
         <div id="postPhotoPreviewWrap" style="display: none; margin-top: 8px">
           <img
             id="postPhotoPreview"
-            style="
-              width: 100%;
-              border-radius: 12px;
-              border: 1px solid var(--line);
-              display: block;
-            "
+            style="width: 100%; border-radius: 12px; display: block"
           />
         </div>
         <button class="primary-button" type="submit" id="postSubmitBtn">
@@ -1535,7 +1376,7 @@
         <div
           id="infoAnnouncementsContent"
           class="tukang-tab-pane active"
-          style="max-height: 320px; overflow-y: auto; padding-right: 2px"
+          style="max-height: 320px; overflow-y: auto"
         >
           <article
             class="info-announcement-card clickable-article"
@@ -1564,7 +1405,7 @@
             </div>
             <p>
               Minggu, 23 Agustus 2026 pukul 07.00 WIB. Titik kumpul di pos
-              keamanan utama kawasan perumahan...
+              keamanan utama...
             </p>
             <small style="color: var(--green); font-weight: 700"
               >Baca selengkapnya →</small
@@ -1614,13 +1455,12 @@
             </div>
             <div class="doc-info">
               <b>AD/ART Paguyuban MY PRR (PDF)</b>
-              <small>Dokumen Resmi Aturan Hidup Bertetangga</small>
+              <small>Dokumen Resmi Aturan Warga</small>
             </div>
             <a
               href="dokumen/ad-art-prr.pdf"
               target="_blank"
               class="doc-download-btn"
-              title="Unduh / Lihat PDF"
             >
               <span class="material-symbols-rounded">download</span>
             </a>
@@ -1634,6 +1474,6 @@
     </dialog>
 
     <div id="toast" class="toast" role="status"></div>
-    <script src="app.js?v=15.1"></script>
+    <script src="app.js?v=16.0"></script>
   </body>
 </html>
