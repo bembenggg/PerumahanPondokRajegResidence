@@ -1,4 +1,4 @@
-const DEFAULT_BILL = 150000;
+const DEFAULT_BILL = 120000; // Nominal IPL per bulan (diubah dari 150000 sesuai info terbaru)
 const STORAGE_KEY = "pondok-rajeg-payments";
 const COMPLAINT_KEY = "pondok-rajeg-complaints";
 const PROFILE_KEY = "pondok-rajeg-profile-data";
@@ -21,20 +21,12 @@ if (!firebase.apps.length) {
 const messaging = firebase.messaging();
 
 // ====== PERBAIKAN #1: NOTIF DOBEL ======
-// Setiap notifikasi sekarang diberi "tag" yang sama untuk 1 event yang sama.
-// Kalau server (Apps Script) mengirim pesan yang sama 2x (misalnya karena
-// payload masih memakai field "notification" + "data" bersamaan), browser
-// akan MENGGANTI notifikasi lama, bukan menumpuknya jadi 2.
-// CATATAN PENTING: perbaikan permanen tetap harus dilakukan di backend
-// (Apps Script) dengan HANYA mengirim field "data" (tanpa field "notification")
-// pada body request ke FCM. Lihat penjelasan di chat.
 function buildNotifTag(payload) {
   return (
     (payload.data && payload.data.tag) || payload.collapseKey || "my-prr-notif"
   );
 }
 
-// MENANGKAP PESAN KETIKA WEBSITE SEDANG DIBUKA AKTIF (FOREGROUND)
 messaging.onMessage((payload) => {
   console.log("📥 Pesan diterima saat aplikasi aktif:", payload);
   const title =
@@ -54,7 +46,7 @@ messaging.onMessage((payload) => {
       body: body,
       icon: "https://i.ibb.co.com/b5VjvFGK/LOGO-PRR.jpg",
       vibrate: [300, 100, 300, 100, 300],
-      tag: tag, // <-- mencegah notif dobel muncul sebagai 2 entri terpisah
+      tag: tag,
     });
   }
 });
@@ -147,15 +139,73 @@ function showToast(message) {
   if (!toast) return;
   toast.textContent = message;
   toast.classList.add("show");
-  setTimeout(() => toast.classList.remove("show"), 3200);
+  setTimeout(() => toast.classList.remove("show"), 4500);
+}
+
+// ====== PERBAIKAN #6: PEMBAYARAN MULTI-BULAN (BACKDATE & BAYAR DI MUKA) ======
+// Bulan sekarang disimpan sebagai array eksplisit (p.months) per transaksi,
+// bukan lagi ditebak dari format tanggal transaksi (yang sebelumnya buggy:
+// "25 Agu 2026".includes("Agustus 2026") selalu false karena beda format).
+const MONTH_NAMES_ID = [
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
+];
+
+function getCurrentMonthLabel() {
+  const now = new Date();
+  return MONTH_NAMES_ID[now.getMonth()] + " " + now.getFullYear();
+}
+
+// Window bergulir otomatis (mis. 8 bulan terakhir termasuk bulan berjalan),
+// menggantikan daftar hardcode lama yang statis ke tahun 2026 saja.
+function generateRecentMonthsWindow(count) {
+  const now = new Date();
+  const result = [];
+  for (let i = count - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    result.push(MONTH_NAMES_ID[d.getMonth()] + " " + d.getFullYear());
+  }
+  return result;
+}
+
+function unitHasMonthPaid(unit, monthLabel) {
+  const payments = getPayments();
+  return payments.some(
+    (p) =>
+      p.unit &&
+      p.unit.toLowerCase() === unit.toLowerCase() &&
+      p.status === "Lunas" &&
+      Array.isArray(p.months) &&
+      p.months.includes(monthLabel),
+  );
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      // reader.result = "data:image/jpeg;base64,xxxxx" -> ambil bagian base64 saja
+      const base64 = reader.result.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 function latestStatus(unit) {
-  const payments = getPayments();
-  if (!unit) return payments.some((p) => p.status === "Lunas");
-  return payments.some(
-    (p) => p.unit.toLowerCase() === unit.toLowerCase() && p.status === "Lunas",
-  );
+  if (!unit) return getPayments().some((p) => p.status === "Lunas");
+  return unitHasMonthPaid(unit, getCurrentMonthLabel());
 }
 
 function checkArrears(unit) {
@@ -171,39 +221,14 @@ function checkArrears(unit) {
 
   if (!warningSection || !unit) return;
 
-  const targetMonths = [
-    "Januari 2026",
-    "Februari 2026",
-    "Maret 2026",
-    "April 2026",
-    "Mei 2026",
-    "Juni 2026",
-    "Juli 2026",
-    "Agustus 2026",
-  ];
+  const targetMonths = generateRecentMonthsWindow(8);
+  const unpaid = targetMonths.filter((m) => !unitHasMonthPaid(unit, m));
+  const count = unpaid.length;
 
-  const payments = getPayments();
-  const unitPayments = payments.filter(
-    (p) => p.unit.toLowerCase() === unit.toLowerCase() && p.status === "Lunas",
-  );
-
-  const unpaid = targetMonths.filter(
-    (m) =>
-      !unitPayments.some(
-        (p) => p.date.includes(m) || (p.month && p.month === m),
-      ),
-  );
-
-  const count = unpaid.length > 0 ? unpaid.length : 3;
-
-  if (count >= 3 || !unitPayments.length) {
+  if (count >= 3) {
     warningSection.style.display = "block";
     if (unpaidCountEl) unpaidCountEl.textContent = count;
-    if (unpaidMonthsText) {
-      unpaidMonthsText.textContent = unpaid.length
-        ? unpaid.join(", ")
-        : "Juni, Juli, Agustus 2026";
-    }
+    if (unpaidMonthsText) unpaidMonthsText.textContent = unpaid.join(", ");
 
     if (count >= 5) {
       if (warningCard) {
@@ -337,7 +362,7 @@ function renderActivities() {
       <div class="activity-icon"><span class="material-symbols-rounded">check</span></div>
       <div class="activity-text">
         <b>IPL ${p.unit} · ${p.name}</b>
-        <small>${p.date} · ${p.method}</small>
+        <small>${p.date} · ${p.method}${p.months && p.months.length ? " · " + p.months.join(", ") : ""}</small>
       </div>
       <div class="activity-amount text-success">${rupiah(p.amount)}</div>
     </div>
@@ -1042,7 +1067,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // PANIC BUTTON MAIN CLICK (Hanya membuka modal, tidak mengirim apa pun otomatis)
   const panicButton = $("#panicButton");
   if (panicButton) {
     panicButton.addEventListener("click", () => {
@@ -1051,7 +1075,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // PANIC FORM BROADCAST HANDLER (Mengirim hanya ketika tombol dalam modal ditekan)
   const panicForm = $("#panicForm");
   if (panicForm) {
     panicForm.addEventListener("submit", async (e) => {
@@ -1066,10 +1089,6 @@ document.addEventListener("DOMContentLoaded", () => {
       submitBtn.innerHTML = "Mengirim sinyal darurat ke seluruh warga... 🚨";
 
       try {
-        // "unit" (unit pengirim) dikirim ke backend supaya backend BISA
-        // mengecualikan unit ini sendiri dari daftar penerima broadcast.
-        // Filter pengecualian harus diterapkan di Apps Script (server),
-        // lihat catatan di chat untuk pola kodenya.
         const result = await sendToBackend("broadcastPanic", {
           unit,
           name,
@@ -1077,6 +1096,11 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         $("#panicDialog")?.close();
         showToast("🚨 " + result.message);
+
+        const waMessage = encodeURIComponent(
+          `DARURAT! Saya warga MY PRR (${name}, Rumah ${unit}) butuh bantuan segera. Jenis: ${emergencyType}`,
+        );
+        window.open(`https://wa.me/6281299998888?text=${waMessage}`, "_blank");
       } catch (error) {
         showToast(`Gagal mengirim sinyal: ${error.message}`);
       } finally {
@@ -1085,6 +1109,47 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  const batteryHelpDialog = $("#batteryHelpDialog");
+  const batteryHelpBanner = $("#batteryHelpBanner");
+  const batteryHelpOpenBtn = $("#batteryHelpOpenBtn");
+  const batteryHelpCloseBanner = $("#batteryHelpCloseBanner");
+
+  function detectRiskyBrand() {
+    const ua = navigator.userAgent.toLowerCase();
+    if (/redmi|poco|xiaomi|hyperos|miui/.test(ua)) return "xiaomi";
+    if (/oppo|realme|coloros/.test(ua)) return "oppo";
+    if (/vivo|iqoo|funtouch/.test(ua)) return "vivo";
+    return null;
+  }
+
+  function maybeShowBatteryHelpBanner() {
+    if (!batteryHelpBanner) return;
+    const dismissed = localStorage.getItem("prr_battery_help_dismissed");
+    if (dismissed) return;
+    const brand = detectRiskyBrand();
+    if (!brand) return;
+    if (Notification.permission !== "granted") return;
+    setTimeout(() => {
+      batteryHelpBanner.style.display = "flex";
+    }, 4000);
+  }
+
+  if (batteryHelpOpenBtn && batteryHelpDialog) {
+    batteryHelpOpenBtn.addEventListener("click", () => {
+      batteryHelpDialog.showModal();
+      if (batteryHelpBanner) batteryHelpBanner.style.display = "none";
+      localStorage.setItem("prr_battery_help_dismissed", "1");
+    });
+  }
+  if (batteryHelpCloseBanner && batteryHelpBanner) {
+    batteryHelpCloseBanner.addEventListener("click", () => {
+      batteryHelpBanner.style.display = "none";
+      localStorage.setItem("prr_battery_help_dismissed", "1");
+    });
+  }
+
+  maybeShowBatteryHelpBanner();
 
   const viewFinanceDetailBtn = document.getElementById("viewFinanceDetail");
   const financeDialog = document.getElementById("financeDialog");
@@ -1115,36 +1180,69 @@ document.addEventListener("DOMContentLoaded", () => {
     btn.addEventListener("click", (e) => e.target.closest("dialog")?.close());
   });
 
+  // ====== PERBAIKAN #6: SUBMIT PEMBAYARAN IPL DENGAN VALIDASI AI ======
   const paymentForm = $("#paymentForm");
   if (paymentForm) {
     paymentForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const data = Object.fromEntries(new FormData(event.currentTarget));
-      const record = {
-        name: data.name,
-        unit: data.unit,
-        method: data.method,
-        amount: Number(data.amount),
-        date: new Date().toLocaleDateString("id-ID", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        }),
-        status: "Lunas",
-      };
-      try {
-        await sendToBackend("payment", record);
-      } catch (error) {
-        showToast(`Pembayaran lokal tercatat: ${error.message}`);
+      const proofInput = event.currentTarget.querySelector("[name='proof']");
+      const proofFile = proofInput && proofInput.files && proofInput.files[0];
+
+      if (!proofFile) {
+        showToast("Mohon lampirkan foto/PDF bukti transfer untuk verifikasi.");
+        return;
       }
-      savePayments([record, ...getPayments()]);
-      $("#iplDialog")?.close();
-      event.currentTarget.reset();
-      const savedUser = localStorage.getItem("pondok_rajeg_user");
-      updateBill(savedUser);
-      updateCashFlow();
-      renderActivities();
-      showToast("Pembayaran berhasil dikonfirmasi.");
+
+      const submitBtn = event.currentTarget.querySelector(
+        "button[type='submit']",
+      );
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = "Memverifikasi bukti transfer dengan AI... 🤖";
+
+      try {
+        const proofBase64 = await fileToBase64(proofFile);
+        const proofMimeType = proofFile.type || "image/jpeg";
+
+        const result = await sendToBackend("payment", {
+          name: data.name,
+          unit: data.unit,
+          method: data.method,
+          amount: Number(data.amount),
+          proofBase64,
+          proofMimeType,
+        });
+
+        const record = {
+          name: data.name,
+          unit: data.unit,
+          method: data.method,
+          amount: result.verifiedAmount || Number(data.amount),
+          date: new Date().toLocaleDateString("id-ID", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          }),
+          status: result.status === "Lunas" ? "Lunas" : "Menunggu Verifikasi",
+          months: result.monthsCovered || [],
+        };
+        savePayments([record, ...getPayments()]);
+
+        $("#iplDialog")?.close();
+        event.currentTarget.reset();
+
+        const savedUser = localStorage.getItem("pondok_rajeg_user");
+        updateBill(savedUser);
+        updateCashFlow();
+        renderActivities();
+        showToast(result.message);
+      } catch (error) {
+        showToast(`Gagal verifikasi: ${error.message}`);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
     });
   }
 
@@ -1217,7 +1315,6 @@ if (pwaCloseBanner) {
   });
 }
 
-// SATU-SATUNYA SERVICE WORKER: caching PWA + Firebase Cloud Messaging.
 if ("serviceWorker" in navigator) {
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {

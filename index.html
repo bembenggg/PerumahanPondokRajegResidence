@@ -268,7 +268,7 @@
             <div class="balance-card-top">
               <div class="balance-info">
                 <p>Tagihan IPL bulan ini</p>
-                <strong id="currentBill">Rp 150.000</strong>
+                <strong id="currentBill">Rp 120.000</strong>
                 <span id="billStatus" class="status-chip">Belum dibayar</span>
               </div>
               <div class="house-icon">
@@ -444,7 +444,7 @@
                   <b>Agustus 2026</b>
                   <small>Lunas • Transfer Bank</small>
                 </div>
-                <div class="activity-amount text-success">Rp 150.000</div>
+                <div class="activity-amount text-success">Rp 120.000</div>
               </div>
             </div>
           </section>
@@ -1144,16 +1144,33 @@
       </form>
     </dialog>
 
-    <!-- MODAL IPL -->
+    <!-- MODAL IPL (DENGAN VALIDASI AI) -->
     <dialog id="iplDialog" class="modal">
       <form id="paymentForm" method="dialog">
         <button class="close" value="cancel" aria-label="Tutup">×</button>
         <p class="eyebrow">PEMBAYARAN IPL</p>
         <h2>Bayar iuran lingkungan</h2>
         <div class="bill-summary">
-          <span>Total tagihan</span><strong id="modalBill">Rp 150.000</strong>
-          <small>IPL • Agustus 2026</small>
+          <span>Total tagihan</span><strong id="modalBill">Rp 120.000</strong>
+          <small>IPL per bulan</small>
         </div>
+        <p
+          style="
+            font-size: 11px;
+            color: var(--muted);
+            line-height: 1.5;
+            margin: 0 0 12px;
+            background: var(--soft);
+            padding: 10px 12px;
+            border-radius: 10px;
+          "
+        >
+          💡 Nominal & bulan yang lunas akan
+          <b>otomatis diverifikasi dari foto bukti transfer</b> menggunakan AI.
+          Kalau Anda transfer lebih dari Rp 120.000 (rapelan / bayar di muka),
+          sistem otomatis akan menandai lunas bulan-bulan tertunggak yang paling
+          lama dulu.
+        </p>
         <label
           >Nama pemilik rumah
           <input required name="name" placeholder="Contoh: Budi Santoso" />
@@ -1173,18 +1190,18 @@
           </label>
         </div>
         <label
-          >Nominal pembayaran
+          >Nominal yang Anda transfer (perkiraan)
           <input
             required
             name="amount"
             type="number"
             min="1000"
-            value="150000"
+            value="120000"
           />
         </label>
         <label
-          >Bukti transfer (Foto / PDF)
-          <input type="file" name="proof" accept="image/*,.pdf" />
+          >Bukti transfer (Foto / PDF) — Wajib
+          <input required type="file" name="proof" accept="image/*,.pdf" />
         </label>
         <button class="primary-button" type="submit">
           Konfirmasi pembayaran <span>→</span>
@@ -1378,6 +1395,147 @@
       </form>
     </dialog>
 
+    <!-- MODAL BANTUAN NOTIFIKASI TIDAK MASUK (KHUSUS HP RAWAN) -->
+    <dialog id="batteryHelpDialog" class="modal info-modal">
+      <form method="dialog">
+        <button class="close" value="cancel">×</button>
+        <p class="eyebrow" style="color: #dc2626">NOTIFIKASI DARURAT</p>
+        <h2>Notifikasi Tidak Masuk?</h2>
+        <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px">
+          Sebagian HP (terutama Xiaomi/Redmi/POCO, Oppo, Vivo) suka mematikan
+          notifikasi aplikasi di latar belakang untuk hemat baterai. Tekan
+          tombol sesuai merk HP Anda untuk membuka pengaturan yang tepat (1 kali
+          saja):
+        </p>
+
+        <div class="tukang-tab-pane" style="max-height: 320px">
+          <article class="tukang-item">
+            <b>Xiaomi / Redmi / POCO (MIUI/HyperOS)</b>
+            <p>Aktifkan "Autostart" untuk Chrome.</p>
+            <a
+              href="intent:#Intent;action=miui.intent.action.HIDDEN_APPS_CONFIG_ACTIVITY;launchFlags=0x10000000;component=com.miui.securitycenter/com.miui.permcenter.autostart.AutoStartManagementActivity;end"
+              class="whatsapp-btn"
+              style="background: var(--green)"
+            >
+              <span class="material-symbols-rounded">bolt</span>
+              Buka Pengaturan Autostart
+            </a>
+          </article>
+
+          <article class="tukang-item">
+            <b>Xiaomi / Redmi / POCO — Battery Saver</b>
+            <p>Ubah battery saver Chrome jadi "No restrictions".</p>
+            <a
+              href="intent:#Intent;launchFlags=0x10000000;component=com.miui.securitycenter/com.miui.powercenter.PowerSettings;end"
+              class="whatsapp-btn"
+              style="background: var(--green)"
+            >
+              <span class="material-symbols-rounded"
+                >battery_charging_full</span
+              >
+              Buka Pengaturan Baterai
+            </a>
+          </article>
+
+          <article class="tukang-item">
+            <b>Oppo / Realme (ColorOS)</b>
+            <p>Aktifkan Chrome di daftar "Startup Manager".</p>
+            <a
+              href="intent:#Intent;launchFlags=0x10000000;component=com.coloros.safecenter/com.coloros.safecenter.permission.startup.StartupAppListActivity;end"
+              class="whatsapp-btn internet-btn"
+            >
+              <span class="material-symbols-rounded">bolt</span>
+              Buka Startup Manager
+            </a>
+          </article>
+
+          <article class="tukang-item">
+            <b>Vivo (Funtouch OS)</b>
+            <p>Tambahkan Chrome ke daftar "Autostart Whitelist".</p>
+            <a
+              href="intent:#Intent;launchFlags=0x10000000;component=com.vivo.permissionmanager/com.vivo.permissionmanager.activity.BgStartUpManagerActivity;end"
+              class="whatsapp-btn internet-btn"
+            >
+              <span class="material-symbols-rounded">bolt</span>
+              Buka Pengaturan Vivo
+            </a>
+          </article>
+
+          <article class="tukang-item emergency-item">
+            <b>Tombol di atas tidak berfungsi?</b>
+            <p style="margin: 0">
+              Buka manual:
+              <b
+                >Settings HP → Apps/Aplikasi → cari "Chrome" → Battery/Baterai →
+                pilih "No restrictions" / "Tanpa batasan"</b
+              >. Lalu cari juga menu terpisah bernama "Autostart" di Settings
+              atau di app Security/Keamanan bawaan HP, aktifkan untuk Chrome.
+            </p>
+          </article>
+        </div>
+
+        <button class="primary-button" value="cancel" style="margin-top: 14px">
+          Sudah Saya Lakukan
+        </button>
+      </form>
+    </dialog>
+
+    <!-- BANNER OTOMATIS: DETEKSI HP RAWAN NOTIF DIBLOKIR -->
+    <div
+      id="batteryHelpBanner"
+      class="pwa-install-banner"
+      style="display: none; border-color: #fecaca"
+    >
+      <div class="pwa-banner-content">
+        <div
+          style="
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: #fef2f2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+          "
+        >
+          <span
+            class="material-symbols-rounded"
+            style="color: #dc2626; font-size: 22px"
+            >notifications_off</span
+          >
+        </div>
+        <div class="pwa-banner-text">
+          <b>Amankan Notifikasi Darurat</b>
+          <small
+            >HP Anda terdeteksi sering memblokir notifikasi. Ketuk untuk
+            perbaiki.</small
+          >
+        </div>
+      </div>
+      <div class="pwa-banner-actions">
+        <button
+          id="batteryHelpOpenBtn"
+          class="primary-button"
+          style="padding: 6px 12px; font-size: 12px; background: #dc2626"
+        >
+          Perbaiki
+        </button>
+        <button
+          id="batteryHelpCloseBanner"
+          class="secondary-button"
+          style="
+            padding: 6px 8px;
+            font-size: 12px;
+            border: none;
+            background: transparent;
+          "
+        >
+          Nanti
+        </button>
+      </div>
+    </div>
+
     <!-- BANNER PAKSA / PANDUAN INSTALL PWA (ADD TO HOME SCREEN) -->
     <div id="pwaInstallBanner" class="pwa-install-banner" style="display: none">
       <div class="pwa-banner-content">
@@ -1418,6 +1576,6 @@
     </div>
 
     <div id="toast" class="toast" role="status"></div>
-    <script src="app.js?v=11.0"></script>
+    <script src="app.js?v=12.0"></script>
   </body>
 </html>
