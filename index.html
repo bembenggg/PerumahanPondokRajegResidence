@@ -29,7 +29,7 @@
     />
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
-    <link rel="stylesheet" href="style.css?v=11.0" />
+    <link rel="stylesheet" href="style.css?v=12.1" />
     <title>MY PRR - Pondok Rajeg Residence</title>
   </head>
   <body>
@@ -813,7 +813,7 @@
       </form>
     </dialog>
 
-    <!-- MODAL POPUP NOTIFIKASI KUSTOM (MENGGANTIKAN ALERT) -->
+    <!-- MODAL POPUP NOTIFIKASI KUSTOM -->
     <dialog id="appMessageDialog" class="modal interactive-modal">
       <form method="dialog">
         <div id="appMessageIconBox" class="modal-icon-box success-bg">
@@ -1157,7 +1157,7 @@
       </form>
     </dialog>
 
-    <!-- MODAL IPL (DENGAN NAMA & UNIT TERKUNCI OTOMATIS) -->
+    <!-- MODAL IPL -->
     <dialog id="iplDialog" class="modal">
       <form id="paymentForm" method="dialog">
         <button class="close" value="cancel" aria-label="Tutup">×</button>
@@ -1178,9 +1178,9 @@
             border-radius: 10px;
           "
         >
-          💡 AI akan memvalidasi otomatis
-          <b>nominal, nama pengirim (rekening pribadi), dan tanggal</b> dari
-          foto bukti transfer Anda.
+          💡 AI memvalidasi otomatis
+          <b>nominal, nama pengirim, tanggal transaksi tahun 2026</b>, dan
+          menolak duplikasi struk secara ketat.
         </p>
 
         <label
@@ -1235,24 +1235,47 @@
       </form>
     </dialog>
 
-    <!-- MODAL LOADING AI INTERAKTIF -->
+    <!-- MODAL LOADING AI DENGAN BRANDING "MY AI PRR" -->
     <dialog
       id="aiLoadingModal"
       class="modal interactive-modal"
       style="padding: 36px 24px; text-align: center"
     >
+      <div class="ai-modal-branding" style="margin-bottom: 14px">
+        <div
+          class="modal-icon-box success-bg"
+          style="
+            margin: 0 auto 8px;
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+          "
+        >
+          <span class="material-symbols-rounded" style="font-size: 24px"
+            >auto_awesome</span
+          >
+        </div>
+        <span
+          class="ai-brand-title"
+          style="
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            color: var(--green);
+            text-transform: uppercase;
+          "
+          >MY AI PRR</span
+        >
+      </div>
       <div
         class="spinner"
         style="
-          width: 48px;
-          height: 48px;
+          width: 44px;
+          height: 44px;
           border-width: 4px;
           margin: 0 auto 16px;
         "
       ></div>
-      <p class="eyebrow" style="color: var(--green); margin-bottom: 6px">
-        KECERDASAN BUATAN (AI)
-      </p>
       <h2
         id="aiLoadingTitle"
         style="font-size: 18px; margin-bottom: 8px; color: var(--dark)"
@@ -1630,6 +1653,6 @@
     </div>
 
     <div id="toast" class="toast" role="status"></div>
-    <script src="app.js?v=12.0"></script>
+    <script src="app.js?v=12.1"></script>
   </body>
 </html>

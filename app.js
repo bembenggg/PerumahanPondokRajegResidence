@@ -1198,7 +1198,7 @@ document.addEventListener("DOMContentLoaded", () => {
     btn.addEventListener("click", (e) => e.target.closest("dialog")?.close());
   });
 
-  // SUBMIT PEMBAYARAN IPL DENGAN MODAL LOADING DINAMIS & POPUP KUSTOM
+  // SUBMIT PEMBAYARAN IPL DENGAN VALIDASI KETAT & MODAL "MY AI PRR"
   const paymentForm = $("#paymentForm");
   if (paymentForm) {
     paymentForm.addEventListener("submit", async (event) => {
@@ -1232,10 +1232,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const proofMimeType = proofFile.type || "image/jpeg";
 
         if (loadingTitle)
-          loadingTitle.textContent = "AI Sedang Memindai Struk...";
+          loadingTitle.textContent = "MY AI PRR Memindai Struk...";
         if (loadingDesc)
           loadingDesc.textContent =
-            "Mengecek nominal, mencocokkan nama pengirim, & memvalidasi tanggal...";
+            "Mengecek nominal, mencocokkan nama pengirim, & memvalidasi tahun transaksi...";
 
         const result = await sendToBackend("payment", {
           name: activeName,
