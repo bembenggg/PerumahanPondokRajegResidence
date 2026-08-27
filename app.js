@@ -114,40 +114,55 @@ messaging.onMessage((payload) => {
   loadNotifications();
 });
 
-// [BARU] Fix #3/#4: menerjemahkan error teknis dari browser (mis. "Registration
-// failed - push service error") menjadi penjelasan + langkah solusi yang bisa
-// dipahami & langsung dicoba warga. Error semacam ini berasal dari BROWSER/HP
-// itu sendiri (bukan bug di aplikasi) — biasanya karena layanan push Google
-// Play Services di HP tersebut bermasalah/dibatasi, umum terjadi di HP
-// Xiaomi/Redmi (MIUI), Vivo (Funtouch/OriginOS), dan sejenisnya.
-function explainPushError(rawMessage) {
+// [BARU] Fix: mengklasifikasi error teknis dari browser (mis. "Registration
+// failed - push service error") menjadi KODE PENDEK yang gampang di-filter
+// di spreadsheet oleh developer — bukan lagi ditampilkan sebagai alert
+// panjang ke warga. Detail teknis lengkapnya tetap dicatat apa adanya ke
+// sheet "PushErrorLogs" (lihat logPushErrorToServer), supaya developer bisa
+// langsung analisis penyebab & pola per-perangkat tanpa warga harus
+// membaca/memahami pesan teknis sama sekali.
+function classifyPushError(rawMessage) {
   const msg = String(rawMessage || "").toLowerCase();
   if (
     msg.includes("push service error") ||
     msg.includes("registration failed") ||
     msg.includes("aborterror")
   ) {
-    return (
-      "Notifikasi push GAGAL diaktifkan di HP ini.\n\n" +
-      "Ini bukan masalah dari aplikasi MY PRR, melainkan layanan push notification bawaan HP/Chrome yang bermasalah. Coba langkah berikut:\n\n" +
-      '1. Buka Play Store → cari "Google Play Services" → update kalau ada pembaruan.\n' +
-      "2. Update aplikasi Chrome ke versi terbaru.\n" +
-      '3. Buka Setelan HP → Aplikasi → Chrome → pastikan tidak dibatasi baterai ("No restrictions") dan Autostart diaktifkan.\n' +
-      '4. Buka Chrome → Setelan situs → cari domain web ini → "Hapus data situs", lalu buka lagi web-nya dan izinkan notifikasi ulang.\n' +
-      "5. Restart HP, lalu coba lagi.\n\n" +
-      "Kalau HP menggunakan ROM tanpa Google Play Services lengkap (mis. MIUI versi khusus tanpa layanan Google), notifikasi push web memang tidak bisa berfungsi sama sekali di HP tersebut."
-    );
+    return "PUSH_SERVICE_ERROR"; // umum di HP Xiaomi/Redmi (MIUI) & Vivo — Google Play Services bermasalah
   }
   if (msg.includes("messaging/permission-blocked") || msg.includes("denied")) {
-    return "Izin notifikasi diblokir di pengaturan browser/HP. Buka Setelan → Situs/Notifikasi → izinkan notifikasi untuk web ini secara manual, lalu muat ulang halaman.";
+    return "PERMISSION_BLOCKED";
   }
-  return (
-    "Gagal mengaktifkan notifikasi push di perangkat ini.\n\n" +
-    "Detail teknis: " +
-    (rawMessage || "kesalahan tidak diketahui") +
-    "\n\n" +
-    "Coba pastikan Chrome sudah versi terbaru, koneksi internet stabil, dan aplikasi tidak dibatasi baterai oleh sistem HP."
-  );
+  if (
+    msg.includes("messaging/token-subscribe-failed") ||
+    msg.includes("token-unsubscribe-failed")
+  ) {
+    return "TOKEN_SUBSCRIBE_FAILED";
+  }
+  if (msg.includes("no token")) {
+    return "NO_TOKEN_RETURNED";
+  }
+  return "UNKNOWN_ERROR";
+}
+
+// Mengirim detail error ke spreadsheet (sheet "PushErrorLogs") secara diam-
+// diam di belakang layar — tidak pernah mengganggu UX warga sama sekali,
+// bahkan kalau pengiriman log ini sendiri gagal (mis. lagi offline).
+async function logPushErrorToServer(errorCode, errorMessage) {
+  try {
+    const unit = localStorage.getItem("pondok_rajeg_user") || "Tamu";
+    const name = localStorage.getItem("pondok_rajeg_name") || unit;
+    await sendToBackend("logPushError", {
+      unit,
+      name,
+      errorCode,
+      errorMessage: String(errorMessage || ""),
+      userAgent: navigator.userAgent || "",
+      platform: navigator.platform || "",
+    });
+  } catch (err) {
+    console.error("Gagal mencatat error push ke server:", err);
+  }
 }
 
 async function requestNotificationPermission() {
@@ -179,8 +194,9 @@ async function requestNotificationPermission() {
           // ini terjadi terus-menerus di banyak HP, itulah sebabnya notif
           // tidak pernah muncul sama sekali di perangkat manapun.
           console.error("Gagal menyimpan token FCM ke server:", saveErr);
+          logPushErrorToServer("SAVE_TOKEN_FAILED", saveErr && saveErr.message);
           showToast(
-            "Notifikasi diizinkan, tapi gagal mendaftarkan perangkat ini ke server. Coba logout lalu login ulang.",
+            "Notifikasi push belum aktif di perangkat ini. Fitur lain tetap berjalan normal.",
           );
         }
       } else {
@@ -188,8 +204,12 @@ async function requestNotificationPermission() {
         // sekali — biasanya karena push service browser di HP ini gagal
         // registrasi (umum terjadi di sebagian besar browser OEM Android).
         console.error("messaging.getToken() tidak mengembalikan token.");
+        logPushErrorToServer(
+          "NO_TOKEN_RETURNED",
+          "messaging.getToken() returned empty/null",
+        );
         showToast(
-          "Gagal mengaktifkan notifikasi push di perangkat ini. Pastikan Chrome sudah diperbarui ke versi terbaru.",
+          "Notifikasi push belum aktif di perangkat ini. Fitur lain tetap berjalan normal.",
         );
       }
     } else {
@@ -198,17 +218,17 @@ async function requestNotificationPermission() {
       );
     }
   } catch (error) {
-    // [BARU] Fix #3/#4: sebelumnya error di sini juga diam-diam saja (lalu
-    // hanya toast singkat 4.5 detik yang kurang jelas & keburu hilang untuk
-    // pesan error teknis). Sekarang error seperti "Registration failed -
-    // push service error" (khas HP Xiaomi/Redmi/Vivo) ditampilkan lewat modal
-    // yang tetap terbuka, berisi PENJELASAN + LANGKAH SOLUSI yang bisa
-    // langsung dicoba warga, bukan sekadar pesan teknis mentah.
+    // [BARU] Fix: sebelumnya error di sini ditampilkan sebagai alert panjang
+    // berisi langkah troubleshooting teknis — membingungkan buat warga awam.
+    // Sekarang warga cukup dapat pesan SINGKAT & menenangkan, sementara detail
+    // teknis lengkapnya (kode error + pesan asli browser + user agent HP)
+    // otomatis tercatat ke spreadsheet "PushErrorLogs" supaya developer bisa
+    // langsung mendiagnosis & memperbaiki tanpa perlu warga melapor manual.
     console.error("Gagal mendapatkan token notifikasi:", error);
-    showAppModal(
-      "Notifikasi Push Gagal Diaktifkan",
-      explainPushError(error && error.message),
-      false,
+    const errorCode = classifyPushError(error && error.message);
+    logPushErrorToServer(errorCode, error && error.message);
+    showToast(
+      "Notifikasi push belum aktif di perangkat ini. Fitur lain tetap berjalan normal.",
     );
   }
 }
@@ -2276,6 +2296,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const lines = [
           `Kredensial FCM di server: ${d.credentialsConfigured ? "✅ Sudah diatur" : "❌ BELUM diatur (Script Properties)"}`,
           `Jumlah perangkat warga terdaftar: ${d.tokenCount}`,
+          `Riwayat kegagalan aktivasi push (lihat sheet "PushErrorLogs" untuk detail): ${d.errorLogCount || 0} kejadian`,
           `Hasil tes kirim ke HP ini (${testUnit}): ${d.testResult || "-"}`,
         ];
         showAppModal(
