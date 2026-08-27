@@ -2838,3 +2838,90 @@ dialog#aiLoadingModal::backdrop {
     z-index: 999;
   }
 }
+
+/* ========================================================== */
+/* [BARU] SHIMMER SKELETON LOADING (fix #5) — gaya "2026": sweep
+   gradient halus bergerak diagonal di atas base warna lembut, dengan
+   bentuk skeleton mengikuti bentuk kartu asli (kotak ikon + baris teks)
+   supaya transisi ke data asli terasa presisi/tidak "melompat". */
+/* ========================================================== */
+.skeleton-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+.skeleton-manage-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px;
+}
+.skeleton-thumb {
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+}
+.skeleton-thumb-sm {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+.skeleton-lines {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 2px;
+}
+.skeleton-line {
+  height: 10px;
+  border-radius: 6px;
+}
+.skeleton-line-title {
+  width: 55%;
+  height: 12px;
+}
+.skeleton-line-sub {
+  width: 35%;
+}
+.skeleton-line-full {
+  width: 90%;
+}
+
+.shimmer {
+  background: linear-gradient(
+    100deg,
+    #e7efe9 30%,
+    #f3f8f5 45%,
+    #ffffff 50%,
+    #f3f8f5 55%,
+    #e7efe9 70%
+  );
+  background-size: 250% 100%;
+  animation: shimmerSweep 1.6s ease-in-out infinite;
+}
+@keyframes shimmerSweep {
+  0% {
+    background-position: 120% 0;
+  }
+  100% {
+    background-position: -20% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shimmer {
+    animation: none;
+    background: #eef3f0;
+  }
+}

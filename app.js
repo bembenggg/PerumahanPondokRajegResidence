@@ -129,7 +129,27 @@ async function requestNotificationPermission() {
 
       if (token) {
         const unit = localStorage.getItem("pondok_rajeg_user") || "Tamu";
-        await sendToBackend("saveFCMToken", { unit, token });
+        try {
+          await sendToBackend("saveFCMToken", { unit, token });
+        } catch (saveErr) {
+          // [BARU] Fix #3/#4: sebelumnya kegagalan simpan token ke server
+          // DIAM-DIAM saja (hanya console.error) — warga tidak pernah tahu
+          // kalau HP-nya sebenarnya TIDAK terdaftar utk menerima push. Kalau
+          // ini terjadi terus-menerus di banyak HP, itulah sebabnya notif
+          // tidak pernah muncul sama sekali di perangkat manapun.
+          console.error("Gagal menyimpan token FCM ke server:", saveErr);
+          showToast(
+            "Notifikasi diizinkan, tapi gagal mendaftarkan perangkat ini ke server. Coba logout lalu login ulang.",
+          );
+        }
+      } else {
+        // getToken() berhasil dipanggil tapi tidak mengembalikan token sama
+        // sekali — biasanya karena push service browser di HP ini gagal
+        // registrasi (umum terjadi di sebagian besar browser OEM Android).
+        console.error("messaging.getToken() tidak mengembalikan token.");
+        showToast(
+          "Gagal mengaktifkan notifikasi push di perangkat ini. Pastikan Chrome sudah diperbarui ke versi terbaru.",
+        );
       }
     } else {
       showToast(
@@ -137,7 +157,16 @@ async function requestNotificationPermission() {
       );
     }
   } catch (error) {
+    // [BARU] Fix #3/#4: sebelumnya error di sini juga diam-diam saja.
+    // Ini adalah titik kegagalan paling umum untuk push notification di
+    // Android (izin browser OEM diblokir/expired token/dsb) — sekarang
+    // warga diberi tahu secara eksplisit alih-alih tidak ada tanda sama
+    // sekali kenapa notifikasi tidak pernah muncul.
     console.error("Gagal mendapatkan token notifikasi:", error);
+    showToast(
+      "Gagal mengaktifkan notifikasi push: " +
+        (error && error.message ? error.message : "kesalahan tidak diketahui"),
+    );
   }
 }
 
@@ -416,6 +445,8 @@ function notifIconFor(type) {
       return "📣";
     case "content":
       return "🗂️";
+    case "comment":
+      return "💬";
     default:
       return "📢";
   }
@@ -834,6 +865,19 @@ async function submitComment(postId, text) {
       createdAtMillis: Date.now(),
     }),
   });
+
+  // [BARU FIX #3] Sebelumnya komentar TIDAK PERNAH mengirim notifikasi sama
+  // sekali (hanya tersimpan di Firestore). Sekarang setiap komentar baru
+  // juga memicu notifikasi + push ke warga lain, sama seperti postingan baru.
+  try {
+    const snap = await postRef.get();
+    const postOwnerName = snap.exists ? snap.data().name || "" : "";
+    await sendToBackend("notifyComment", { unit, name, text, postOwnerName });
+  } catch (err) {
+    // Jangan ganggu UX komentar utama kalau pengiriman notifikasi gagal —
+    // komentarnya sendiri tetap tersimpan di atas.
+    console.error("Gagal mengirim notifikasi komentar:", err);
+  }
 }
 
 function monthBadgeMeta(category) {
@@ -1339,6 +1383,43 @@ function waLink(phone, message) {
 }
 
 // ------------------------------------------------------------
+// ------------------------------------------------------------
+// [BARU] SHIMMER SKELETON LOADING (fix #5 — pengganti teks polos
+// "Memuat...") — dipakai saat memuat kartu konten dari backend, supaya
+// terasa modern & lebih presisi (bentuk skeleton mengikuti bentuk kartu
+// aslinya: kotak ikon + baris judul + baris deskripsi).
+// ------------------------------------------------------------
+function shimmerCardHtml() {
+  return `
+    <div class="skeleton-card">
+      <div class="skeleton-thumb shimmer"></div>
+      <div class="skeleton-lines">
+        <div class="skeleton-line shimmer skeleton-line-title"></div>
+        <div class="skeleton-line shimmer skeleton-line-sub"></div>
+        <div class="skeleton-line shimmer skeleton-line-full"></div>
+      </div>
+    </div>`;
+}
+
+function shimmerListHtml(count) {
+  return Array.from({ length: count || 3 }, shimmerCardHtml).join("");
+}
+
+function shimmerGridHtml(count) {
+  return Array.from(
+    { length: count || 4 },
+    () => `
+    <div class="skeleton-manage-card">
+      <div class="skeleton-thumb-sm shimmer"></div>
+      <div class="skeleton-lines">
+        <div class="skeleton-line shimmer skeleton-line-title"></div>
+        <div class="skeleton-line shimmer skeleton-line-sub"></div>
+      </div>
+    </div>`,
+  ).join("");
+}
+
+// ------------------------------------------------------------
 // [BARU] CACHE KONTEN LOKAL + PENGECEKAN VERSI (fix #5)
 // Konten disimpan di localStorage. Sebelum mengambil ulang seluruh
 // data dari server, kita cek dulu versi ringan (getContentVersion).
@@ -1467,7 +1548,7 @@ async function loadServiceList(type, boxSelector, loadingText) {
   if (cachedItems) {
     renderServiceItems(cachedItems, box, type);
   } else {
-    box.innerHTML = `<div class="empty-state-box">${loadingText}</div>`;
+    box.innerHTML = shimmerListHtml(3);
   }
 
   try {
@@ -1528,7 +1609,7 @@ async function loadHealthList() {
   if (cachedItems) {
     renderHealthItems(cachedItems, box);
   } else {
-    box.innerHTML = `<div class="empty-state-box">Memuat layanan medis...</div>`;
+    box.innerHTML = shimmerListHtml(2);
   }
 
   try {
@@ -1578,7 +1659,7 @@ async function loadAnnouncements() {
   if (cachedItems) {
     renderAnnouncementItems(cachedItems, box);
   } else {
-    box.innerHTML = `<div class="empty-state-box">Memuat pengumuman...</div>`;
+    box.innerHTML = shimmerListHtml(3);
   }
 
   try {
@@ -1624,7 +1705,7 @@ async function loadAdartDoc() {
   if (cachedItems) {
     renderAdartItems(cachedItems, box);
   } else {
-    box.innerHTML = `<div class="empty-state-box">Memuat dokumen...</div>`;
+    box.innerHTML = shimmerListHtml(1);
   }
 
   try {
@@ -1707,7 +1788,7 @@ async function loadContentManagerGrid(type) {
     contentManagerCache[type] = cachedItems;
     renderContentManagerGrid(type, cachedItems);
   } else {
-    grid.innerHTML = `<div class="empty-state-box">Memuat konten...</div>`;
+    grid.innerHTML = shimmerGridHtml(4);
   }
 
   try {
@@ -1796,15 +1877,19 @@ function contentFormFieldVisibility(type) {
   const subtitleLabel = $("#contentSubtitleLabel");
   const phoneLabel = $("#contentPhoneLabel");
   const linkLabel = $("#contentLinkLabel");
-  if (!subtitleLabel || !phoneLabel || !linkLabel) return;
+  const categoryLabel = $("#contentCategoryLabel");
+  if (!subtitleLabel || !phoneLabel || !linkLabel || !categoryLabel) return;
 
+  const isServiceType = type === "jasa" || type === "internet";
   phoneLabel.style.display =
     type === "pengumuman" || type === "adart" ? "none" : "block";
   linkLabel.style.display =
-    type === "jasa" || type === "internet" || type === "adart"
-      ? "block"
-      : "none";
+    isServiceType || type === "adart" ? "block" : "none";
   subtitleLabel.style.display = type === "adart" ? "none" : "block";
+  // Fix #2: kategori Jasa/Internet dipilih lewat dropdown eksplisit (bukan
+  // cuma mengandalkan tab admin mana yang aktif saat itu), supaya data yang
+  // tersimpan selalu konsisten/seragam dan admin bisa mengubahnya langsung.
+  categoryLabel.style.display = isServiceType ? "block" : "none";
 }
 
 function openContentForm(type, item) {
@@ -1815,6 +1900,12 @@ function openContentForm(type, item) {
   form.reset();
   form.querySelector("[name='contentType']").value = type;
   form.querySelector("[name='contentId']").value = item ? item.id : "";
+  const categorySelect = form.querySelector("[name='category']");
+  if (categorySelect) {
+    // Saat edit, ikuti kategori ASLI item (item.type) — bukan sekadar tab
+    // admin yang sedang aktif — supaya tetap akurat kalau ada campuran data.
+    categorySelect.value = (item && item.type) || type;
+  }
 
   $("#contentFormEyebrow").textContent =
     (item ? "UBAH KARTU · " : "TAMBAH KARTU · ") +
@@ -2004,7 +2095,7 @@ document.addEventListener("DOMContentLoaded", () => {
       notificationDialog.showModal();
       const box = $("#notificationListContent");
       if (box && !notificationCache.length) {
-        box.innerHTML = `<div class="empty-state-box">Memuat notifikasi...</div>`;
+        box.innerHTML = shimmerListHtml(3);
       }
       await loadNotifications();
       localStorage.setItem(NOTIF_SEEN_KEY, String(Date.now()));
@@ -2126,6 +2217,42 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
+  // [BARU FIX #2/#3] Tombol diagnostik: admin bisa langsung tes apakah push
+  // notification benar2 berfungsi ke HP-nya sendiri, tanpa perlu menebak-nebak
+  // kenapa warga tidak menerima notifikasi.
+  const testPushBtn = $("#testPushBtn");
+  if (testPushBtn) {
+    testPushBtn.addEventListener("click", async () => {
+      const testUnit = localStorage.getItem("pondok_rajeg_user");
+      const originalText = testPushBtn.innerHTML;
+      testPushBtn.innerHTML = "Menguji...";
+      testPushBtn.disabled = true;
+      try {
+        const result = await sendToBackend("checkPushSetup", { testUnit });
+        const d = result.data || result;
+        const lines = [
+          `Kredensial FCM di server: ${d.credentialsConfigured ? "✅ Sudah diatur" : "❌ BELUM diatur (Script Properties)"}`,
+          `Jumlah perangkat warga terdaftar: ${d.tokenCount}`,
+          `Hasil tes kirim ke HP ini (${testUnit}): ${d.testResult || "-"}`,
+        ];
+        showAppModal(
+          "Diagnostik Push Notification",
+          lines.join("\n\n"),
+          d.credentialsConfigured && d.tokenCount > 0,
+        );
+      } catch (err) {
+        showAppModal(
+          "Diagnostik Push Notification",
+          `Gagal menjalankan diagnostik: ${err.message}`,
+          false,
+        );
+      } finally {
+        testPushBtn.innerHTML = originalText;
+        testPushBtn.disabled = false;
+      }
+    });
+  }
+
   if (contentForm) {
     contentForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -2137,10 +2264,22 @@ document.addEventListener("DOMContentLoaded", () => {
       submitBtn.innerHTML = "Menyimpan...";
 
       const isEdit = !!formData.contentId;
+      // Fix #1/#2: untuk kartu Jasa/Internet, kategori FINAL yang disimpan
+      // mengikuti dropdown "Kategori" di form (formData.category) — bukan
+      // cuma tab admin mana yang kebetulan aktif saat tombol "+ Tambah Kartu"
+      // diklik. Ini membuat data selalu konsisten & mencegah kartu tersimpan
+      // dengan kategori yang salah/tidak sesuai.
+      const isServiceType =
+        formData.contentType === "jasa" || formData.contentType === "internet";
+      const finalType =
+        isServiceType && formData.category
+          ? formData.category
+          : formData.contentType;
+
       const payload = {
         adminUnit,
         id: formData.contentId,
-        type: formData.contentType,
+        type: finalType,
         title: formData.title,
         subtitle: formData.subtitle,
         description: formData.description,
@@ -2160,8 +2299,13 @@ document.addEventListener("DOMContentLoaded", () => {
         // Versi konten di server sudah berubah (backend men-bump versi) -> buang
         // cache lokal supaya panel admin & dialog warga sama-sama ambil data baru.
         bustContentCache();
-        loadContentManagerGrid(formData.contentType);
-        refreshPublicContentIfOpen(formData.contentType);
+        loadContentManagerGrid(activeContentTab);
+        refreshPublicContentIfOpen(finalType);
+        if (finalType !== formData.contentType) {
+          // Kategori sempat diganti admin lewat dropdown (mis. dari Jasa ke
+          // Internet) -> segarkan juga tab/pane asalnya kalau kebetulan terbuka.
+          refreshPublicContentIfOpen(formData.contentType);
+        }
       } catch (err) {
         showToast(`Gagal: ${err.message}`);
       } finally {

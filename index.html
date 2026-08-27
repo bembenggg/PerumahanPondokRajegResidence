@@ -824,32 +824,16 @@
         <p class="eyebrow">DIREKTORI WARGA</p>
         <h2>Jasa Tukang & Internet</h2>
 
-        <div
-          id="tukangMainTabs"
-          class="tukang-tabs"
-          style="margin-bottom: 14px"
-        >
-          <button
-            type="button"
-            class="tukang-tab-btn active"
-            data-tukangtab="jasa"
-          >
+        <div id="tukangMainTabs" class="tukang-tabs" style="margin-bottom: 14px">
+          <button type="button" class="tukang-tab-btn active" data-tukangtab="jasa">
             Jasa
           </button>
-          <button
-            type="button"
-            class="tukang-tab-btn"
-            data-tukangtab="internet"
-          >
+          <button type="button" class="tukang-tab-btn" data-tukangtab="internet">
             Internet
           </button>
         </div>
 
-        <div
-          id="tukangListContent"
-          class="tukang-tab-pane"
-          style="max-height: 320px"
-        >
+        <div id="tukangListContent" class="tukang-tab-pane" style="max-height: 320px">
           <div class="empty-state-box">Memuat daftar jasa...</div>
         </div>
         <div
@@ -877,11 +861,7 @@
           perumahan:
         </p>
 
-        <div
-          id="healthListContent"
-          class="tukang-tab-pane"
-          style="max-height: 320px"
-        >
+        <div id="healthListContent" class="tukang-tab-pane" style="max-height: 320px">
           <div class="empty-state-box">Memuat layanan medis...</div>
         </div>
 
@@ -909,6 +889,7 @@
             color: var(--muted);
             line-height: 1.5;
             margin: 0 0 16px;
+            white-space: pre-line;
           "
         ></p>
         <button class="primary-button" id="appMessageCloseBtn" value="confirm">
@@ -1121,37 +1102,16 @@
         </p>
 
         <div class="tukang-tabs" id="contentTabs">
-          <button type="button" class="tukang-tab-btn active" data-ctype="jasa">
-            Jasa
-          </button>
-          <button type="button" class="tukang-tab-btn" data-ctype="internet">
-            Internet
-          </button>
-          <button type="button" class="tukang-tab-btn" data-ctype="kesehatan">
-            Darurat Medis
-          </button>
-          <button type="button" class="tukang-tab-btn" data-ctype="pengumuman">
-            Pengumuman
-          </button>
-          <button type="button" class="tukang-tab-btn" data-ctype="adart">
-            Dok. Pengurus
-          </button>
+          <button type="button" class="tukang-tab-btn active" data-ctype="jasa">Jasa</button>
+          <button type="button" class="tukang-tab-btn" data-ctype="internet">Internet</button>
+          <button type="button" class="tukang-tab-btn" data-ctype="kesehatan">Darurat Medis</button>
+          <button type="button" class="tukang-tab-btn" data-ctype="pengumuman">Pengumuman</button>
+          <button type="button" class="tukang-tab-btn" data-ctype="adart">Dok. Pengurus</button>
         </div>
 
-        <div
-          style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin: 4px 0 10px;
-          "
-        >
+        <div style="display:flex; justify-content:space-between; align-items:center; margin: 4px 0 10px">
           <button type="button" id="contentRefreshBtn" class="text-link-btn">
-            <span
-              class="material-symbols-rounded"
-              style="font-size: 14px; vertical-align: middle"
-              >refresh</span
-            >
+            <span class="material-symbols-rounded" style="font-size:14px; vertical-align:middle">refresh</span>
             Muat ulang
           </button>
           <button type="button" id="contentAddBtn" class="text-link-btn">
@@ -1163,7 +1123,17 @@
           <div class="empty-state-box">Memuat konten...</div>
         </div>
 
-        <button class="primary-button" value="cancel" style="margin-top: 16px">
+        <button
+          type="button"
+          id="testPushBtn"
+          class="text-link-btn"
+          style="margin-top: 14px; display: block; text-align: center; width: 100%"
+        >
+          <span class="material-symbols-rounded" style="font-size: 14px; vertical-align: middle">notifications_active</span>
+          Tes Push Notifikasi
+        </button>
+
+        <button class="primary-button" value="cancel" style="margin-top: 10px">
           Tutup
         </button>
       </form>
@@ -1181,30 +1151,28 @@
         <input type="hidden" name="contentId" />
         <input type="hidden" name="contentType" />
 
+        <label id="contentCategoryLabel" style="display: none"
+          >Kategori
+          <select name="category">
+            <option value="jasa">Jasa</option>
+            <option value="internet">Internet</option>
+          </select>
+          <small style="display: block; margin-top: 4px; font-weight: 400; color: var(--muted); font-size: 10.5px;">
+            Pilih kategori supaya kartu ini tersimpan konsisten & muncul di tab yang tepat.
+          </small>
+        </label>
+
         <label
           >Judul
-          <input
-            type="text"
-            name="title"
-            placeholder="Contoh: Bengkel Pak Ujang"
-            required
-          />
+          <input type="text" name="title" placeholder="Contoh: Bengkel Pak Ujang" required />
         </label>
         <label id="contentSubtitleLabel"
           >Subjudul / Kategori
-          <input
-            type="text"
-            name="subtitle"
-            placeholder="Contoh: Bengkel Motor & Las"
-          />
+          <input type="text" name="subtitle" placeholder="Contoh: Bengkel Motor & Las" />
         </label>
         <label
           >Deskripsi
-          <textarea
-            name="description"
-            rows="3"
-            placeholder="Keterangan singkat layanan atau informasi..."
-          ></textarea>
+          <textarea name="description" rows="3" placeholder="Keterangan singkat layanan atau informasi..."></textarea>
         </label>
         <div class="form-row">
           <label id="contentPhoneLabel"
@@ -1227,17 +1195,8 @@
             name="imageUrl"
             placeholder="https://... (kosongkan untuk pakai logo PRR)"
           />
-          <small
-            style="
-              display: block;
-              margin-top: 4px;
-              font-weight: 400;
-              color: var(--muted);
-              font-size: 10.5px;
-            "
-          >
-            Kalau dikosongkan, kartu ini akan tampil dengan logo MY PRR sebagai
-            gambar default.
+          <small style="display: block; margin-top: 4px; font-weight: 400; color: var(--muted); font-size: 10.5px;">
+            Kalau dikosongkan, kartu ini akan tampil dengan logo MY PRR sebagai gambar default.
           </small>
         </label>
 
