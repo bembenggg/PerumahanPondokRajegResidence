@@ -1043,9 +1043,10 @@ body {
   padding: 0;
 }
 
-.quick-grid {
+.quick-grid,
+.quick-page {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
 }
 .quick-card {
@@ -1059,6 +1060,57 @@ body {
   flex-direction: column;
   justify-content: space-between;
   min-height: 115px;
+}
+
+/* ==== Carousel "Akses cepat": halaman berisi maks 6 kartu, geser horizontal ==== */
+.quick-carousel-wrap {
+  overflow: hidden;
+}
+.quick-carousel {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  gap: 0;
+}
+.quick-carousel::-webkit-scrollbar {
+  display: none;
+}
+.quick-page {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  grid-template-rows: repeat(2, 1fr);
+}
+.quick-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.quick-pager-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.quick-pager-dots {
+  display: flex;
+  gap: 5px;
+}
+.quick-pager-dots .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line);
+  transition:
+    background 0.2s,
+    width 0.2s;
+}
+.quick-pager-dots .dot.active {
+  background: var(--green);
+  width: 14px;
+  border-radius: 4px;
 }
 .quick-card strong {
   font-size: 11px;
@@ -1593,9 +1645,11 @@ body {
   display: flex;
   gap: 8px;
   margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 .tukang-tab-btn {
   flex: 1;
+  min-width: 100px;
   padding: 10px;
   border: 1.5px solid var(--line);
   background: #f8faf8;
@@ -1634,6 +1688,129 @@ body {
   color: var(--muted);
   margin: 0 0 10px;
   line-height: 1.4;
+}
+
+/* ========================================================== */
+/* [BARU] IKON/GAMBAR PER KARTU KONTEN (jasa/kesehatan/pengumuman/
+   dokumen pengurus) — dipakai di listing warga & panel admin.
+   Kalau admin melampirkan URL gambar, tampil sebagai foto; kalau
+   tidak, tampil ikon bulat berwarna sesuai kategori. */
+/* ========================================================== */
+.content-item-with-thumb {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.content-item-with-thumb .content-item-body {
+  flex: 1;
+  min-width: 0;
+}
+.content-item-with-thumb .content-item-body p,
+.content-item-with-thumb .content-item-body b {
+  margin-top: 0;
+}
+/* Fix #1/#2: deskripsi/judul kartu (Darurat Medis, Info & Dokumen, dll) bisa
+   berisi teks panjang tanpa spasi (mis. link atau kata sambung panjang).
+   Tanpa aturan ini, teks tsb akan "meluber" keluar batas kartu alih-alih
+   membungkus ke baris berikutnya. */
+.content-item-with-thumb .content-item-body p,
+.content-item-with-thumb .content-item-body b,
+.content-item-with-thumb .content-item-body div,
+.doc-info b,
+.doc-info small,
+.content-manage-desc,
+.content-manage-subtitle,
+.content-manage-card-top b {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.content-thumb {
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.content-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+/* Kalau gambar gagal dimuat dan otomatis diganti logo PRR (fallback),
+   tampilkan logo dengan "contain" + sedikit padding supaya tidak terpotong. */
+.content-thumb img.content-thumb-fallback {
+  object-fit: contain;
+  padding: 8px;
+  background: #f3f8f4;
+}
+.content-thumb-icon .material-symbols-rounded {
+  font-size: 24px;
+  color: #fff;
+}
+.content-thumb-icon.wrench {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+.content-thumb-icon.wifi {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+}
+.content-thumb-icon.health {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+.content-thumb-icon.info {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+.content-thumb-square {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+}
+.content-thumb-sm {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+.content-thumb-sm .material-symbols-rounded {
+  font-size: 16px;
+}
+
+/* Fallback gambar default (logo PRR) di detail artikel "Baca selengkapnya" */
+.article-detail-image-default {
+  object-fit: contain;
+  padding: 24px;
+  background: #f3f8f4;
+}
+
+/* Fix: dua tombol aksi (Chat WhatsApp + Buka Link) ditampilkan berdampingan
+   (kiri-kanan), bukan ditumpuk vertikal. Baris ini sekarang diletakkan di
+   LUAR kolom sempit sebelah ikon (lihat renderServiceItems di app.js),
+   sehingga mendapat lebar penuh kartu — dan tombolnya dibuat lebih ringkas
+   (padding & font lebih kecil, label diperpendek jadi "WhatsApp"/"Link" saat
+   berpasangan) supaya benar-benar muat sejajar bahkan di layar HP sempit.
+   flex-wrap tetap dipertahankan sebagai jaring pengaman untuk layar yang
+   sangat sempit (<280px). */
+.content-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.content-item-actions .whatsapp-btn {
+  flex: 1 1 0;
+  min-width: 90px;
+  width: auto;
+  margin-top: 0;
+  padding: 10px 8px;
+  font-size: 12px;
+  gap: 4px;
+}
+.content-item-actions .whatsapp-btn .material-symbols-rounded {
+  font-size: 16px;
 }
 
 .whatsapp-btn {
@@ -1875,6 +2052,14 @@ body {
   border: 1px solid var(--line);
   border-radius: 16px;
 }
+/* Fix #4: kalau box ini muncul sendirian di dalam grid (misal saat status
+   "Memuat konten...", sebelum ada kartu lain), pastikan ia memenuhi SELURUH
+   lebar grid, bukan cuma kolom pertama — supaya tidak tampil kecil/miring
+   seperti sebelumnya. grid-column tidak berefek di luar konteks grid, jadi
+   aman dipakai di sini secara umum. */
+.empty-state-box {
+  grid-column: 1 / -1;
+}
 
 label {
   display: block;
@@ -2065,12 +2250,15 @@ input[type="file"]::file-selector-button {
   color: var(--muted);
   margin-bottom: 8px;
   font-weight: 750;
+  overflow-wrap: anywhere;
 }
 .article-detail-body-text p {
   font-size: 12px;
   color: var(--ink);
   line-height: 1.6;
   margin: 0 0 10px 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .pbb-location-list {
   margin: 0;
@@ -2156,6 +2344,10 @@ input[type="file"]::file-selector-button {
 .quick-icon.cashout {
   background: #fee2e2;
   color: #dc2626;
+}
+.quick-icon.content {
+  background: #e0f2fe;
+  color: #0369a1;
 }
 
 .expense-row {
@@ -2290,6 +2482,104 @@ input[type="file"]::file-selector-button {
   height: 300px;
   border: 1px solid var(--line);
   border-radius: 14px;
+}
+
+/* ========================================================== */
+/* [BARU] PANEL "KELOLA KONTEN" (ADMIN) — grid 2 kolom / carousel */
+/* ========================================================== */
+.content-manager-modal {
+  max-width: 560px;
+}
+.content-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 2px;
+}
+@media (max-width: 420px) {
+  .content-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.content-manage-card {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.content-manage-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.content-manage-card-headtext {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 6px;
+}
+.content-manage-card-top b {
+  font-size: 12.5px;
+  color: var(--dark);
+  line-height: 1.3;
+}
+.content-order-badge {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--muted);
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+.content-manage-subtitle {
+  font-size: 10.5px;
+  color: var(--green);
+  font-weight: 700;
+}
+.content-manage-desc {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 2px 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.content-manage-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.content-manage-meta .material-symbols-rounded {
+  font-size: 13px;
+  color: var(--green);
+  flex-shrink: 0;
+}
+.content-manage-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.content-manage-actions .chip-btn {
+  padding: 7px 8px;
+  font-size: 10px;
 }
 
 /* ========================================================== */
@@ -2521,7 +2811,8 @@ dialog#aiLoadingModal::backdrop {
     padding: 22px;
     border-radius: 18px;
   }
-  .quick-grid {
+  .quick-grid,
+  .quick-page {
     grid-template-columns: repeat(4, 1fr);
     gap: 14px;
   }

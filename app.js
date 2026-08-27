@@ -141,36 +141,6 @@ async function requestNotificationPermission() {
   }
 }
 
-const articlesData = {
-  "pbb-2025": {
-    title: "Pengambilan STP PBB 2025",
-    date: "15 Agustus 2026",
-    image: "https://i.ibb.co.com/b5VjvFGK/LOGO-PRR.jpg",
-    content: `
-      <p>Surat Tagihan Pajak PBB (SPT PBB) tahun 2025 untuk seluruh warga MY PRR kini sudah didistribusikan oleh pengurus dan dapat diambil secara mandiri di pos penjemputan masing-masing wilayah blok.</p>
-      <p>Berikut adalah rincian lokasi penjemputan dokumen berdasarkan blok rumah Anda:</p>
-      <ul class="pbb-location-list" style="margin-bottom: 12px;">
-        <li><strong>Blok A &amp; B:</strong> Rumah Bpk. Akhmad Tika (B9/6)</li>
-        <li><strong>Blok C:</strong> Rumah Bpk. Juhaeri (C8/15)</li>
-      </ul>
-      <p>Mohon membawa kartu identitas diri atau bukti pembayaran IPL terakhir saat mengambil dokumen guna kelancaran pendataan warga.</p>
-    `,
-  },
-  "kerja-bakti": {
-    title: "Kerja Bakti Lingkungan Serentak",
-    date: "20 Agustus 2026",
-    image: "https://i.ibb.co.com/b5VjvFGK/LOGO-PRR.jpg",
-    content: `
-      <p>Dalam rangka menjaga kebersihan lingkungan, keasrian kawasan, serta mengantisipasi saluran air menghadapi musim penghujan, pengurus RT bersama warga akan mengadakan kegiatan <strong>Kerja Bakti Lingkungan Serentak</strong>.</p>
-      <p><strong>Waktu &amp; Tempat Pelaksanaan:</strong><br>
-      📅 Minggu, 23 Agustus 2026<br>
-      ⏰ Pukul 07.00 WIB s.d Selesai<br>
-      📍 Titik Kumpul: Pos Keamanan Utama Kawasan Perumahan</p>
-      <p>Diharapkan kepada seluruh warga untuk dapat meluangkan waktu berpartisipasi membawa alat kebersihan masing-masing (sapu lidi, cangkul kecil, atau parang pemotong rumput liar).</p>
-    `,
-  },
-};
-
 const $ = (selector) => document.querySelector(selector);
 const rupiah = (value) =>
   new Intl.NumberFormat("id-ID", {
@@ -444,6 +414,8 @@ function notifIconFor(type) {
       return "💳";
     case "complaint":
       return "📣";
+    case "content":
+      return "🗂️";
     default:
       return "📢";
   }
@@ -961,6 +933,123 @@ function applyRoleUI(role) {
   const expenseAdminBtn = $("#expenseAdminBtn");
   if (expenseAdminBtn)
     expenseAdminBtn.style.display = role === "admin" ? "flex" : "none";
+  const contentAdminBtn = $("#contentAdminBtn");
+  if (contentAdminBtn)
+    contentAdminBtn.style.display = role === "admin" ? "flex" : "none";
+
+  // Susun ulang carousel "Akses cepat" karena jumlah kartu yang tampil berubah
+  // (kartu khusus admin baru saja disembunyikan/ditampilkan di atas).
+  buildQuickAccessCarousel();
+}
+
+// Jumlah kartu per halaman menyesuaikan lebar layar:
+// - Mobile (<1024px): grid 3 kolom x 2 baris = 6 kartu/halaman
+// - Desktop/website (>=1024px): grid 4 kolom x 2 baris = 8 kartu/halaman
+const QUICK_DESKTOP_BREAKPOINT = 1024;
+function getQuickCardsPerPage() {
+  return window.innerWidth >= QUICK_DESKTOP_BREAKPOINT ? 8 : 6;
+}
+
+// Cache daftar node kartu asli (diambil sekali dari #quickGridSource).
+// PENTING: setelah build pertama, kartu-kartu ini dipindah (reparent) ke
+// dalam #quickCarousel, jadi #quickGridSource akan kosong. Build berikutnya
+// (misal saat logout/login ganti role) HARUS memakai cache ini, bukan
+// query ulang ke #quickGridSource, atau kartunya akan hilang semua.
+let _quickCardsCache = null;
+
+/**
+ * Mengambil semua kartu "Akses cepat" yang seharusnya terlihat (sesuai role),
+ * lalu membaginya jadi halaman @QUICK_CARDS_PER_PAGE kartu / halaman, dan
+ * merender carousel geser horizontal + indikator titik + label "x dari y Halaman".
+ * Dipanggil ulang setiap kali role berubah (login/logout) agar kartu admin
+ * yang baru muncul/hilang tetap terhitung dengan benar dalam paginasi.
+ */
+function buildQuickAccessCarousel() {
+  const carousel = $("#quickCarousel");
+  const pager = $("#quickPager");
+  const pagerLabel = $("#quickPagerLabel");
+  const pagerDots = $("#quickPagerDots");
+  if (!carousel) return;
+
+  if (!_quickCardsCache) {
+    const source = $("#quickGridSource");
+    if (!source) return;
+    _quickCardsCache = Array.from(source.querySelectorAll(".quick-card"));
+  }
+
+  // Ambil hanya kartu yang tidak disembunyikan (misal kartu admin utk warga biasa)
+  const allCards = _quickCardsCache.filter(
+    (card) => card.style.display !== "none",
+  );
+
+  // Kosongkan carousel lama, lalu bangun ulang per-halaman
+  carousel.innerHTML = "";
+  const perPage = getQuickCardsPerPage();
+  const totalPages = Math.max(1, Math.ceil(allCards.length / perPage));
+
+  for (let p = 0; p < totalPages; p++) {
+    const pageEl = document.createElement("div");
+    pageEl.className = "quick-page";
+    const pageCards = allCards.slice(p * perPage, p * perPage + perPage);
+    pageCards.forEach((card) => {
+      card.style.display = "flex";
+      pageEl.appendChild(card);
+    });
+    carousel.appendChild(pageEl);
+  }
+
+  // Pager (label + titik) hanya tampil kalau lebih dari 1 halaman
+  if (pager && pagerLabel && pagerDots) {
+    if (totalPages <= 1) {
+      pager.style.display = "none";
+    } else {
+      pager.style.display = "flex";
+      pagerDots.innerHTML = "";
+      for (let p = 0; p < totalPages; p++) {
+        const dot = document.createElement("span");
+        dot.className = "dot" + (p === 0 ? " active" : "");
+        pagerDots.appendChild(dot);
+      }
+      pagerLabel.textContent = `1 dari ${totalPages} Halaman`;
+    }
+  }
+
+  // Update label + titik aktif saat pengguna menggeser carousel
+  if (!carousel.dataset.scrollBound) {
+    carousel.dataset.scrollBound = "1";
+    carousel.addEventListener("scroll", () => {
+      const pageWidth = carousel.clientWidth || 1;
+      const currentPage = Math.round(carousel.scrollLeft / pageWidth);
+      const pages = carousel.querySelectorAll(".quick-page").length;
+      if (pagerLabel) {
+        pagerLabel.textContent = `${Math.min(currentPage + 1, pages)} dari ${pages} Halaman`;
+      }
+      if (pagerDots) {
+        pagerDots.querySelectorAll(".dot").forEach((dot, idx) => {
+          dot.classList.toggle("active", idx === currentPage);
+        });
+      }
+    });
+  }
+
+  // Bangun ulang carousel kalau layar melewati breakpoint desktop (misal jendela
+  // di-resize atau tablet diputar), supaya jumlah kartu/halaman ikut berubah
+  // (3x2 di mobile <-> 4x2 di desktop) tanpa perlu reload halaman.
+  if (!window._quickResizeBound) {
+    window._quickResizeBound = true;
+    let lastIsDesktop = window.innerWidth >= QUICK_DESKTOP_BREAKPOINT;
+    let resizeTimer = null;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        const nowIsDesktop = window.innerWidth >= QUICK_DESKTOP_BREAKPOINT;
+        if (nowIsDesktop !== lastIsDesktop) {
+          lastIsDesktop = nowIsDesktop;
+          buildQuickAccessCarousel();
+        }
+      }, 200);
+    });
+  }
 }
 
 async function loadAdminPending() {
@@ -1182,29 +1271,373 @@ async function deleteExpense(item) {
   }
 }
 
-function logoutToLoginView() {
-  localStorage.removeItem("pondok_rajeg_user");
-  localStorage.removeItem("pondok_rajeg_name");
-  localStorage.removeItem(PROFILE_KEY);
-  localStorage.removeItem(ROLE_KEY);
-  detachPostsListener();
-  stopNotifPolling();
-  notificationCache = [];
+// ============================================================
+// [BARU] KARTU KONTEN DINAMIS — JASA & INTERNET, DARURAT MEDIS,
+// PENGUMUMAN WARGA, DAN DOKUMEN PENGURUS PAGUYUBAN. Semua diambil
+// dari sheet "ContentCards" via backend dan dikelola oleh Petugas
+// RT lewat dialog "Kelola Konten".
+// ============================================================
 
-  const mainApp = $("#mainApp");
-  const loginView = $("#loginView");
-  if (mainApp) {
-    mainApp.style.display = "none";
-    mainApp.style.opacity = "0";
+// Logo default MY PRR — dipakai sebagai gambar fallback untuk kartu/artikel
+// yang tidak dilampiri URL gambar oleh admin (fix #1 & #3).
+const CONTENT_DEFAULT_IMAGE = "icons/icon-512.png";
+
+const CONTENT_TYPE_META = {
+  jasa: {
+    label: "Jasa",
+    icon: "handyman",
+    accent: "wrench",
+    emptyText: "Belum ada jasa/internet yang ditambahkan petugas RT.",
+    waLabel: "Hubungi via WhatsApp",
+  },
+  internet: {
+    label: "Internet & TV Kabel",
+    icon: "wifi",
+    accent: "wifi",
+    emptyText: "Belum ada provider internet yang ditambahkan petugas RT.",
+    waLabel: "Hubungi Provider",
+  },
+  kesehatan: {
+    label: "Darurat Medis",
+    icon: "medical_services",
+    accent: "health",
+    emptyText: "Belum ada layanan medis darurat yang ditambahkan petugas RT.",
+    waLabel: "Hubungi Layanan",
+  },
+  pengumuman: {
+    label: "Pengumuman",
+    icon: "campaign",
+    accent: "info",
+    emptyText: "Belum ada pengumuman warga.",
+    waLabel: "",
+  },
+  adart: {
+    label: "Dokumen Pengurus Paguyuban",
+    icon: "picture_as_pdf",
+    accent: "info",
+    emptyText: "Dokumen pengurus paguyuban belum ditambahkan petugas RT.",
+    waLabel: "",
+  },
+};
+
+// Badge ikon/gambar kecil untuk tiap kartu konten (fix #1). Kalau admin
+// melampirkan URL gambar, tampilkan gambarnya; kalau tidak, tampilkan ikon
+// bulat berwarna sesuai kategori supaya tetap menarik & mudah dibedakan.
+function contentThumbHtml(item, type, sizeClass) {
+  const meta = CONTENT_TYPE_META[type] || {};
+  const size = sizeClass || "";
+  if (item && item.imageUrl) {
+    return `<div class="content-thumb ${size}"><img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.title || "")}" loading="lazy" onerror="this.onerror=null;this.src='${CONTENT_DEFAULT_IMAGE}';this.classList.add('content-thumb-fallback');" /></div>`;
   }
-  if (loginView) {
-    loginView.style.display = "flex";
-    loginView.style.opacity = "1";
+  return `<div class="content-thumb content-thumb-icon ${meta.accent || ""} ${size}"><span class="material-symbols-rounded">${meta.icon || "auto_awesome"}</span></div>`;
+}
+
+function waLink(phone, message) {
+  const digits = String(phone || "").replace(/[^\d]/g, "");
+  if (!digits) return "";
+  return `https://wa.me/${digits}?text=${encodeURIComponent(message || "")}`;
+}
+
+// ------------------------------------------------------------
+// [BARU] CACHE KONTEN LOKAL + PENGECEKAN VERSI (fix #5)
+// Konten disimpan di localStorage. Sebelum mengambil ulang seluruh
+// data dari server, kita cek dulu versi ringan (getContentVersion).
+// Kalau versinya sama dengan yang tersimpan, artinya TIDAK ADA
+// perubahan di spreadsheet -> pakai data cache, tidak fetch ulang.
+// ------------------------------------------------------------
+const CONTENT_CACHE_KEY = "pondok_rajeg_content_cache_v1";
+
+function readContentCache() {
+  try {
+    const raw = localStorage.getItem(CONTENT_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+function writeContentCache(cache) {
+  try {
+    localStorage.setItem(CONTENT_CACHE_KEY, JSON.stringify(cache));
+  } catch (err) {
+    console.error("Gagal menyimpan cache konten:", err);
+  }
+}
+
+function bustContentCache() {
+  try {
+    localStorage.removeItem(CONTENT_CACHE_KEY);
+  } catch (err) {
+    /* abaikan */
+  }
+}
+
+// Mengambil kartu konten per kategori, memakai cache lokal selama versi di
+// server belum berubah. Mengembalikan { items, fromCache }.
+async function getContentCardsSmart(type) {
+  const cache = readContentCache();
+  let serverVersion = null;
+  try {
+    const verResult = await sendToBackend("getContentVersion", {});
+    serverVersion = verResult && verResult.version;
+  } catch (err) {
+    serverVersion = null; // gagal cek versi (mis. offline) -> aman-nya, ambil data langsung
+  }
+
+  if (
+    serverVersion &&
+    cache &&
+    cache.version === serverVersion &&
+    Array.isArray(cache[type])
+  ) {
+    return { items: cache[type], fromCache: true };
+  }
+
+  const items = await fetchContentCards(type);
+  const newCache =
+    serverVersion && cache && cache.version === serverVersion
+      ? cache
+      : { version: serverVersion || "" };
+  newCache[type] = items;
+  writeContentCache(newCache);
+  return { items, fromCache: false };
+}
+
+async function fetchContentCards(type) {
+  const result = await sendToBackend("getContentCards", { type });
+  return (result && result.items) || [];
+}
+
+function renderServiceItems(items, box, type) {
+  if (!box) return;
+  const meta = CONTENT_TYPE_META[type] || CONTENT_TYPE_META.jasa;
+  if (!items.length) {
+    box.innerHTML = `<div class="empty-state-box">${meta.emptyText}</div>`;
+    return;
+  }
+  box.innerHTML = items
+    .map((it) => {
+      const hasBoth = !!(it.phone && it.linkUrl);
+      const waLabel = hasBoth ? "WhatsApp" : "Chat WhatsApp";
+      const linkLabel = hasBoth ? "Link" : "Buka Link";
+      const actionsHtml =
+        it.phone || it.linkUrl
+          ? `<div class="content-item-actions">
+              ${
+                it.phone
+                  ? `<a href="${waLink(it.phone, `Halo ${it.title}, saya warga MY PRR ingin bertanya...`)}" target="_blank" class="whatsapp-btn">
+                      <span class="material-symbols-rounded">chat</span> ${waLabel}
+                    </a>`
+                  : ""
+              }
+              ${
+                it.linkUrl
+                  ? `<a href="${it.linkUrl}" target="_blank" class="whatsapp-btn internet-btn"><span class="material-symbols-rounded">open_in_new</span> ${linkLabel}</a>`
+                  : ""
+              }
+            </div>`
+          : "";
+      // Fix: baris tombol diletakkan DI LUAR kolom sempit di sebelah ikon
+      // (bukan lagi di dalam .content-item-body), supaya dapat lebar penuh
+      // kartu dan benar-benar muat berdampingan bahkan di layar HP sempit.
+      return `
+    <article class="tukang-item">
+      <div class="content-item-with-thumb">
+        ${contentThumbHtml(it, type)}
+        <div class="content-item-body">
+          <b>${escapeHtml(it.title)}</b>
+          ${it.subtitle ? `<div style="font-size:11px; color:var(--muted); margin: -2px 0 6px; font-weight:700;">${escapeHtml(it.subtitle)}</div>` : ""}
+          <p>${escapeHtml(it.description || "")}</p>
+        </div>
+      </div>
+      ${actionsHtml}
+    </article>`;
+    })
+    .join("");
+}
+
+async function loadServiceList(type, boxSelector, loadingText) {
+  const box = $(boxSelector);
+  if (!box) return;
+  const cache = readContentCache();
+  const cachedItems = cache && Array.isArray(cache[type]) ? cache[type] : null;
+
+  // Fix #4/#5: kalau sudah ada cache, langsung tampilkan (tanpa "Memuat...").
+  // Data akan disegarkan diam-diam di belakang layar HANYA kalau ternyata berubah.
+  if (cachedItems) {
+    renderServiceItems(cachedItems, box, type);
+  } else {
+    box.innerHTML = `<div class="empty-state-box">${loadingText}</div>`;
+  }
+
+  try {
+    const { items, fromCache } = await getContentCardsSmart(type);
+    if (!fromCache) renderServiceItems(items, box, type);
+  } catch (err) {
+    if (!cachedItems)
+      box.innerHTML = `<div class="empty-state-box">Gagal memuat: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+async function loadTukangList() {
+  await loadServiceList("jasa", "#tukangListContent", "Memuat daftar jasa...");
+}
+
+async function loadInternetList() {
+  await loadServiceList(
+    "internet",
+    "#internetListContent",
+    "Memuat daftar internet...",
+  );
+}
+
+function renderHealthItems(items, box) {
+  if (!box) return;
+  if (!items.length) {
+    box.innerHTML = `<div class="empty-state-box">${CONTENT_TYPE_META.kesehatan.emptyText}</div>`;
+    return;
+  }
+  box.innerHTML = items
+    .map(
+      (it) => `
+    <article class="tukang-item emergency-item content-item-with-thumb">
+      ${contentThumbHtml(it, "kesehatan")}
+      <div class="content-item-body">
+        <b>${escapeHtml(it.title)}</b>
+        <p>${escapeHtml(it.description || it.subtitle || "")}</p>
+        ${
+          it.phone
+            ? `<a href="${waLink(it.phone, `Darurat Medis! Saya warga MY PRR butuh bantuan segera...`)}" target="_blank" class="whatsapp-btn emergency-wa-btn">
+                <span class="material-symbols-rounded">phone_in_talk</span> Hubungi via WA
+              </a>`
+            : ""
+        }
+      </div>
+    </article>`,
+    )
+    .join("");
+}
+
+async function loadHealthList() {
+  const box = $("#healthListContent");
+  if (!box) return;
+  const cache = readContentCache();
+  const cachedItems =
+    cache && Array.isArray(cache.kesehatan) ? cache.kesehatan : null;
+
+  if (cachedItems) {
+    renderHealthItems(cachedItems, box);
+  } else {
+    box.innerHTML = `<div class="empty-state-box">Memuat layanan medis...</div>`;
+  }
+
+  try {
+    const { items, fromCache } = await getContentCardsSmart("kesehatan");
+    if (!fromCache) renderHealthItems(items, box);
+  } catch (err) {
+    if (!cachedItems)
+      box.innerHTML = `<div class="empty-state-box">Gagal memuat: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+let announcementCache = [];
+
+function renderAnnouncementItems(items, box) {
+  if (!box) return;
+  announcementCache = items;
+  if (!items.length) {
+    box.innerHTML = `<div class="empty-state-box">${CONTENT_TYPE_META.pengumuman.emptyText}</div>`;
+    return;
+  }
+  box.innerHTML = items
+    .map(
+      (it) => `
+    <article class="info-announcement-card clickable-article content-item-with-thumb" data-id="${it.id}">
+      ${contentThumbHtml(it, "pengumuman")}
+      <div class="content-item-body">
+        <b>${escapeHtml(it.title)}</b>
+        <p>${escapeHtml((it.description || "").slice(0, 120))}${(it.description || "").length > 120 ? "..." : ""}</p>
+        <small style="color: var(--green); font-weight: 700">Baca selengkapnya →</small>
+      </div>
+    </article>`,
+    )
+    .join("");
+
+  box.querySelectorAll(".clickable-article").forEach((card) => {
+    card.addEventListener("click", () => showInfoArticle(card.dataset.id));
+  });
+}
+
+async function loadAnnouncements() {
+  const box = $("#infoAnnouncementsContent");
+  if (!box) return;
+  const cache = readContentCache();
+  const cachedItems =
+    cache && Array.isArray(cache.pengumuman) ? cache.pengumuman : null;
+
+  if (cachedItems) {
+    renderAnnouncementItems(cachedItems, box);
+  } else {
+    box.innerHTML = `<div class="empty-state-box">Memuat pengumuman...</div>`;
+  }
+
+  try {
+    const { items, fromCache } = await getContentCardsSmart("pengumuman");
+    if (!fromCache) {
+      renderAnnouncementItems(items, box);
+    } else {
+      announcementCache = items; // tetap sinkronkan cache-in-memory utk showInfoArticle()
+    }
+  } catch (err) {
+    if (!cachedItems)
+      box.innerHTML = `<div class="empty-state-box">Gagal memuat: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function renderAdartItems(items, box) {
+  if (!box) return;
+  if (!items.length) {
+    box.innerHTML = `<div class="empty-state-box">${CONTENT_TYPE_META.adart.emptyText}</div>`;
+    return;
+  }
+  box.innerHTML = items
+    .map(
+      (it) => `
+    <div class="info-document-card content-item-with-thumb">
+      ${contentThumbHtml(it, "adart", "content-thumb-square")}
+      <div class="doc-info">
+        <b>${escapeHtml(it.title)}</b>
+        <small>${escapeHtml(it.subtitle || it.description || "Dokumen Pengurus Paguyuban MY PRR")}</small>
+      </div>
+      ${it.linkUrl ? `<a href="${it.linkUrl}" target="_blank" class="doc-download-btn"><span class="material-symbols-rounded">download</span></a>` : ""}
+    </div>`,
+    )
+    .join("");
+}
+
+async function loadAdartDoc() {
+  const box = $("#adartDocumentContent");
+  if (!box) return;
+  const cache = readContentCache();
+  const cachedItems = cache && Array.isArray(cache.adart) ? cache.adart : null;
+
+  if (cachedItems) {
+    renderAdartItems(cachedItems, box);
+  } else {
+    box.innerHTML = `<div class="empty-state-box">Memuat dokumen...</div>`;
+  }
+
+  try {
+    const { items, fromCache } = await getContentCardsSmart("adart");
+    if (!fromCache) renderAdartItems(items, box);
+  } catch (err) {
+    if (!cachedItems)
+      box.innerHTML = `<div class="empty-state-box">Gagal memuat: ${escapeHtml(err.message)}</div>`;
   }
 }
 
 function showInfoArticle(id) {
-  const article = articlesData[id];
+  const article = announcementCache.find((a) => a.id === id);
   if (!article) return;
 
   const tabs = $("#infoMainTabs");
@@ -1215,12 +1648,17 @@ function showInfoArticle(id) {
   const titleEl = $("#infoModalTitle");
   const eyebrowEl = $("#infoModalEyebrow");
 
+  // Fix #3: tampilkan gambar di atas artikel — pakai gambar yang dilampirkan
+  // admin, atau logo MY PRR sebagai default kalau tidak ada gambar.
+  const imgSrc = article.imageUrl || CONTENT_DEFAULT_IMAGE;
+  const imgClass = article.imageUrl ? "" : " article-detail-image-default";
+
   if (bodyEl) {
     bodyEl.innerHTML = `
-      <img class="article-detail-image" src="${article.image}" alt="${escapeHtml(article.title)}" />
-      <h3 style="font-size:16px; margin:0 0 4px; color:var(--dark);">${escapeHtml(article.title)}</h3>
-      <div class="article-detail-meta">📅 Diterbitkan ${escapeHtml(article.date)}</div>
-      <div class="article-detail-body-text">${article.content}</div>`;
+      <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(article.title)}" class="article-detail-image${imgClass}" loading="lazy" onerror="this.onerror=null;this.src='${CONTENT_DEFAULT_IMAGE}';this.classList.add('article-detail-image-default');" />
+      <h3 style="font-size:16px; margin:10px 0 4px; color:var(--dark);">${escapeHtml(article.title)}</h3>
+      ${article.subtitle ? `<div class="article-detail-meta">${escapeHtml(article.subtitle)}</div>` : ""}
+      <div class="article-detail-body-text"><p>${escapeHtml(article.description || "").replace(/\n/g, "<br>")}</p></div>`;
   }
 
   if (tabs) tabs.style.display = "none";
@@ -1251,97 +1689,154 @@ function backToInfoList() {
   });
 }
 
-function buildTanggunganCard(data) {
-  const t = data || {};
-  const card = document.createElement("div");
-  card.className = "tanggungan-item-card";
-  card.innerHTML = `
-    <div class="tanggungan-row-top">
-      <b style="font-size: 11px; color: var(--green);">${t.name ? escapeHtml(t.name) : "Anggota Baru"}</b>
-      <button type="button" class="remove-tanggungan-btn" title="Hapus anggota">
-        <span class="material-symbols-rounded">delete</span>
-      </button>
-    </div>
-    <label style="margin:4px 0 2px;">Nama Lengkap
-      <input type="text" name="tanggunganName" placeholder="Nama Anggota" value="${escapeHtml(t.name || "")}" required />
-    </label>
-    <div class="form-row" style="margin-top:4px;">
-      <label style="margin:4px 0 2px;">NIK KTP (16 Digit)
-        <input type="text" name="tanggunganNik" placeholder="NIK KTP" maxlength="16" value="${escapeHtml(t.nik || "")}" required />
-      </label>
-      <label style="margin:4px 0 2px;">Tanggal Lahir
-        <input type="date" name="tanggunganDob" value="${escapeHtml(t.dob || "")}" required />
-      </label>
-    </div>
-    <div class="form-row" style="margin-top:4px;">
-      <label style="margin:4px 0 2px;">Gender
-        <select name="tanggunganGender" required>
-          <option value="Laki-laki">Laki-laki</option>
-          <option value="Perempuan">Perempuan</option>
-        </select>
-      </label>
-      <label style="margin:4px 0 2px;">Relasi
-        <select name="tanggunganRelation" required>
-          <option value="Anak">Anak</option>
-          <option value="Orang Tua">Orang Tua</option>
-          <option value="Lainnya">Lainnya</option>
-        </select>
-      </label>
-    </div>
-  `;
+// ------------------------------------------------------------
+// PANEL ADMIN: KELOLA KONTEN (grid 2 kolom, per kategori/tab)
+// ------------------------------------------------------------
+let activeContentTab = "jasa";
+let contentManagerCache = {};
 
-  if (t.gender) {
-    const genderSelect = card.querySelector("[name='tanggunganGender']");
-    if (genderSelect) genderSelect.value = t.gender;
-  }
-  if (t.relation) {
-    const relationSelect = card.querySelector("[name='tanggunganRelation']");
-    if (relationSelect) relationSelect.value = t.relation;
+async function loadContentManagerGrid(type) {
+  const grid = $("#contentManagerGrid");
+  if (!grid) return;
+  const cache = readContentCache();
+  const cachedItems = cache && Array.isArray(cache[type]) ? cache[type] : null;
+
+  // Fix #4: loading state sekarang selalu memenuhi lebar grid (lihat CSS),
+  // dan kalau ada cache, tampilkan dulu isinya alih-alih kotak "Memuat...".
+  if (cachedItems) {
+    contentManagerCache[type] = cachedItems;
+    renderContentManagerGrid(type, cachedItems);
+  } else {
+    grid.innerHTML = `<div class="empty-state-box">Memuat konten...</div>`;
   }
 
-  const nameInput = card.querySelector("[name='tanggunganName']");
-  const label = card.querySelector(".tanggungan-row-top b");
-  if (nameInput && label) {
-    nameInput.addEventListener("input", () => {
-      label.textContent = nameInput.value.trim() || "Anggota Baru";
-    });
+  try {
+    const { items, fromCache } = await getContentCardsSmart(type);
+    contentManagerCache[type] = items;
+    if (!fromCache) renderContentManagerGrid(type, items);
+  } catch (err) {
+    if (!cachedItems)
+      grid.innerHTML = `<div class="empty-state-box">Gagal memuat: ${escapeHtml(err.message)}</div>`;
   }
-
-  card.querySelector(".remove-tanggungan-btn").addEventListener("click", () => {
-    const container = $("#tanggunganContainer");
-    card.remove();
-    if (container && container.children.length === 0) {
-      container.innerHTML = `<small style="color: var(--muted);">Belum ada tanggungan / anggota serumah yang ditambahkan.</small>`;
-    }
-  });
-
-  return card;
 }
 
-function renderTanggunganInputs(tanggunganList) {
-  const container = $("#tanggunganContainer");
-  if (!container) return;
-  container.innerHTML = "";
-  const list = Array.isArray(tanggunganList) ? tanggunganList : [];
-  if (!list.length) {
-    container.innerHTML = `<small style="color: var(--muted);">Belum ada tanggungan / anggota serumah yang ditambahkan.</small>`;
+function renderContentManagerGrid(type, items) {
+  const grid = $("#contentManagerGrid");
+  if (!grid) return;
+  if (!items || !items.length) {
+    grid.innerHTML = `<div class="empty-state-box" style="grid-column: 1 / -1;">Belum ada kartu untuk kategori ini. Klik "+ Tambah Kartu" untuk membuat yang pertama.</div>`;
     return;
   }
-  list.forEach((t) => container.appendChild(buildTanggunganCard(t)));
+  grid.innerHTML = items
+    .map(
+      (it) => `
+    <div class="content-manage-card" data-id="${it.id}">
+      <div class="content-manage-card-top">
+        ${contentThumbHtml(it, type, "content-thumb-sm")}
+        <div class="content-manage-card-headtext">
+          <b>${escapeHtml(it.title)}</b>
+          <span class="content-order-badge">#${it.order || 0}</span>
+        </div>
+      </div>
+      ${it.subtitle ? `<small class="content-manage-subtitle">${escapeHtml(it.subtitle)}</small>` : ""}
+      ${it.description ? `<p class="content-manage-desc">${escapeHtml(it.description)}</p>` : ""}
+      ${it.phone ? `<div class="content-manage-meta"><span class="material-symbols-rounded">call</span>${escapeHtml(it.phone)}</div>` : ""}
+      ${it.linkUrl ? `<div class="content-manage-meta"><span class="material-symbols-rounded">link</span>${escapeHtml(it.linkUrl)}</div>` : ""}
+      <div class="content-manage-actions">
+        <button type="button" class="chip-btn" data-edit-content="${it.id}">Ubah</button>
+        <button type="button" class="chip-btn ghost" data-delete-content="${it.id}">Hapus</button>
+      </div>
+    </div>`,
+    )
+    .join("");
+
+  grid.querySelectorAll("[data-edit-content]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const item = items.find((i) => i.id === btn.dataset.editContent);
+      if (item) openContentForm(type, item);
+    });
+  });
+  grid.querySelectorAll("[data-delete-content]").forEach((btn) => {
+    btn.addEventListener("click", () =>
+      deleteContentCard(type, btn.dataset.deleteContent, items),
+    );
+  });
 }
 
-function collectTanggungan() {
-  return Array.from(
-    document.querySelectorAll("#tanggunganContainer .tanggungan-item-card"),
-  )
-    .map((card) => ({
-      name: (card.querySelector("[name='tanggunganName']")?.value || "").trim(),
-      nik: (card.querySelector("[name='tanggunganNik']")?.value || "").trim(),
-      dob: card.querySelector("[name='tanggunganDob']")?.value || "",
-      gender: card.querySelector("[name='tanggunganGender']")?.value || "",
-      relation: card.querySelector("[name='tanggunganRelation']")?.value || "",
-    }))
-    .filter((t) => t.name);
+async function deleteContentCard(type, id, items) {
+  const item = items.find((i) => i.id === id);
+  if (!confirm(`Hapus kartu "${item ? item.title : ""}"?`)) return;
+  const adminUnit = localStorage.getItem("pondok_rajeg_user");
+  try {
+    const result = await sendToBackend("adminDeleteContentCard", {
+      adminUnit,
+      id,
+    });
+    showToast(result.message);
+    bustContentCache();
+    loadContentManagerGrid(type);
+    refreshPublicContentIfOpen(type);
+  } catch (err) {
+    showToast(`Gagal: ${err.message}`);
+  }
+}
+
+function refreshPublicContentIfOpen(type) {
+  // Segarkan tampilan warga bila dialog terkait sedang terbuka di belakang.
+  if (type === "jasa" && $("#tukangDialog")?.open) loadTukangList();
+  if (type === "internet" && $("#tukangDialog")?.open) loadInternetList();
+  if (type === "kesehatan" && $("#healthDialog")?.open) loadHealthList();
+  if ((type === "pengumuman" || type === "adart") && $("#infoDialog")?.open) {
+    loadAnnouncements();
+    loadAdartDoc();
+  }
+}
+
+function contentFormFieldVisibility(type) {
+  const subtitleLabel = $("#contentSubtitleLabel");
+  const phoneLabel = $("#contentPhoneLabel");
+  const linkLabel = $("#contentLinkLabel");
+  if (!subtitleLabel || !phoneLabel || !linkLabel) return;
+
+  phoneLabel.style.display =
+    type === "pengumuman" || type === "adart" ? "none" : "block";
+  linkLabel.style.display =
+    type === "jasa" || type === "internet" || type === "adart"
+      ? "block"
+      : "none";
+  subtitleLabel.style.display = type === "adart" ? "none" : "block";
+}
+
+function openContentForm(type, item) {
+  const dialog = $("#contentFormDialog");
+  const form = $("#contentForm");
+  if (!dialog || !form) return;
+
+  form.reset();
+  form.querySelector("[name='contentType']").value = type;
+  form.querySelector("[name='contentId']").value = item ? item.id : "";
+
+  $("#contentFormEyebrow").textContent =
+    (item ? "UBAH KARTU · " : "TAMBAH KARTU · ") +
+    (CONTENT_TYPE_META[type]?.label || type);
+  $("#contentFormTitle").textContent = item ? "Ubah Kartu" : "Kartu Baru";
+  $("#contentFormSubmitBtn").innerHTML = item
+    ? "Simpan Perubahan <span>→</span>"
+    : "Simpan Kartu <span>→</span>";
+
+  contentFormFieldVisibility(type);
+
+  if (item) {
+    form.querySelector("[name='title']").value = item.title || "";
+    form.querySelector("[name='subtitle']").value = item.subtitle || "";
+    form.querySelector("[name='description']").value = item.description || "";
+    form.querySelector("[name='phone']").value = item.phone || "";
+    form.querySelector("[name='linkUrl']").value = item.linkUrl || "";
+    form.querySelector("[name='imageUrl']").value = item.imageUrl || "";
+    form.querySelector("[name='order']").value = item.order || 0;
+  }
+
+  dialog.showModal();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -1579,6 +2074,94 @@ document.addEventListener("DOMContentLoaded", () => {
         loadExpenses();
         safeRefreshDashboard(adminUnit);
         loadNotifications();
+      } catch (err) {
+        showToast(`Gagal: ${err.message}`);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
+    });
+  }
+
+  // ------------------------------------------------------------
+  // PANEL "KELOLA KONTEN" (ADMIN)
+  // ------------------------------------------------------------
+  const contentAdminBtn = $("#contentAdminBtn");
+  const contentManagerDialog = $("#contentManagerDialog");
+  const contentTabs = $("#contentTabs");
+  const contentRefreshBtn = $("#contentRefreshBtn");
+  const contentAddBtn = $("#contentAddBtn");
+  const contentFormDialog = $("#contentFormDialog");
+  const contentForm = $("#contentForm");
+
+  if (contentAdminBtn && contentManagerDialog) {
+    contentAdminBtn.addEventListener("click", () => {
+      contentManagerDialog.showModal();
+      loadContentManagerGrid(activeContentTab);
+    });
+  }
+
+  if (contentTabs) {
+    contentTabs.querySelectorAll("[data-ctype]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        contentTabs
+          .querySelectorAll("[data-ctype]")
+          .forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        activeContentTab = btn.dataset.ctype;
+        loadContentManagerGrid(activeContentTab);
+      });
+    });
+  }
+
+  if (contentRefreshBtn) {
+    contentRefreshBtn.addEventListener("click", () =>
+      loadContentManagerGrid(activeContentTab),
+    );
+  }
+
+  if (contentAddBtn) {
+    contentAddBtn.addEventListener("click", () =>
+      openContentForm(activeContentTab, null),
+    );
+  }
+
+  if (contentForm) {
+    contentForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = Object.fromEntries(new FormData(contentForm));
+      const adminUnit = localStorage.getItem("pondok_rajeg_user");
+      const submitBtn = $("#contentFormSubmitBtn");
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = "Menyimpan...";
+
+      const isEdit = !!formData.contentId;
+      const payload = {
+        adminUnit,
+        id: formData.contentId,
+        type: formData.contentType,
+        title: formData.title,
+        subtitle: formData.subtitle,
+        description: formData.description,
+        phone: formData.phone,
+        linkUrl: formData.linkUrl,
+        imageUrl: formData.imageUrl,
+        order: Number(formData.order) || 0,
+      };
+
+      try {
+        const result = await sendToBackend(
+          isEdit ? "adminUpdateContentCard" : "adminAddContentCard",
+          payload,
+        );
+        showToast(result.message);
+        contentFormDialog?.close();
+        // Versi konten di server sudah berubah (backend men-bump versi) -> buang
+        // cache lokal supaya panel admin & dialog warga sama-sama ambil data baru.
+        bustContentCache();
+        loadContentManagerGrid(formData.contentType);
+        refreshPublicContentIfOpen(formData.contentType);
       } catch (err) {
         showToast(`Gagal: ${err.message}`);
       } finally {
@@ -1896,16 +2479,14 @@ document.addEventListener("DOMContentLoaded", () => {
       };
 
       try {
-        await sendToBackend("profile", profileData);
+        const result = await sendToBackend("profile", profileData);
         const cacheCopy = Object.assign({}, profileData);
         delete cacheCopy.newPin;
         localStorage.setItem(PROFILE_KEY, JSON.stringify(cacheCopy));
         profileDialog.close();
-        showToast(
-          tanggungan.length
-            ? `Profil tersimpan beserta ${tanggungan.length} anggota serumah.`
-            : "Profil berhasil diperbarui.",
-        );
+        showToast(result.message);
+        profileForm.querySelector("[name='newPin']").value = "";
+        profileForm.querySelector("[name='confirmPin']").value = "";
       } catch (error) {
         showToast(`Gagal menyimpan: ${error.message}`);
       } finally {
@@ -1917,13 +2498,38 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const tukangBtn = $("#tukangBtn");
   const tukangDialog = $("#tukangDialog");
-  if (tukangBtn && tukangDialog)
-    tukangBtn.addEventListener("click", () => tukangDialog.showModal());
+  if (tukangBtn && tukangDialog) {
+    tukangBtn.addEventListener("click", () => {
+      tukangDialog.showModal();
+      loadTukangList();
+      loadInternetList();
+    });
+  }
+
+  const tukangTabBtns = document.querySelectorAll("[data-tukangtab]");
+  tukangTabBtns.forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      tukangTabBtns.forEach((b) => b.classList.remove("active"));
+      const target = e.currentTarget;
+      target.classList.add("active");
+      const tabType = target.getAttribute("data-tukangtab");
+      const jasaPane = $("#tukangListContent");
+      const internetPane = $("#internetListContent");
+      if (jasaPane)
+        jasaPane.style.display = tabType === "jasa" ? "block" : "none";
+      if (internetPane)
+        internetPane.style.display = tabType === "internet" ? "block" : "none";
+    });
+  });
 
   const healthBtn = $("#healthBtn");
   const healthDialog = $("#healthDialog");
-  if (healthBtn && healthDialog)
-    healthBtn.addEventListener("click", () => healthDialog.showModal());
+  if (healthBtn && healthDialog) {
+    healthBtn.addEventListener("click", () => {
+      healthDialog.showModal();
+      loadHealthList();
+    });
+  }
 
   const infoBtn = $("#infoBtn");
   const infoDialog = $("#infoDialog");
@@ -1931,15 +2537,8 @@ document.addEventListener("DOMContentLoaded", () => {
     infoBtn.addEventListener("click", () => {
       backToInfoList();
       infoDialog.showModal();
-    });
-  }
-
-  const announcementsPaneEl = $("#infoAnnouncementsContent");
-  if (announcementsPaneEl) {
-    announcementsPaneEl.addEventListener("click", (e) => {
-      const card = e.target.closest(".clickable-article");
-      if (!card) return;
-      showInfoArticle(card.dataset.id);
+      loadAnnouncements();
+      loadAdartDoc();
     });
   }
 
@@ -2276,6 +2875,120 @@ function setupWhatsAppFormatter(inputEl) {
     }
     e.target.value = val;
   });
+}
+
+function logoutToLoginView() {
+  localStorage.removeItem("pondok_rajeg_user");
+  localStorage.removeItem("pondok_rajeg_name");
+  localStorage.removeItem(PROFILE_KEY);
+  localStorage.removeItem(ROLE_KEY);
+  detachPostsListener();
+  stopNotifPolling();
+  notificationCache = [];
+
+  const mainApp = $("#mainApp");
+  const loginView = $("#loginView");
+  if (mainApp) {
+    mainApp.style.display = "none";
+    mainApp.style.opacity = "0";
+  }
+  if (loginView) {
+    loginView.style.display = "flex";
+    loginView.style.opacity = "1";
+  }
+}
+
+function buildTanggunganCard(data) {
+  const t = data || {};
+  const card = document.createElement("div");
+  card.className = "tanggungan-item-card";
+  card.innerHTML = `
+    <div class="tanggungan-row-top">
+      <b style="font-size: 11px; color: var(--green);">${t.name ? escapeHtml(t.name) : "Anggota Baru"}</b>
+      <button type="button" class="remove-tanggungan-btn" title="Hapus anggota">
+        <span class="material-symbols-rounded">delete</span>
+      </button>
+    </div>
+    <label style="margin:4px 0 2px;">Nama Lengkap
+      <input type="text" name="tanggunganName" placeholder="Nama Anggota" value="${escapeHtml(t.name || "")}" required />
+    </label>
+    <div class="form-row" style="margin-top:4px;">
+      <label style="margin:4px 0 2px;">NIK KTP (16 Digit)
+        <input type="text" name="tanggunganNik" placeholder="NIK KTP" maxlength="16" value="${escapeHtml(t.nik || "")}" required />
+      </label>
+      <label style="margin:4px 0 2px;">Tanggal Lahir
+        <input type="date" name="tanggunganDob" value="${escapeHtml(t.dob || "")}" required />
+      </label>
+    </div>
+    <div class="form-row" style="margin-top:4px;">
+      <label style="margin:4px 0 2px;">Gender
+        <select name="tanggunganGender" required>
+          <option value="Laki-laki">Laki-laki</option>
+          <option value="Perempuan">Perempuan</option>
+        </select>
+      </label>
+      <label style="margin:4px 0 2px;">Relasi
+        <select name="tanggunganRelation" required>
+          <option value="Anak">Anak</option>
+          <option value="Orang Tua">Orang Tua</option>
+          <option value="Lainnya">Lainnya</option>
+        </select>
+      </label>
+    </div>
+  `;
+
+  if (t.gender) {
+    const genderSelect = card.querySelector("[name='tanggunganGender']");
+    if (genderSelect) genderSelect.value = t.gender;
+  }
+  if (t.relation) {
+    const relationSelect = card.querySelector("[name='tanggunganRelation']");
+    if (relationSelect) relationSelect.value = t.relation;
+  }
+
+  const nameInput = card.querySelector("[name='tanggunganName']");
+  const label = card.querySelector(".tanggungan-row-top b");
+  if (nameInput && label) {
+    nameInput.addEventListener("input", () => {
+      label.textContent = nameInput.value.trim() || "Anggota Baru";
+    });
+  }
+
+  card.querySelector(".remove-tanggungan-btn").addEventListener("click", () => {
+    const container = $("#tanggunganContainer");
+    card.remove();
+    if (container && container.children.length === 0) {
+      container.innerHTML = `<small style="color: var(--muted);">Belum ada tanggungan / anggota serumah yang ditambahkan.</small>`;
+    }
+  });
+
+  return card;
+}
+
+function renderTanggunganInputs(tanggunganList) {
+  const container = $("#tanggunganContainer");
+  if (!container) return;
+  container.innerHTML = "";
+  const list = Array.isArray(tanggunganList) ? tanggunganList : [];
+  if (!list.length) {
+    container.innerHTML = `<small style="color: var(--muted);">Belum ada tanggungan / anggota serumah yang ditambahkan.</small>`;
+    return;
+  }
+  list.forEach((t) => container.appendChild(buildTanggunganCard(t)));
+}
+
+function collectTanggungan() {
+  return Array.from(
+    document.querySelectorAll("#tanggunganContainer .tanggungan-item-card"),
+  )
+    .map((card) => ({
+      name: (card.querySelector("[name='tanggunganName']")?.value || "").trim(),
+      nik: (card.querySelector("[name='tanggunganNik']")?.value || "").trim(),
+      dob: card.querySelector("[name='tanggunganDob']")?.value || "",
+      gender: card.querySelector("[name='tanggunganGender']")?.value || "",
+      relation: card.querySelector("[name='tanggunganRelation']")?.value || "",
+    }))
+    .filter((t) => t.name);
 }
 
 function renderComplaints() {

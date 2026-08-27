@@ -33,7 +33,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <link rel="stylesheet" href="style.css?v=16.0" />
+    <link rel="stylesheet" href="style.css?v=17.0" />
     <title>MY PRR - Pondok Rajeg Residence</title>
   </head>
   <body>
@@ -285,7 +285,8 @@
               <h2>Akses cepat</h2>
               <span>Menu Warga MY PRR</span>
             </div>
-            <div class="quick-grid">
+            <!-- Sumber asli semua quick-card: disembunyikan, dipakai JS untuk membangun halaman carousel -->
+            <div id="quickGridSource" style="display: none">
               <button class="quick-card" data-page="ipl">
                 <b class="quick-icon money"
                   ><span class="material-symbols-rounded">payments</span></b
@@ -313,12 +314,13 @@
                 <b class="quick-icon info"
                   ><span class="material-symbols-rounded">campaign</span></b
                 >
-                <strong>Info & AD/ART</strong>
+                <strong>Info & Dokumen</strong>
                 <small>STP PBB & Dokumen PDF</small>
               </button>
               <button
                 class="quick-card"
                 id="adminQuickBtn"
+                data-admin-only="1"
                 style="display: none"
               >
                 <b class="quick-icon admin"
@@ -331,6 +333,7 @@
               <button
                 class="quick-card"
                 id="expenseAdminBtn"
+                data-admin-only="1"
                 style="display: none"
               >
                 <b class="quick-icon cashout"
@@ -341,6 +344,32 @@
                 <strong>Catat Pengeluaran</strong>
                 <small>Kas keluar Paguyuban</small>
               </button>
+
+              <button
+                class="quick-card"
+                id="contentAdminBtn"
+                data-admin-only="1"
+                style="display: none"
+              >
+                <b class="quick-icon content"
+                  ><span class="material-symbols-rounded"
+                    >dashboard_customize</span
+                  ></b
+                >
+                <strong>Kelola Konten</strong>
+                <small>Jasa, Medis & Info Warga</small>
+              </button>
+            </div>
+
+            <!-- Carousel halaman: JS memindahkan kartu dari quickGridSource ke sini, 6 kartu / halaman -->
+            <div class="quick-carousel-wrap">
+              <div class="quick-carousel" id="quickCarousel"></div>
+            </div>
+            <div class="quick-pager" id="quickPager" style="display: none">
+              <span class="quick-pager-label" id="quickPagerLabel"
+                >1 dari 1 Halaman</span
+              >
+              <div class="quick-pager-dots" id="quickPagerDots"></div>
             </div>
 
             <div class="security-duty-card modern-security">
@@ -724,7 +753,9 @@
             >
           </div>
           <p style="font-size: 10px; color: var(--muted); margin: 0 0 10px">
-            Kosongkan jika tidak ingin mengubah PIN akun Anda.
+            Kosongkan jika tidak ingin mengubah PIN akun Anda. PIN baru akan
+            disimpan dalam bentuk terenkripsi (tidak tersimpan sebagai teks
+            biasa di server).
           </p>
           <div class="form-row">
             <label style="margin: 0"
@@ -786,6 +817,56 @@
       </form>
     </dialog>
 
+    <!-- MODAL JASA & INTERNET (DINAMIS DARI ADMIN) -->
+    <dialog id="tukangDialog" class="modal info-modal">
+      <form method="dialog">
+        <button class="close" value="cancel">×</button>
+        <p class="eyebrow">DIREKTORI WARGA</p>
+        <h2>Jasa Tukang & Internet</h2>
+
+        <div
+          id="tukangMainTabs"
+          class="tukang-tabs"
+          style="margin-bottom: 14px"
+        >
+          <button
+            type="button"
+            class="tukang-tab-btn active"
+            data-tukangtab="jasa"
+          >
+            Jasa
+          </button>
+          <button
+            type="button"
+            class="tukang-tab-btn"
+            data-tukangtab="internet"
+          >
+            Internet
+          </button>
+        </div>
+
+        <div
+          id="tukangListContent"
+          class="tukang-tab-pane"
+          style="max-height: 320px"
+        >
+          <div class="empty-state-box">Memuat daftar jasa...</div>
+        </div>
+        <div
+          id="internetListContent"
+          class="tukang-tab-pane"
+          style="display: none; max-height: 320px"
+        >
+          <div class="empty-state-box">Memuat daftar internet...</div>
+        </div>
+
+        <button class="primary-button" value="cancel" style="margin-top: 14px">
+          Tutup
+        </button>
+      </form>
+    </dialog>
+
+    <!-- MODAL DARURAT MEDIS (DINAMIS DARI ADMIN) -->
     <dialog id="healthDialog" class="modal info-modal">
       <form method="dialog">
         <button class="close" value="cancel">×</button>
@@ -796,34 +877,12 @@
           perumahan:
         </p>
 
-        <div class="tukang-tab-pane" style="max-height: 320px">
-          <article class="tukang-item emergency-item">
-            <b
-              ><span
-                class="material-symbols-rounded"
-                style="
-                  vertical-align: middle;
-                  font-size: 16px;
-                  margin-right: 4px;
-                  color: #dc2626;
-                "
-                >ambulance</span
-              >
-              Ambulans & Siaga Darurat Warga</b
-            >
-            <p>
-              Layanan darurat evakuasi medis dan rujukan rumah sakit warga MY
-              PRR.
-            </p>
-            <a
-              href="https://wa.me/6281299998888?text=Darurat%20Medis!%20Saya%20warga%20MY%20PRR%20butuh%20bantuan%20ambulans..."
-              target="_blank"
-              class="whatsapp-btn emergency-wa-btn"
-            >
-              <span class="material-symbols-rounded">phone_in_talk</span>
-              Panggil Ambulans WA
-            </a>
-          </article>
+        <div
+          id="healthListContent"
+          class="tukang-tab-pane"
+          style="max-height: 320px"
+        >
+          <div class="empty-state-box">Memuat layanan medis...</div>
         </div>
 
         <button class="primary-button" value="cancel" style="margin-top: 14px">
@@ -1048,6 +1107,146 @@
       </form>
     </dialog>
 
+    <!-- MODAL KELOLA KONTEN (ADMIN) — Jasa, Kesehatan, Pengumuman, AD/ART -->
+    <dialog id="contentManagerDialog" class="modal content-manager-modal">
+      <form method="dialog">
+        <button type="button" class="close" value="cancel" aria-label="Tutup">
+          ×
+        </button>
+        <p class="eyebrow">PANEL PETUGAS RT</p>
+        <h2>Kelola Konten Warga</h2>
+        <p style="font-size: 12px; color: var(--muted); margin: 0 0 14px">
+          Semua kartu di bawah ini otomatis tampil di menu warga sesuai
+          kategorinya. Tambah, ubah, atau hapus kapan saja.
+        </p>
+
+        <div class="tukang-tabs" id="contentTabs">
+          <button type="button" class="tukang-tab-btn active" data-ctype="jasa">
+            Jasa
+          </button>
+          <button type="button" class="tukang-tab-btn" data-ctype="internet">
+            Internet
+          </button>
+          <button type="button" class="tukang-tab-btn" data-ctype="kesehatan">
+            Darurat Medis
+          </button>
+          <button type="button" class="tukang-tab-btn" data-ctype="pengumuman">
+            Pengumuman
+          </button>
+          <button type="button" class="tukang-tab-btn" data-ctype="adart">
+            Dok. Pengurus
+          </button>
+        </div>
+
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 4px 0 10px;
+          "
+        >
+          <button type="button" id="contentRefreshBtn" class="text-link-btn">
+            <span
+              class="material-symbols-rounded"
+              style="font-size: 14px; vertical-align: middle"
+              >refresh</span
+            >
+            Muat ulang
+          </button>
+          <button type="button" id="contentAddBtn" class="text-link-btn">
+            + Tambah Kartu
+          </button>
+        </div>
+
+        <div id="contentManagerGrid" class="content-card-grid">
+          <div class="empty-state-box">Memuat konten...</div>
+        </div>
+
+        <button class="primary-button" value="cancel" style="margin-top: 16px">
+          Tutup
+        </button>
+      </form>
+    </dialog>
+
+    <!-- MODAL FORM TAMBAH/EDIT KONTEN (ADMIN) -->
+    <dialog id="contentFormDialog" class="modal">
+      <form id="contentForm" method="dialog">
+        <button type="button" class="close" value="cancel" aria-label="Tutup">
+          ×
+        </button>
+        <p class="eyebrow" id="contentFormEyebrow">TAMBAH KARTU</p>
+        <h2 id="contentFormTitle">Kartu Baru</h2>
+
+        <input type="hidden" name="contentId" />
+        <input type="hidden" name="contentType" />
+
+        <label
+          >Judul
+          <input
+            type="text"
+            name="title"
+            placeholder="Contoh: Bengkel Pak Ujang"
+            required
+          />
+        </label>
+        <label id="contentSubtitleLabel"
+          >Subjudul / Kategori
+          <input
+            type="text"
+            name="subtitle"
+            placeholder="Contoh: Bengkel Motor & Las"
+          />
+        </label>
+        <label
+          >Deskripsi
+          <textarea
+            name="description"
+            rows="3"
+            placeholder="Keterangan singkat layanan atau informasi..."
+          ></textarea>
+        </label>
+        <div class="form-row">
+          <label id="contentPhoneLabel"
+            >Nomor WhatsApp (Opsional)
+            <input type="text" name="phone" placeholder="+6281234567890" />
+          </label>
+          <label
+            >Urutan Tampil
+            <input type="number" name="order" placeholder="0" value="0" />
+          </label>
+        </div>
+        <label id="contentLinkLabel"
+          >Link (Opsional — Dokumen PDF / Website)
+          <input type="url" name="linkUrl" placeholder="https://..." />
+        </label>
+        <label
+          >URL Gambar/Ikon (Opsional)
+          <input
+            type="url"
+            name="imageUrl"
+            placeholder="https://... (kosongkan untuk pakai logo PRR)"
+          />
+          <small
+            style="
+              display: block;
+              margin-top: 4px;
+              font-weight: 400;
+              color: var(--muted);
+              font-size: 10.5px;
+            "
+          >
+            Kalau dikosongkan, kartu ini akan tampil dengan logo MY PRR sebagai
+            gambar default.
+          </small>
+        </label>
+
+        <button class="primary-button" type="submit" id="contentFormSubmitBtn">
+          Simpan Kartu <span>→</span>
+        </button>
+      </form>
+    </dialog>
+
     <dialog id="rejectReasonDialog" class="modal interactive-modal">
       <form id="rejectReasonForm" method="dialog">
         <button type="button" class="close" value="cancel" aria-label="Tutup">
@@ -1073,17 +1272,6 @@
           style="background: #dc2626"
         >
           Tolak Pembayaran
-        </button>
-      </form>
-    </dialog>
-
-    <dialog id="tukangDialog" class="modal info-modal">
-      <form method="dialog">
-        <button class="close" value="cancel">×</button>
-        <p class="eyebrow">DIREKTORI WARGA</p>
-        <h2>Jasa Tukang & Internet</h2>
-        <button class="primary-button" value="cancel" style="margin-top: 14px">
-          Tutup
         </button>
       </form>
     </dialog>
@@ -1372,7 +1560,7 @@
             Pengumuman Warga
           </button>
           <button type="button" class="tukang-tab-btn" data-infotab="adart">
-            Dokumen AD/ART
+            Dokumen Pengurus
           </button>
         </div>
 
@@ -1381,39 +1569,7 @@
           class="tukang-tab-pane active"
           style="max-height: 320px; overflow-y: auto"
         >
-          <article
-            class="info-announcement-card clickable-article"
-            data-id="pbb-2025"
-          >
-            <div class="info-card-header">
-              <span class="material-symbols-rounded">receipt_long</span>
-              <b>Pengambilan STP PBB 2025</b>
-            </div>
-            <p>
-              Surat Tagihan Pajak PBB (SPT PBB) warga MY PRR sudah dapat diambil
-              di pos penjemputan...
-            </p>
-            <small style="color: var(--green); font-weight: 700"
-              >Baca selengkapnya →</small
-            >
-          </article>
-
-          <article
-            class="info-announcement-card clickable-article"
-            data-id="kerja-bakti"
-          >
-            <div class="info-card-header">
-              <span class="material-symbols-rounded">event</span>
-              <b>Kerja Bakti Lingkungan</b>
-            </div>
-            <p>
-              Minggu, 23 Agustus 2026 pukul 07.00 WIB. Titik kumpul di pos
-              keamanan utama...
-            </p>
-            <small style="color: var(--green); font-weight: 700"
-              >Baca selengkapnya →</small
-            >
-          </article>
+          <div class="empty-state-box">Memuat pengumuman...</div>
         </div>
 
         <div
@@ -1450,23 +1606,10 @@
               text-align: left;
             "
           >
-            Anggaran Dasar & Anggaran Rumah Tangga Paguyuban MY PRR.
+            Dokumen kepengurusan & struktur organisasi Paguyuban MY PRR.
           </p>
-          <div class="info-document-card">
-            <div class="doc-icon-box">
-              <span class="material-symbols-rounded">picture_as_pdf</span>
-            </div>
-            <div class="doc-info">
-              <b>AD/ART Paguyuban MY PRR (PDF)</b>
-              <small>Dokumen Resmi Aturan Warga</small>
-            </div>
-            <a
-              href="dokumen/ad-art-prr.pdf"
-              target="_blank"
-              class="doc-download-btn"
-            >
-              <span class="material-symbols-rounded">download</span>
-            </a>
+          <div id="adartDocumentContent">
+            <div class="empty-state-box">Memuat dokumen...</div>
           </div>
         </div>
 
@@ -1503,6 +1646,6 @@
         </button>
       </div>
     </div>
-    <script src="app.js?v=16.0"></script>
+    <script src="app.js?v=17.0"></script>
   </body>
 </html>
