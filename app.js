@@ -165,7 +165,22 @@ async function logPushErrorToServer(errorCode, errorMessage) {
   }
 }
 
-async function requestNotificationPermission() {
+// [BARU] Modal modern untuk hasil aktivasi push notification — dipisah dari
+// pemanggilan otomatis (lihat parameter isManualRetry di bawah), supaya
+// TIDAK muncul mengganggu setiap kali warga login (requestNotificationPermission
+// dipanggil otomatis tiap bootSession). Modal ini hanya tampil saat warga
+// SECARA SADAR menekan tombol "Coba Aktifkan Ulang Notifikasi" di Profil.
+function showPushSuccessModal() {
+  const dialog = $("#pushSuccessDialog");
+  if (dialog) dialog.showModal();
+}
+
+function showPushErrorModal() {
+  const dialog = $("#pushErrorDialog");
+  if (dialog) dialog.showModal();
+}
+
+async function requestNotificationPermission(isManualRetry = false) {
   if (!("Notification" in window)) return;
   try {
     const permission = await Notification.requestPermission();
@@ -182,11 +197,11 @@ async function requestNotificationPermission() {
         const unit = localStorage.getItem("pondok_rajeg_user") || "Tamu";
         try {
           await sendToBackend("saveFCMToken", { unit, token });
-          // [BARU] Sebelumnya jalur SUKSES tidak memberi tanda apa pun ke
-          // warga (silent success) — sekarang ada konfirmasi eksplisit,
-          // supaya tombol "Coba Aktifkan Ulang Notifikasi" di Profil jelas
-          // hasilnya berhasil atau tidak.
-          showToast("✅ Notifikasi push berhasil diaktifkan di perangkat ini.");
+          // [BARU] Modal sukses HANYA muncul kalau ini percobaan manual
+          // (tombol "Coba Aktifkan Ulang Notifikasi"). Saat dipanggil
+          // otomatis tiap login, sukses tetap SENYAP — tidak perlu
+          // mengganggu warga dengan modal setiap kali buka app.
+          if (isManualRetry) showPushSuccessModal();
         } catch (saveErr) {
           // [BARU] Fix #3/#4: sebelumnya kegagalan simpan token ke server
           // DIAM-DIAM saja (hanya console.error) — warga tidak pernah tahu
@@ -195,9 +210,7 @@ async function requestNotificationPermission() {
           // tidak pernah muncul sama sekali di perangkat manapun.
           console.error("Gagal menyimpan token FCM ke server:", saveErr);
           logPushErrorToServer("SAVE_TOKEN_FAILED", saveErr && saveErr.message);
-          showToast(
-            "Notifikasi push belum aktif di perangkat ini. Fitur lain tetap berjalan normal.",
-          );
+          if (isManualRetry) showPushErrorModal();
         }
       } else {
         // getToken() berhasil dipanggil tapi tidak mengembalikan token sama
@@ -208,28 +221,29 @@ async function requestNotificationPermission() {
           "NO_TOKEN_RETURNED",
           "messaging.getToken() returned empty/null",
         );
-        showToast(
-          "Notifikasi push belum aktif di perangkat ini. Fitur lain tetap berjalan normal.",
-        );
+        if (isManualRetry) showPushErrorModal();
       }
     } else {
-      showToast(
-        "Izin notifikasi belum aktif. Aktifkan agar bisa menerima sinyal darurat warga.",
-      );
+      if (isManualRetry) {
+        showPushErrorModal();
+      } else {
+        showToast(
+          "Izin notifikasi belum aktif. Aktifkan agar bisa menerima sinyal darurat warga.",
+        );
+      }
     }
   } catch (error) {
     // [BARU] Fix: sebelumnya error di sini ditampilkan sebagai alert panjang
     // berisi langkah troubleshooting teknis — membingungkan buat warga awam.
-    // Sekarang warga cukup dapat pesan SINGKAT & menenangkan, sementara detail
-    // teknis lengkapnya (kode error + pesan asli browser + user agent HP)
-    // otomatis tercatat ke spreadsheet "PushErrorLogs" supaya developer bisa
-    // langsung mendiagnosis & memperbaiki tanpa perlu warga melapor manual.
+    // Detail teknis lengkapnya (kode error + pesan asli browser + user agent
+    // HP) otomatis tercatat ke spreadsheet "PushErrorLogs" supaya developer
+    // bisa langsung mendiagnosis tanpa warga perlu melapor manual. Warga
+    // sendiri cukup dapat modal singkat & menenangkan (hanya saat mencoba
+    // manual — saat otomatis di background, cukup senyap).
     console.error("Gagal mendapatkan token notifikasi:", error);
     const errorCode = classifyPushError(error && error.message);
     logPushErrorToServer(errorCode, error && error.message);
-    showToast(
-      "Notifikasi push belum aktif di perangkat ini. Fitur lain tetap berjalan normal.",
-    );
+    if (isManualRetry) showPushErrorModal();
   }
 }
 
@@ -2635,6 +2649,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // [BARU] Fix #3/#4: tombol coba-ulang aktivasi push notification dari
   // modal Profil (lihat requestNotificationPermission untuk detail error).
+  // isManualRetry=true supaya hasilnya ditampilkan lewat modal modern
+  // (bukan cuma senyap seperti pemanggilan otomatis saat login).
   const retryPushPermissionBtn = $("#retryPushPermissionBtn");
   if (retryPushPermissionBtn) {
     retryPushPermissionBtn.addEventListener("click", async () => {
@@ -2642,10 +2658,30 @@ document.addEventListener("DOMContentLoaded", () => {
       retryPushPermissionBtn.innerHTML = "Mencoba...";
       retryPushPermissionBtn.disabled = true;
       try {
-        await requestNotificationPermission();
+        await requestNotificationPermission(true);
       } finally {
         retryPushPermissionBtn.innerHTML = originalText;
         retryPushPermissionBtn.disabled = false;
+      }
+    });
+  }
+
+  // [BARU] Tombol "Coba Lagi" DI DALAM modal gagal itu sendiri — supaya
+  // warga bisa langsung coba ulang tanpa harus tutup modal & cari tombol
+  // di Profil lagi.
+  const pushErrorRetryBtn = $("#pushErrorRetryBtn");
+  const pushErrorDialog = $("#pushErrorDialog");
+  if (pushErrorRetryBtn && pushErrorDialog) {
+    pushErrorRetryBtn.addEventListener("click", async () => {
+      const originalText = pushErrorRetryBtn.innerHTML;
+      pushErrorRetryBtn.innerHTML = "Mencoba...";
+      pushErrorRetryBtn.disabled = true;
+      try {
+        pushErrorDialog.close();
+        await requestNotificationPermission(true);
+      } finally {
+        pushErrorRetryBtn.innerHTML = originalText;
+        pushErrorRetryBtn.disabled = false;
       }
     });
   }

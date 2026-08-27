@@ -2925,3 +2925,83 @@ dialog#aiLoadingModal::backdrop {
     background: #eef3f0;
   }
 }
+
+/* ========================================================== */
+/* [BARU] MODAL SUKSES/GAGAL PUSH NOTIFICATION — gaya "2026":
+   ikon dengan lingkaran glow yang berdenyut lembut (bukan statis),
+   supaya terasa hidup & modern tanpa berlebihan/mengganggu. */
+/* ========================================================== */
+.push-status-modal {
+  max-width: 380px;
+}
+.push-status-text {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0 0 8px;
+}
+.push-icon-glow {
+  width: 84px;
+  height: 84px;
+  margin: 4px auto 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.push-icon-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  animation: pushGlowPulse 2.2s ease-out infinite;
+}
+.push-icon-glow-success::before {
+  background: radial-gradient(circle, rgba(16, 185, 96, 0.35), transparent 70%);
+}
+.push-icon-glow-warn::before {
+  background: radial-gradient(circle, rgba(217, 119, 6, 0.3), transparent 70%);
+}
+@keyframes pushGlowPulse {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+.push-icon-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 8px 20px -6px rgba(6, 43, 28, 0.25);
+}
+.push-icon-circle .material-symbols-rounded {
+  font-size: 30px;
+}
+.push-icon-circle-success {
+  background: linear-gradient(135deg, #34d399, #059669);
+  color: #fff;
+}
+.push-icon-circle-warn {
+  background: linear-gradient(135deg, #fbbf24, #d97706);
+  color: #fff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .push-icon-glow::before {
+    animation: none;
+    opacity: 0;
+  }
+}

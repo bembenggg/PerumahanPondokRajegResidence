@@ -942,6 +942,59 @@
       </form>
     </dialog>
 
+    <!-- [BARU] Modal SUKSES aktivasi push notification — gaya modern dengan
+         ikon animasi glow lembut, dipisah dari appMessageDialog generik
+         supaya bisa didesain lebih personal & menenangkan untuk warga. -->
+    <dialog
+      id="pushSuccessDialog"
+      class="modal interactive-modal push-status-modal"
+    >
+      <form method="dialog">
+        <div class="push-icon-glow push-icon-glow-success">
+          <div class="push-icon-circle push-icon-circle-success">
+            <span class="material-symbols-rounded">notifications_active</span>
+          </div>
+        </div>
+        <p class="eyebrow" style="color: var(--green)">NOTIFIKASI AKTIF</p>
+        <h2>Siap! Notifikasi Sudah Aktif 🎉</h2>
+        <p class="push-status-text">
+          Mulai sekarang kamu akan langsung dapat kabar setiap ada info penting
+          dari pengurus RT — tagihan, pengumuman, sampai sinyal darurat warga.
+        </p>
+        <button class="primary-button" value="confirm">Oke, Mengerti</button>
+      </form>
+    </dialog>
+
+    <!-- [BARU] Modal GAGAL aktivasi push notification — nada menenangkan
+         (bukan alert teknis panjang), dengan opsi "Coba Lagi" langsung dari
+         modal ini. Detail error teknisnya tetap tercatat ke PushErrorLogs
+         di server, tidak perlu ditampilkan ke warga. -->
+    <dialog
+      id="pushErrorDialog"
+      class="modal interactive-modal push-status-modal"
+    >
+      <form method="dialog">
+        <div class="push-icon-glow push-icon-glow-warn">
+          <div class="push-icon-circle push-icon-circle-warn">
+            <span class="material-symbols-rounded">notifications_paused</span>
+          </div>
+        </div>
+        <p class="eyebrow" style="color: #b45309">NOTIFIKASI BELUM AKTIF</p>
+        <h2>Notifikasi Belum Bisa Diaktifkan</h2>
+        <p class="push-status-text">
+          Tenang, ini bukan masalah dari aplikasi MY PRR — biasanya karena
+          pengaturan di HP. Semua fitur lain tetap berjalan normal seperti
+          biasa.
+        </p>
+        <div class="modal-btn-grid">
+          <button type="button" id="pushErrorRetryBtn" class="secondary-button">
+            Coba Lagi
+          </button>
+          <button class="primary-button" value="confirm">Nanti Saja</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="loginSuccessDialog" class="modal interactive-modal">
       <form method="dialog" id="loginSuccessForm">
         <div class="modal-icon-box success-bg">
