@@ -183,7 +183,19 @@ function showPushErrorModal() {
 async function requestNotificationPermission(isManualRetry = false) {
   if (!("Notification" in window)) return;
   try {
-    const permission = await Notification.requestPermission();
+    // [BARU] Fix #iOS: sebelumnya SELALU memanggil Notification.requestPermission()
+    // ulang setiap login (dipanggil otomatis lewat bootSession). Di Safari
+    // iOS, memanggil ini di luar konteks user-gesture langsung (bukan reaksi
+    // klik tombol) kadang tidak mengembalikan status yang akurat, WALAU izin
+    // sebenarnya sudah "granted" sebelumnya — inilah kemungkinan penyebab
+    // toast "notifikasi tidak aktif" muncul terus padahal sudah diizinkan.
+    // Sekarang kita cek dulu status yang SUDAH tersimpan (properti sinkron,
+    // tidak butuh gesture) — hanya minta ulang kalau memang belum pernah
+    // diputuskan ("default").
+    let permission = Notification.permission;
+    if (permission === "default") {
+      permission = await Notification.requestPermission();
+    }
     if (permission === "granted") {
       const swRegistration = await navigator.serviceWorker.ready;
 
@@ -1177,8 +1189,7 @@ async function loadAdminPending() {
   const adminUnit = localStorage.getItem("pondok_rajeg_user");
   if (!adminUnit) return;
   const listEl = $("#pendingList");
-  if (listEl)
-    listEl.innerHTML = `<div class="empty-state-box">Memuat data...</div>`;
+  if (listEl) listEl.innerHTML = shimmerListHtml(3);
 
   try {
     const result = await sendToBackend("adminListPending", { adminUnit });
@@ -1363,7 +1374,7 @@ async function loadExpenses() {
   const adminUnit = localStorage.getItem("pondok_rajeg_user");
   const listEl = $("#expenseList");
   if (!adminUnit || !listEl) return;
-  listEl.innerHTML = `<div class="empty-state-box">Memuat riwayat pengeluaran...</div>`;
+  listEl.innerHTML = shimmerListHtml(3);
   try {
     const result = await sendToBackend("adminListExpenses", { adminUnit });
     currentExpenses = (result && result.expenses) || [];
@@ -1899,7 +1910,7 @@ function renderContentManagerGrid(type, items) {
       ${it.subtitle ? `<small class="content-manage-subtitle">${escapeHtml(it.subtitle)}</small>` : ""}
       ${it.description ? `<p class="content-manage-desc">${escapeHtml(it.description)}</p>` : ""}
       ${it.phone ? `<div class="content-manage-meta"><span class="material-symbols-rounded">call</span>${escapeHtml(it.phone)}</div>` : ""}
-      ${it.linkUrl ? `<div class="content-manage-meta"><span class="material-symbols-rounded">link</span>${escapeHtml(it.linkUrl)}</div>` : ""}
+      ${it.linkUrl ? `<div class="content-manage-meta"><span class="material-symbols-rounded">link</span><a href="${it.linkUrl}" target="_blank" rel="noopener" class="content-manage-link">${escapeHtml(it.linkUrl)}</a></div>` : ""}
       <div class="content-manage-actions">
         <button type="button" class="chip-btn" data-edit-content="${it.id}">Ubah</button>
         <button type="button" class="chip-btn ghost" data-delete-content="${it.id}">Hapus</button>

@@ -2572,6 +2572,25 @@ input[type="file"]::file-selector-button {
   color: var(--green);
   flex-shrink: 0;
 }
+/* Fix iOS #1: jaring pengaman tambahan — kalau WebKit tetap membuat elemen
+   <a> otomatis dari nomor telepon/URL (di versi iOS lama sebelum meta
+   format-detection didukung penuh), paksa warisi warna & hilangkan
+   underline supaya tetap konsisten dengan desain kita, bukan biru default
+   bawaan browser. */
+.content-manage-meta a,
+.tukang-item a,
+.doc-info a {
+  color: inherit;
+  text-decoration: none;
+}
+/* Link admin di kartu "Kelola Konten" dibuat bisa diklik langsung (sekalian
+   perbaikan: sebelumnya cuma teks URL mati, tidak bisa dibuka). */
+.content-manage-meta a.content-manage-link {
+  color: var(--green);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgba(8, 122, 75, 0.35);
+}
 .content-manage-actions {
   display: flex;
   gap: 6px;
@@ -2924,6 +2943,21 @@ dialog#aiLoadingModal::backdrop {
     animation: none;
     background: #eef3f0;
   }
+}
+
+/* [BARU] Shimmer versi teks-inline — untuk placeholder angka/status di kartu
+   ringkasan dashboard (Saldo Kas, Pemasukan, Pengeluaran, Tagihan IPL),
+   menggantikan teks statis "Memuat..." yang terasa kaku/kuno. */
+.shimmer-text {
+  display: inline-block;
+  height: 0.85em;
+  width: 84px;
+  border-radius: 6px;
+  vertical-align: middle;
+}
+.shimmer-text-sm {
+  width: 56px;
+  height: 0.75em;
 }
 
 /* ========================================================== */

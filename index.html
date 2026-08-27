@@ -11,6 +11,16 @@
       name="description"
       content="Layanan digital Perumahan Pondok Rajeg Residence"
     />
+    <!-- [BARU] Fix iOS #1: mencegah Safari iOS otomatis mengubah nomor
+         telepon/URL/tanggal jadi link biru bergaris bawah bergaya default
+         (mengabaikan CSS kita). Ini bug WebKit yang terkenal ("data
+         detection"), bukan salah styling — cukup dimatikan lewat meta tag
+         ini supaya link kartu konten (Jasa, Kesehatan, dll) tetap tampil
+         sesuai desain kita di semua perangkat iOS. -->
+    <meta
+      name="format-detection"
+      content="telephone=no, date=no, address=no, email=no, url=no"
+    />
 
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png" />
@@ -228,7 +238,9 @@
             <div class="net-balance-row">
               <div class="net-balance-info">
                 <span class="label">Saldo Kas Bersih Paguyuban Bulan ini</span>
-                <strong id="netBalance">Memuat...</strong>
+                <strong id="netBalance"
+                  ><span class="shimmer-text shimmer"></span
+                ></strong>
               </div>
               <div class="house-icon cash">
                 <span class="material-symbols-rounded"
@@ -246,8 +258,8 @@
                   <span>Total Pemasukan</span>
                 </div>
                 <strong id="totalCashFlow" class="text-success"
-                  >Memuat...</strong
-                >
+                  ><span class="shimmer-text shimmer"></span
+                ></strong>
               </div>
 
               <div class="finance-row-item expense">
@@ -257,7 +269,9 @@
                   </div>
                   <span>Total Pengeluaran</span>
                 </div>
-                <strong id="totalExpense" class="text-danger">Memuat...</strong>
+                <strong id="totalExpense" class="text-danger"
+                  ><span class="shimmer-text shimmer"></span
+                ></strong>
               </div>
             </div>
           </section>
@@ -267,8 +281,12 @@
             <div class="balance-card-top">
               <div class="balance-info">
                 <p>Tagihan IPL bulan ini</p>
-                <strong id="currentBill">Memuat...</strong>
-                <span id="billStatus" class="status-chip">Memuat...</span>
+                <strong id="currentBill"
+                  ><span class="shimmer-text shimmer"></span
+                ></strong>
+                <span id="billStatus" class="status-chip"
+                  ><span class="shimmer-text shimmer-text-sm shimmer"></span
+                ></span>
               </div>
               <div class="house-icon">
                 <span class="material-symbols-rounded">home</span>
@@ -473,7 +491,20 @@
               </button>
             </div>
             <div id="financeReportList" class="activity-list">
-              <div class="empty-state-box">Memuat laporan keuangan...</div>
+              <div class="skeleton-card">
+                <div class="skeleton-thumb shimmer"></div>
+                <div class="skeleton-lines">
+                  <div class="skeleton-line shimmer skeleton-line-title"></div>
+                  <div class="skeleton-line shimmer skeleton-line-full"></div>
+                </div>
+              </div>
+              <div class="skeleton-card">
+                <div class="skeleton-thumb shimmer"></div>
+                <div class="skeleton-lines">
+                  <div class="skeleton-line shimmer skeleton-line-title"></div>
+                  <div class="skeleton-line shimmer skeleton-line-full"></div>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -493,7 +524,27 @@
               <span id="currentYearLabel">Tahun 2026</span>
             </div>
             <div id="monthlyHistoryList" class="activity-list">
-              <div class="empty-state-box">Memuat riwayat pembayaran...</div>
+              <div class="skeleton-card">
+                <div class="skeleton-thumb shimmer"></div>
+                <div class="skeleton-lines">
+                  <div class="skeleton-line shimmer skeleton-line-title"></div>
+                  <div class="skeleton-line shimmer skeleton-line-full"></div>
+                </div>
+              </div>
+              <div class="skeleton-card">
+                <div class="skeleton-thumb shimmer"></div>
+                <div class="skeleton-lines">
+                  <div class="skeleton-line shimmer skeleton-line-title"></div>
+                  <div class="skeleton-line shimmer skeleton-line-full"></div>
+                </div>
+              </div>
+              <div class="skeleton-card">
+                <div class="skeleton-thumb shimmer"></div>
+                <div class="skeleton-lines">
+                  <div class="skeleton-line shimmer skeleton-line-title"></div>
+                  <div class="skeleton-line shimmer skeleton-line-full"></div>
+                </div>
+              </div>
             </div>
           </section>
         </div>
