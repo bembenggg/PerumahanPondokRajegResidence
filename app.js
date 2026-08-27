@@ -114,6 +114,42 @@ messaging.onMessage((payload) => {
   loadNotifications();
 });
 
+// [BARU] Fix #3/#4: menerjemahkan error teknis dari browser (mis. "Registration
+// failed - push service error") menjadi penjelasan + langkah solusi yang bisa
+// dipahami & langsung dicoba warga. Error semacam ini berasal dari BROWSER/HP
+// itu sendiri (bukan bug di aplikasi) — biasanya karena layanan push Google
+// Play Services di HP tersebut bermasalah/dibatasi, umum terjadi di HP
+// Xiaomi/Redmi (MIUI), Vivo (Funtouch/OriginOS), dan sejenisnya.
+function explainPushError(rawMessage) {
+  const msg = String(rawMessage || "").toLowerCase();
+  if (
+    msg.includes("push service error") ||
+    msg.includes("registration failed") ||
+    msg.includes("aborterror")
+  ) {
+    return (
+      "Notifikasi push GAGAL diaktifkan di HP ini.\n\n" +
+      "Ini bukan masalah dari aplikasi MY PRR, melainkan layanan push notification bawaan HP/Chrome yang bermasalah. Coba langkah berikut:\n\n" +
+      '1. Buka Play Store → cari "Google Play Services" → update kalau ada pembaruan.\n' +
+      "2. Update aplikasi Chrome ke versi terbaru.\n" +
+      '3. Buka Setelan HP → Aplikasi → Chrome → pastikan tidak dibatasi baterai ("No restrictions") dan Autostart diaktifkan.\n' +
+      '4. Buka Chrome → Setelan situs → cari domain web ini → "Hapus data situs", lalu buka lagi web-nya dan izinkan notifikasi ulang.\n' +
+      "5. Restart HP, lalu coba lagi.\n\n" +
+      "Kalau HP menggunakan ROM tanpa Google Play Services lengkap (mis. MIUI versi khusus tanpa layanan Google), notifikasi push web memang tidak bisa berfungsi sama sekali di HP tersebut."
+    );
+  }
+  if (msg.includes("messaging/permission-blocked") || msg.includes("denied")) {
+    return "Izin notifikasi diblokir di pengaturan browser/HP. Buka Setelan → Situs/Notifikasi → izinkan notifikasi untuk web ini secara manual, lalu muat ulang halaman.";
+  }
+  return (
+    "Gagal mengaktifkan notifikasi push di perangkat ini.\n\n" +
+    "Detail teknis: " +
+    (rawMessage || "kesalahan tidak diketahui") +
+    "\n\n" +
+    "Coba pastikan Chrome sudah versi terbaru, koneksi internet stabil, dan aplikasi tidak dibatasi baterai oleh sistem HP."
+  );
+}
+
 async function requestNotificationPermission() {
   if (!("Notification" in window)) return;
   try {
@@ -131,6 +167,11 @@ async function requestNotificationPermission() {
         const unit = localStorage.getItem("pondok_rajeg_user") || "Tamu";
         try {
           await sendToBackend("saveFCMToken", { unit, token });
+          // [BARU] Sebelumnya jalur SUKSES tidak memberi tanda apa pun ke
+          // warga (silent success) — sekarang ada konfirmasi eksplisit,
+          // supaya tombol "Coba Aktifkan Ulang Notifikasi" di Profil jelas
+          // hasilnya berhasil atau tidak.
+          showToast("✅ Notifikasi push berhasil diaktifkan di perangkat ini.");
         } catch (saveErr) {
           // [BARU] Fix #3/#4: sebelumnya kegagalan simpan token ke server
           // DIAM-DIAM saja (hanya console.error) — warga tidak pernah tahu
@@ -157,15 +198,17 @@ async function requestNotificationPermission() {
       );
     }
   } catch (error) {
-    // [BARU] Fix #3/#4: sebelumnya error di sini juga diam-diam saja.
-    // Ini adalah titik kegagalan paling umum untuk push notification di
-    // Android (izin browser OEM diblokir/expired token/dsb) — sekarang
-    // warga diberi tahu secara eksplisit alih-alih tidak ada tanda sama
-    // sekali kenapa notifikasi tidak pernah muncul.
+    // [BARU] Fix #3/#4: sebelumnya error di sini juga diam-diam saja (lalu
+    // hanya toast singkat 4.5 detik yang kurang jelas & keburu hilang untuk
+    // pesan error teknis). Sekarang error seperti "Registration failed -
+    // push service error" (khas HP Xiaomi/Redmi/Vivo) ditampilkan lewat modal
+    // yang tetap terbuka, berisi PENJELASAN + LANGKAH SOLUSI yang bisa
+    // langsung dicoba warga, bukan sekadar pesan teknis mentah.
     console.error("Gagal mendapatkan token notifikasi:", error);
-    showToast(
-      "Gagal mengaktifkan notifikasi push: " +
-        (error && error.message ? error.message : "kesalahan tidak diketahui"),
+    showAppModal(
+      "Notifikasi Push Gagal Diaktifkan",
+      explainPushError(error && error.message),
+      false,
     );
   }
 }
@@ -2566,6 +2609,23 @@ document.addEventListener("DOMContentLoaded", () => {
       if (container.querySelector("small")) container.innerHTML = "";
       container.appendChild(buildTanggunganCard({}));
       container.scrollTop = container.scrollHeight;
+    });
+  }
+
+  // [BARU] Fix #3/#4: tombol coba-ulang aktivasi push notification dari
+  // modal Profil (lihat requestNotificationPermission untuk detail error).
+  const retryPushPermissionBtn = $("#retryPushPermissionBtn");
+  if (retryPushPermissionBtn) {
+    retryPushPermissionBtn.addEventListener("click", async () => {
+      const originalText = retryPushPermissionBtn.innerHTML;
+      retryPushPermissionBtn.innerHTML = "Mencoba...";
+      retryPushPermissionBtn.disabled = true;
+      try {
+        await requestNotificationPermission();
+      } finally {
+        retryPushPermissionBtn.innerHTML = originalText;
+        retryPushPermissionBtn.disabled = false;
+      }
     });
   }
 
