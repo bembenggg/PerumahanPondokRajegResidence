@@ -80,7 +80,8 @@
           <h2>Masuk Warga</h2>
           <p class="auth-subtitle">
             Silakan masukkan Blok/Nomor rumah dan PIN Anda untuk mengakses
-            portal layanan. Petugas RT juga masuk lewat form yang sama.
+            portal layanan. Pengurus Paguyuban PRR juga masuk lewat form yang
+            sama.
           </p>
 
           <form id="loginForm">
@@ -99,6 +100,8 @@
                 type="password"
                 id="loginPin"
                 required
+                inputmode="numeric"
+                pattern="[0-9]*"
                 placeholder="••••"
                 maxlength="6"
               />
@@ -345,7 +348,7 @@
                   ><span class="material-symbols-rounded">verified</span></b
                 >
                 <strong>Verifikasi Tunai</strong>
-                <small>Khusus Petugas RT</small>
+                <small>Khusus Pengurus Paguyuban PRR</small>
               </button>
 
               <button
@@ -793,6 +796,8 @@
               <input
                 type="password"
                 name="newPin"
+                inputmode="numeric"
+                pattern="[0-9]*"
                 placeholder="••••"
                 maxlength="6"
               />
@@ -802,6 +807,8 @@
               <input
                 type="password"
                 name="confirmPin"
+                inputmode="numeric"
+                pattern="[0-9]*"
                 placeholder="••••"
                 maxlength="6"
               />
@@ -989,7 +996,8 @@
         <h2>Siap! Notifikasi Sudah Aktif 🎉</h2>
         <p class="push-status-text">
           Mulai sekarang kamu akan langsung dapat kabar setiap ada info penting
-          dari pengurus RT — tagihan, pengumuman, sampai sinyal darurat warga.
+          dari Pengurus Paguyuban PRR — tagihan, pengumuman, sampai sinyal
+          darurat warga.
         </p>
         <button class="primary-button" value="confirm">Oke, Mengerti</button>
       </form>
@@ -1083,7 +1091,7 @@
     <dialog id="adminDialog" class="modal info-modal">
       <form method="dialog">
         <button class="close" value="cancel">×</button>
-        <p class="eyebrow">PANEL PETUGAS RT</p>
+        <p class="eyebrow">PANEL PENGURUS PAGUYUBAN PRR</p>
         <h2>Verifikasi Pembayaran Tunai</h2>
         <div
           style="display: flex; justify-content: flex-end; margin-bottom: 8px"
@@ -1139,7 +1147,7 @@
         <button type="button" class="close" value="cancel" aria-label="Tutup">
           ×
         </button>
-        <p class="eyebrow">PANEL PETUGAS RT</p>
+        <p class="eyebrow">PANEL PENGURUS PAGUYUBAN PRR</p>
         <h2>Catat Pengeluaran Kas</h2>
         <p style="font-size: 12px; color: var(--muted); margin: 0 0 4px">
           Setiap pengeluaran yang dicatat di sini langsung mengurangi saldo kas
@@ -1179,7 +1187,7 @@
           <input
             type="number"
             name="expenseAmount"
-            min="1"
+            min="1000"
             step="1000"
             inputmode="numeric"
             placeholder="Contoh: 500000"
@@ -1221,7 +1229,7 @@
         <button type="button" class="close" value="cancel" aria-label="Tutup">
           ×
         </button>
-        <p class="eyebrow">PANEL PETUGAS RT</p>
+        <p class="eyebrow">PANEL PENGURUS PAGUYUBAN PRR</p>
         <h2>Kelola Konten Warga</h2>
         <p style="font-size: 12px; color: var(--muted); margin: 0 0 14px">
           Semua kartu di bawah ini otomatis tampil di menu warga sesuai
@@ -1381,6 +1389,60 @@
             Warga akan melihat badge "Sedang Bertugas" otomatis saat jam
             sekarang ada di rentang ini. Untuk shift malam yang melewati tengah
             malam (mis. 22:00–06:00), tetap isi seperti biasa.
+          </small>
+
+          <!-- [BARU] Fix #4/#5: pemilih HARI untuk rostering mingguan — satu
+               kartu = satu shift/petugas yang berlaku di hari-hari yang
+               dicentang. Memudahkan pengurus mengatur jadwal sampah 2-3x
+               seminggu & shift security yang beda petugas tiap hari. -->
+          <div id="contentDaysPicker" class="day-picker-grid">
+            <label class="day-check"
+              ><input type="checkbox" name="days" value="Senin" /><span
+                >Sen</span
+              ></label
+            >
+            <label class="day-check"
+              ><input type="checkbox" name="days" value="Selasa" /><span
+                >Sel</span
+              ></label
+            >
+            <label class="day-check"
+              ><input type="checkbox" name="days" value="Rabu" /><span
+                >Rab</span
+              ></label
+            >
+            <label class="day-check"
+              ><input type="checkbox" name="days" value="Kamis" /><span
+                >Kam</span
+              ></label
+            >
+            <label class="day-check"
+              ><input type="checkbox" name="days" value="Jumat" /><span
+                >Jum</span
+              ></label
+            >
+            <label class="day-check"
+              ><input type="checkbox" name="days" value="Sabtu" /><span
+                >Sab</span
+              ></label
+            >
+            <label class="day-check"
+              ><input type="checkbox" name="days" value="Minggu" /><span
+                >Min</span
+              ></label
+            >
+          </div>
+          <small
+            style="
+              display: block;
+              margin-top: 4px;
+              font-weight: 400;
+              color: var(--muted);
+              font-size: 10.5px;
+            "
+          >
+            Centang hari-hari kartu ini berlaku. Kosongkan semua kalau berlaku
+            setiap hari.
           </small>
         </label>
         <label
@@ -1711,11 +1773,47 @@
         </label>
         <label
           >Tambahkan Foto (Opsional)
+          <div class="post-photo-btn-row">
+            <button type="button" id="postPhotoCameraBtn" class="chip-btn">
+              <span
+                class="material-symbols-rounded"
+                style="font-size: 15px; vertical-align: middle"
+                >photo_camera</span
+              >
+              Ambil Foto
+            </button>
+            <button
+              type="button"
+              id="postPhotoGalleryBtn"
+              class="chip-btn ghost"
+            >
+              <span
+                class="material-symbols-rounded"
+                style="font-size: 15px; vertical-align: middle"
+                >image</span
+              >
+              Pilih dari Galeri
+            </button>
+          </div>
+          <!-- [BARU] Fix #1: dipisah jadi 2 input — satu dengan capture="environment"
+               (langsung buka kamera, tidak lewat galeri dulu) dan satu tanpa
+               capture (khusus galeri). Sebelumnya cuma 1 input tanpa "capture",
+               yang di sebagian browser Android OEM langsung ke galeri tanpa
+               menawarkan opsi kamera sama sekali. -->
+          <input
+            type="file"
+            name="photoCamera"
+            accept="image/*"
+            capture="environment"
+            id="postPhotoCameraInput"
+            style="display: none"
+          />
           <input
             type="file"
             name="photo"
             accept="image/*"
             id="postPhotoInput"
+            style="display: none"
           />
         </label>
         <div id="postPhotoPreviewWrap" style="display: none; margin-top: 8px">

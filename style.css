@@ -630,13 +630,14 @@ body {
 }
 
 /* [BARU] Card Security & Tukang Sampah — DINAMIS (menggantikan markup statis
-   lama .security-duty-card). Dipakai untuk kedua jenis lewat modifier warna
-   .duty-card-security (navy) / .duty-card-sampah (amber/coklat), supaya
-   mudah dibedakan sekilas namun tetap konsisten gaya "modern-security" yang
-   sudah ada sebelumnya. */
+   lama .security-duty-card). Fix #7: KEDUA kartu memakai gradient hijau yang
+   SAMA dengan hero/branding utama situs (bukan navy/coklat yang beda tema
+   seperti sebelumnya) — konteksnya dibedakan lewat WARNA IKON & badge saja
+   (shield biru-keperakan utk Security, truk kuning-oranye utk Sampah),
+   supaya tetap senada dengan identitas visual MY PRR secara keseluruhan. */
 .duty-card {
   margin: 14px 0 0 0;
-  background: linear-gradient(135deg, #075b3b 0%, #0a9260 100%);
+  background: linear-gradient(126deg, #075b3b, #0a9260);
   border: 1px solid rgba(185, 243, 92, 0.3);
   border-radius: 18px;
   padding: 16px;
@@ -645,16 +646,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-.duty-card-security {
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
-  border-color: rgba(147, 197, 253, 0.3);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
-}
-.duty-card-sampah {
-  background: linear-gradient(135deg, #78350f 0%, #a16207 100%);
-  border-color: rgba(253, 224, 71, 0.3);
-  box-shadow: 0 8px 24px rgba(120, 53, 15, 0.25);
 }
 .duty-header-row {
   display: flex;
@@ -674,8 +665,25 @@ body {
   border-radius: 20px;
 }
 .duty-shield {
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 22px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 20px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.14);
+}
+/* Ikon berwarna sesuai konteks — inilah yang "mencirikan" tiap kategori,
+   bukan seluruh warna kartu. */
+.duty-card-security .duty-shield {
+  background: rgba(147, 197, 253, 0.22);
+  color: #bfdbfe;
+}
+.duty-card-sampah .duty-shield {
+  background: rgba(253, 224, 71, 0.22);
+  color: #fde68a;
 }
 .pulse-dot {
   width: 7px;
@@ -2105,6 +2113,47 @@ body {
 }
 .chip-btn.ghost {
   color: var(--muted);
+}
+.day-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: 8px;
+}
+.day-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+}
+.day-check input {
+  display: none;
+}
+.day-check span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 8px 0;
+  border-radius: 10px;
+  border: 1.5px solid var(--line);
+  background: #fff;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.day-check input:checked + span {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+.post-photo-btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
 }
 
 .payment-method-note {

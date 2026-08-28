@@ -1419,21 +1419,24 @@ const CONTENT_TYPE_META = {
     label: "Jasa",
     icon: "handyman",
     accent: "wrench",
-    emptyText: "Belum ada jasa/internet yang ditambahkan petugas RT.",
+    emptyText:
+      "Belum ada jasa/internet yang ditambahkan Pengurus Paguyuban PRR.",
     waLabel: "Hubungi via WhatsApp",
   },
   internet: {
     label: "Internet & TV Kabel",
     icon: "wifi",
     accent: "wifi",
-    emptyText: "Belum ada provider internet yang ditambahkan petugas RT.",
+    emptyText:
+      "Belum ada provider internet yang ditambahkan Pengurus Paguyuban PRR.",
     waLabel: "Hubungi Provider",
   },
   kesehatan: {
     label: "Darurat Medis",
     icon: "medical_services",
     accent: "health",
-    emptyText: "Belum ada layanan medis darurat yang ditambahkan petugas RT.",
+    emptyText:
+      "Belum ada layanan medis darurat yang ditambahkan Pengurus Paguyuban PRR.",
     waLabel: "Hubungi Layanan",
   },
   pengumuman: {
@@ -1447,7 +1450,8 @@ const CONTENT_TYPE_META = {
     label: "Dokumen Pengurus Paguyuban",
     icon: "picture_as_pdf",
     accent: "info",
-    emptyText: "Dokumen pengurus paguyuban belum ditambahkan petugas RT.",
+    emptyText:
+      "Dokumen pengurus paguyuban belum ditambahkan Pengurus Paguyuban PRR.",
     waLabel: "",
   },
   // [BARU] Jadwal Tukang Sampah & Security — pakai TimeStart/TimeEnd untuk
@@ -1456,14 +1460,16 @@ const CONTENT_TYPE_META = {
     label: "Jadwal Tukang Sampah",
     icon: "local_shipping",
     accent: "trash",
-    emptyText: "Jadwal petugas sampah belum ditambahkan petugas RT.",
+    emptyText:
+      "Jadwal petugas sampah belum ditambahkan Pengurus Paguyuban PRR.",
     waLabel: "Hubungi Petugas",
   },
   security: {
     label: "Jadwal Security",
     icon: "shield_person",
     accent: "security",
-    emptyText: "Jadwal petugas security belum ditambahkan petugas RT.",
+    emptyText:
+      "Jadwal petugas security belum ditambahkan Pengurus Paguyuban PRR.",
     waLabel: "Chat Pos Satpam",
   },
 };
@@ -1519,10 +1525,54 @@ function formatTimeRange(timeStart, timeEnd) {
   return `${timeStart || "--:--"} – ${timeEnd || "--:--"}`;
 }
 
+// [BARU] Fix #4/#5/#6: nama hari Indonesia sesuai index Date.getDay()
+// (0=Minggu). Dipakai untuk rostering mingguan Tukang Sampah & Security.
+const DAY_NAMES_ID_CLIENT = [
+  "Minggu",
+  "Senin",
+  "Selasa",
+  "Rabu",
+  "Kamis",
+  "Jumat",
+  "Sabtu",
+];
+
+function todayNameId() {
+  return DAY_NAMES_ID_CLIENT[new Date().getDay()];
+}
+
+function parseDaysField(daysStr) {
+  return String(daysStr || "")
+    .split(",")
+    .map((d) => d.trim())
+    .filter(Boolean);
+}
+
+function formatDaysBadge(daysStr) {
+  const days = parseDaysField(daysStr);
+  if (!days.length) return "Setiap Hari";
+  // Singkat jadi 3 huruf per hari biar chip tidak kepanjangan (mis. "Sen, Rab, Jum")
+  return days.map((d) => d.slice(0, 3)).join(", ");
+}
+
+// Kartu berlaku hari ini kalau field Days kosong (berarti "setiap hari")
+// ATAU daftar harinya memuat nama hari ini.
+function isScheduledToday(daysStr) {
+  const days = parseDaysField(daysStr);
+  if (!days.length) return true;
+  return days.includes(todayNameId());
+}
+
 function renderDutyItems(items, box, type) {
   if (!box) return;
   const meta = CONTENT_TYPE_META[type] || {};
-  if (!items.length) {
+
+  // Fix #4/#5/#6: card di beranda hanya menampilkan jadwal yang berlaku HARI
+  // INI (rostering mingguan) — bukan seluruh kartu dari semua hari sekaligus,
+  // supaya warga langsung lihat siapa yang bertugas hari ini tanpa bingung.
+  const todayItems = items.filter((it) => isScheduledToday(it.days));
+
+  if (!todayItems.length) {
     box.innerHTML = "";
     return;
   }
@@ -1531,11 +1581,11 @@ function renderDutyItems(items, box, type) {
       <div class="duty-header-row">
         <div class="duty-badge-pulse">
           <span class="pulse-dot"></span>
-          <span>${escapeHtml(meta.label || "")}</span>
+          <span>${escapeHtml(meta.label || "")} • ${escapeHtml(todayNameId())}</span>
         </div>
         <span class="material-symbols-rounded duty-shield">${meta.icon || "shield_person"}</span>
       </div>
-      ${items
+      ${todayItems
         .map((it) => {
           const onDuty = isCurrentlyOnDuty(it.timeStart, it.timeEnd);
           const timeRange = formatTimeRange(it.timeStart, it.timeEnd);
@@ -1546,7 +1596,7 @@ function renderDutyItems(items, box, type) {
             ${onDuty ? `<span class="duty-active-badge">🟢 Sedang Bertugas</span>` : ""}
           </div>
           ${it.subtitle ? `<div class="duty-subtitle">${escapeHtml(it.subtitle)}</div>` : ""}
-          ${timeRange ? `<div class="duty-time-chip"><span class="material-symbols-rounded">schedule</span>${escapeHtml(timeRange)}</div>` : ""}
+          <div class="duty-time-chip"><span class="material-symbols-rounded">schedule</span>${escapeHtml(timeRange || "Jam belum diatur")}</div>
           ${it.description ? `<p>${escapeHtml(it.description)}</p>` : ""}
           ${
             it.phone
@@ -2040,6 +2090,7 @@ function renderContentManagerGrid(type, items) {
       </div>
       ${it.subtitle ? `<small class="content-manage-subtitle">${escapeHtml(it.subtitle)}</small>` : ""}
       ${it.timeStart || it.timeEnd ? `<div class="content-manage-meta"><span class="material-symbols-rounded">schedule</span>${escapeHtml(formatTimeRange(it.timeStart, it.timeEnd))}</div>` : ""}
+      ${it.timeStart || it.timeEnd || it.days ? `<div class="content-manage-meta"><span class="material-symbols-rounded">event_repeat</span>${escapeHtml(formatDaysBadge(it.days))}</div>` : ""}
       ${it.description ? `<p class="content-manage-desc">${escapeHtml(it.description)}</p>` : ""}
       ${it.phone ? `<div class="content-manage-meta"><span class="material-symbols-rounded">call</span>${escapeHtml(it.phone)}</div>` : ""}
       ${it.linkUrl ? `<div class="content-manage-meta"><span class="material-symbols-rounded">link</span><a href="${it.linkUrl}" target="_blank" rel="noopener" class="content-manage-link">${escapeHtml(it.linkUrl)}</a></div>` : ""}
@@ -2162,6 +2213,12 @@ function openContentForm(type, item) {
     form.querySelector("[name='order']").value = item.order || 0;
     form.querySelector("[name='timeStart']").value = item.timeStart || "";
     form.querySelector("[name='timeEnd']").value = item.timeEnd || "";
+    // [BARU] Fix #4/#5: centang ulang checkbox hari sesuai data tersimpan
+    // (item.days, dipisah koma) saat membuka form untuk EDIT kartu.
+    const selectedDays = parseDaysField(item.days);
+    form.querySelectorAll("[name='days']").forEach((cb) => {
+      cb.checked = selectedDays.includes(cb.value);
+    });
   }
 
   dialog.showModal();
@@ -2282,7 +2339,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (loginSuccessMessageText) {
           loginSuccessMessageText.textContent =
             result.role === "admin"
-              ? `Halo ${result.name}, Anda masuk sebagai Petugas RT.`
+              ? `Halo ${result.name}, Anda masuk sebagai Pengurus Paguyuban PRR.`
               : `Halo ${result.name}, verifikasi Rumah ${unit} berhasil.`;
         }
         if (loginSuccessDialog) loginSuccessDialog.showModal();
@@ -2518,6 +2575,16 @@ document.addEventListener("DOMContentLoaded", () => {
           ? formData.category
           : formData.contentType;
 
+      // [BARU] Fix #4/#5: FormData + Object.fromEntries() TIDAK bisa menangani
+      // banyak checkbox dengan name="days" yang sama (cuma ambil nilai
+      // terakhir) — jadi hari yang dicentang diambil terpisah lewat query
+      // checkbox :checked, lalu digabung jadi teks dipisah koma.
+      const selectedDays = Array.from(
+        contentForm.querySelectorAll("[name='days']:checked"),
+      )
+        .map((cb) => cb.value)
+        .join(",");
+
       const payload = {
         adminUnit,
         id: formData.contentId,
@@ -2531,6 +2598,7 @@ document.addEventListener("DOMContentLoaded", () => {
         order: Number(formData.order) || 0,
         timeStart: formData.timeStart || "",
         timeEnd: formData.timeEnd || "",
+        days: selectedDays,
       };
 
       try {
@@ -3083,12 +3151,22 @@ document.addEventListener("DOMContentLoaded", () => {
   const openPostComposerBtn = $("#openPostComposerBtn");
   const bottomNavPostBtn = $("#bottomNavPostBtn");
   const postPhotoInput = $("#postPhotoInput");
+  const postPhotoCameraInput = $("#postPhotoCameraInput");
+  const postPhotoCameraBtn = $("#postPhotoCameraBtn");
+  const postPhotoGalleryBtn = $("#postPhotoGalleryBtn");
   const postPhotoPreviewWrap = $("#postPhotoPreviewWrap");
   const postPhotoPreview = $("#postPhotoPreview");
+
+  // [BARU] Fix #1: state file terpadu — dipilih baik lewat tombol "Ambil
+  // Foto" (kamera langsung) maupun "Pilih dari Galeri", keduanya menyimpan
+  // ke variabel yang sama supaya logic preview & submit tidak perlu tahu
+  // dari input mana asalnya.
+  let selectedPostFile = null;
 
   const openPostComposer = () => {
     if (postComposerForm) postComposerForm.reset();
     if (postPhotoPreviewWrap) postPhotoPreviewWrap.style.display = "none";
+    selectedPostFile = null;
     postComposerDialog?.showModal();
   };
   if (openPostComposerBtn)
@@ -3096,20 +3174,39 @@ document.addEventListener("DOMContentLoaded", () => {
   if (bottomNavPostBtn)
     bottomNavPostBtn.addEventListener("click", openPostComposer);
 
+  if (postPhotoCameraBtn && postPhotoCameraInput) {
+    postPhotoCameraBtn.addEventListener("click", () =>
+      postPhotoCameraInput.click(),
+    );
+  }
+  if (postPhotoGalleryBtn && postPhotoInput) {
+    postPhotoGalleryBtn.addEventListener("click", () => postPhotoInput.click());
+  }
+
+  async function handlePostPhotoSelected(file) {
+    if (!file) return;
+    selectedPostFile = file;
+    try {
+      const dataUrl = await resizeImageToDataUrl(file);
+      if (postPhotoPreview) postPhotoPreview.src = dataUrl;
+      if (postPhotoPreviewWrap) postPhotoPreviewWrap.style.display = "block";
+    } catch (err) {
+      showToast("Gagal memuat pratinjau foto.");
+    }
+  }
+
+  if (postPhotoCameraInput) {
+    postPhotoCameraInput.addEventListener("change", () => {
+      const file = postPhotoCameraInput.files && postPhotoCameraInput.files[0];
+      if (postPhotoInput) postPhotoInput.value = ""; // pastikan tidak dobel dgn input lain
+      handlePostPhotoSelected(file);
+    });
+  }
   if (postPhotoInput) {
-    postPhotoInput.addEventListener("change", async () => {
+    postPhotoInput.addEventListener("change", () => {
       const file = postPhotoInput.files && postPhotoInput.files[0];
-      if (!file) {
-        if (postPhotoPreviewWrap) postPhotoPreviewWrap.style.display = "none";
-        return;
-      }
-      try {
-        const dataUrl = await resizeImageToDataUrl(file);
-        if (postPhotoPreview) postPhotoPreview.src = dataUrl;
-        if (postPhotoPreviewWrap) postPhotoPreviewWrap.style.display = "block";
-      } catch (err) {
-        showToast("Gagal memuat pratinjau foto.");
-      }
+      if (postPhotoCameraInput) postPhotoCameraInput.value = "";
+      handlePostPhotoSelected(file);
     });
   }
 
@@ -3132,8 +3229,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       try {
         let imageDataUrl = null;
-        const file =
-          postPhotoInput && postPhotoInput.files && postPhotoInput.files[0];
+        const file = selectedPostFile;
         if (file) imageDataUrl = await resizeImageToDataUrl(file);
 
         await db.collection("posts").add({
