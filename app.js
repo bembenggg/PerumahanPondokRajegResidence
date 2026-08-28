@@ -1592,6 +1592,41 @@ function isScheduledToday(daysStr) {
   return days.includes(todayNameId());
 }
 
+// [BARU] Fix #3: kalau beberapa petugas bertugas di shift yang PERSIS sama
+// (hari & jam sama) hari ini, gabungkan jadi satu baris alih-alih beberapa
+// kartu terpisah — supaya card tidak "kepanjangan" saat banyak orang jaga
+// bersamaan. 2 nama digabung pakai "&", 3+ nama dipisah koma.
+function joinDutyNames(titles) {
+  if (titles.length <= 1) return titles[0] || "";
+  if (titles.length === 2) return titles.join(" & ");
+  return titles.join(", ");
+}
+
+function groupDutyItemsByShift(items) {
+  const groups = [];
+  const indexByKey = {};
+  items.forEach((it) => {
+    const key = `${it.timeStart || ""}|${it.timeEnd || ""}`;
+    if (!(key in indexByKey)) {
+      indexByKey[key] = groups.length;
+      groups.push({
+        timeStart: it.timeStart,
+        timeEnd: it.timeEnd,
+        titles: [],
+        subtitle: it.subtitle || "",
+        description: it.description || "",
+        phone: it.phone || "",
+      });
+    }
+    const g = groups[indexByKey[key]];
+    g.titles.push(it.title);
+    if (!g.subtitle && it.subtitle) g.subtitle = it.subtitle;
+    if (!g.description && it.description) g.description = it.description;
+    if (!g.phone && it.phone) g.phone = it.phone;
+  });
+  return groups;
+}
+
 function renderDutyItems(items, box, type) {
   if (!box) return;
   const meta = CONTENT_TYPE_META[type] || {};
@@ -1605,6 +1640,11 @@ function renderDutyItems(items, box, type) {
     box.innerHTML = "";
     return;
   }
+
+  // Fix #3: gabungkan entri dengan jam shift yang sama persis, supaya kartu
+  // tidak membengkak saat banyak orang bertugas di shift yang sama.
+  const groupedItems = groupDutyItemsByShift(todayItems);
+
   // [BARU] Desain disederhanakan mengikuti referensi: teks langsung di atas
   // gradient (tanpa kotak putih transparan bertumpuk), badge status di kiri
   // atas, ikon kategori di kanan atas. Kalau lebih dari 1 entri hari ini
@@ -1618,20 +1658,21 @@ function renderDutyItems(items, box, type) {
         </div>
         <span class="material-symbols-rounded duty-shield">${meta.icon || "shield_person"}</span>
       </div>
-      ${todayItems
-        .map((it, idx) => {
-          const onDuty = isCurrentlyOnDuty(it.timeStart, it.timeEnd);
+      ${groupedItems
+        .map((g, idx) => {
+          const onDuty = isCurrentlyOnDuty(g.timeStart, g.timeEnd);
+          const namesJoined = joinDutyNames(g.titles);
           return `
         <div class="duty-entry${idx > 0 ? " duty-entry-divider" : ""}">
           <div class="duty-body-top">
-            <b>${escapeHtml(it.title)}${it.subtitle ? ` <span class="duty-subtitle-inline">— ${escapeHtml(it.subtitle)}</span>` : ""}</b>
+            <b>${escapeHtml(namesJoined)}${g.subtitle ? ` <span class="duty-subtitle-inline">— ${escapeHtml(g.subtitle)}</span>` : ""}</b>
             ${onDuty ? `<span class="duty-active-badge">🟢 Bertugas</span>` : ""}
           </div>
-          <p class="duty-datetime">${escapeHtml(formatDutyDateTime(it.timeStart, it.timeEnd))}</p>
-          ${it.description ? `<p class="duty-desc">${escapeHtml(it.description)}</p>` : ""}
+          <p class="duty-datetime">${escapeHtml(formatDutyDateTime(g.timeStart, g.timeEnd))}</p>
+          ${g.description ? `<p class="duty-desc">${escapeHtml(g.description)}</p>` : ""}
           ${
-            it.phone
-              ? `<a href="${waLink(it.phone, `Halo ${it.title}, saya warga MY PRR ingin menghubungi...`)}" target="_blank" class="whatsapp-btn duty-wa-btn">
+            g.phone
+              ? `<a href="${waLink(g.phone, `Halo ${namesJoined}, saya warga MY PRR ingin menghubungi...`)}" target="_blank" class="whatsapp-btn duty-wa-btn">
                   <span class="material-symbols-rounded">chat</span> ${meta.waLabel || "Chat WhatsApp"}
                 </a>`
               : ""

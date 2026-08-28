@@ -647,6 +647,28 @@ body {
   flex-direction: column;
   gap: 12px;
 }
+/* [BARU] Fix #1: Security & Sampah tetap senada (basisnya sama-sama gradient
+   hijau khas MY PRR), tapi kini dibedakan sedikit lewat aksen warna lembut
+   di pojok kanan atas — biru-keperakan utk Security, kuning keemasan utk
+   Sampah — supaya sekilas bisa dibedakan tanpa terasa beda tema sama sekali. */
+.duty-card-security {
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(147, 197, 253, 0.28),
+      transparent 55%
+    ),
+    linear-gradient(126deg, #075b3b, #0a9260);
+}
+.duty-card-sampah {
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(253, 224, 71, 0.28),
+      transparent 55%
+    ),
+    linear-gradient(126deg, #075b3b, #0a9260);
+}
 .duty-header-row {
   display: flex;
   justify-content: space-between;
