@@ -647,10 +647,11 @@ body {
   flex-direction: column;
   gap: 12px;
 }
-/* [BARU] Fix #1: Security & Sampah tetap senada (basisnya sama-sama gradient
-   hijau khas MY PRR), tapi kini dibedakan sedikit lewat aksen warna lembut
-   di pojok kanan atas — biru-keperakan utk Security, kuning keemasan utk
-   Sampah — supaya sekilas bisa dibedakan tanpa terasa beda tema sama sekali. */
+/* [BARU] Fix #2: Sampah dibuat LEBIH beda dari Security (sebelumnya cuma
+   aksen tipis di pojok, kurang terasa bedanya) — tapi tetap satu keluarga
+   visual: sama-sama mulai dari hijau brand MY PRR, gaya kartu/badge/font
+   identik, cuma arah gradiennya beralih ke warna keemasan/amber (mengesankan
+   truk sampah & jadwal) alih-alih ke hijau-teal seperti Security. */
 .duty-card-security {
   background:
     radial-gradient(
@@ -664,10 +665,12 @@ body {
   background:
     radial-gradient(
       circle at top right,
-      rgba(253, 224, 71, 0.28),
-      transparent 55%
+      rgba(253, 224, 71, 0.35),
+      transparent 60%
     ),
-    linear-gradient(126deg, #075b3b, #0a9260);
+    linear-gradient(140deg, #064a30 0%, #4d6b12 55%, #9c7a12 100%);
+  border-color: rgba(253, 224, 71, 0.35);
+  box-shadow: 0 8px 24px rgba(120, 90, 10, 0.2);
 }
 .duty-header-row {
   display: flex;
@@ -2123,10 +2126,17 @@ body {
 .chip-btn.ghost {
   color: var(--muted);
 }
+/* [BARU] Fix #1: layout dirombak jadi grid 4 kolom (bukan 7 sempit dalam
+   1 baris) supaya nyaman disentuh di HP — otomatis jadi 2 baris (4+3).
+   Checkbox asli disembunyikan dengan selector LEBIH SPESIFIK (bukan cuma
+   `.day-check input`) karena sebelumnya kalah prioritas melawan aturan
+   global "semua <input> tampil block+lebar penuh" (anti-zoom iOS) yang
+   terletak lebih akhir di file ini — itulah sebabnya checkbox asli masih
+   muncul kotak kecil di sebelah label sebelumnya. */
 .day-picker-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
   margin-top: 8px;
 }
 .day-check {
@@ -2136,28 +2146,31 @@ body {
   margin: 0;
   padding: 0;
 }
-.day-check input {
-  display: none;
+.day-picker-grid .day-check input[type="checkbox"] {
+  display: none !important;
+  width: auto;
 }
 .day-check span {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 8px 0;
-  border-radius: 10px;
+  padding: 12px 0;
+  border-radius: 12px;
   border: 1.5px solid var(--line);
   background: #fff;
   color: var(--muted);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
 .day-check input:checked + span {
   background: var(--green);
   border-color: var(--green);
   color: #fff;
+  box-shadow: 0 4px 10px rgba(8, 122, 75, 0.3);
 }
 .post-photo-btn-row {
   display: flex;
