@@ -13,6 +13,16 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* [BARU] Fix iOS #1: mencegah Safari iOS "membesarkan" teks tertentu secara
+   otomatis (WebKit text-autosizing) — inilah sebabnya link di kartu "Kelola
+   Konten" tampil lebih besar dari yang di-set CSS-nya, padahal di Android
+   ukurannya sudah pas. Aturan ini memaksa font-size selalu literal sesuai
+   CSS di semua browser/perangkat. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   background: #f4f7f5;
@@ -619,7 +629,12 @@ body {
   transition: background 0.2s;
 }
 
-.security-duty-card.modern-security {
+/* [BARU] Card Security & Tukang Sampah — DINAMIS (menggantikan markup statis
+   lama .security-duty-card). Dipakai untuk kedua jenis lewat modifier warna
+   .duty-card-security (navy) / .duty-card-sampah (amber/coklat), supaya
+   mudah dibedakan sekilas namun tetap konsisten gaya "modern-security" yang
+   sudah ada sebelumnya. */
+.duty-card {
   margin: 14px 0 0 0;
   background: linear-gradient(135deg, #075b3b 0%, #0a9260 100%);
   border: 1px solid rgba(185, 243, 92, 0.3);
@@ -629,14 +644,24 @@ body {
   box-shadow: 0 8px 24px rgba(7, 91, 59, 0.2);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
-.security-header-row {
+.duty-card-security {
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+  border-color: rgba(147, 197, 253, 0.3);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
+}
+.duty-card-sampah {
+  background: linear-gradient(135deg, #78350f 0%, #a16207 100%);
+  border-color: rgba(253, 224, 71, 0.3);
+  box-shadow: 0 8px 24px rgba(120, 53, 15, 0.25);
+}
+.duty-header-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-.security-badge-pulse {
+.duty-badge-pulse {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -647,6 +672,10 @@ body {
   color: var(--lime);
   padding: 4px 10px;
   border-radius: 20px;
+}
+.duty-shield {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 22px;
 }
 .pulse-dot {
   width: 7px;
@@ -669,19 +698,67 @@ body {
     box-shadow: 0 0 0 0 rgba(185, 243, 92, 0);
   }
 }
-.security-body b {
-  display: block;
+.duty-body {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.duty-body + .duty-body {
+  margin-top: -2px;
+}
+.duty-body-active {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(185, 243, 92, 0.5);
+}
+.duty-body-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.duty-body-top b {
   font-size: 13px;
   color: #fff;
-  margin-bottom: 3px;
 }
-.security-body p {
+.duty-active-badge {
+  font-size: 9.5px;
+  font-weight: 800;
+  background: rgba(185, 243, 92, 0.25);
+  color: var(--lime);
+  padding: 3px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.duty-subtitle {
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 700;
+  margin-top: 2px;
+}
+.duty-time-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.18);
+  padding: 3px 9px;
+  border-radius: 10px;
+  margin-top: 6px;
+}
+.duty-time-chip .material-symbols-rounded {
+  font-size: 13px;
+}
+.duty-body p {
   font-size: 11px;
-  color: #d7f1e5;
-  margin: 0;
+  color: #f0f0f0;
+  margin: 6px 0 0;
   line-height: 1.4;
 }
-.security-wa-btn {
+.duty-wa-btn {
   background: #25d366 !important;
   color: #fff !important;
   width: 100%;
@@ -689,11 +766,7 @@ body {
   padding: 8px 14px;
   border-radius: 12px;
   font-size: 12px;
-  font-weight: 750;
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  margin-top: 8px;
 }
 
 .inventory-section {
@@ -1765,6 +1838,12 @@ body {
 .content-thumb-icon.info {
   background: linear-gradient(135deg, #3b82f6, #2563eb);
 }
+.content-thumb-icon.trash {
+  background: linear-gradient(135deg, #a16207, #78350f);
+}
+.content-thumb-icon.security {
+  background: linear-gradient(135deg, #0f172a, #1e3a8a);
+}
 .content-thumb-square {
   width: 46px;
   height: 46px;
@@ -2566,6 +2645,12 @@ input[type="file"]::file-selector-button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* Fix iOS #1 (penguatan): selain di level `html`, kunci juga di sini
+     karena WebKit kadang tetap membesarkan teks secara heuristik di dalam
+     container overflow:hidden + white-space:nowrap seperti ini, terlepas
+     dari aturan global. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 .content-manage-meta .material-symbols-rounded {
   font-size: 13px;
@@ -2582,12 +2667,19 @@ input[type="file"]::file-selector-button {
 .doc-info a {
   color: inherit;
   text-decoration: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 /* Link admin di kartu "Kelola Konten" dibuat bisa diklik langsung (sekalian
-   perbaikan: sebelumnya cuma teks URL mati, tidak bisa dibuka). */
+   perbaikan: sebelumnya cuma teks URL mati, tidak bisa dibuka). Font-size
+   & line-height DIKUNCI EKSPLISIT (bukan cuma warisan dari parent) supaya
+   tidak ada celah bagi WebKit membesarkan teks ini secara otomatis — ini
+   akar masalah "link masih besar di iOS, beda dari Android". */
 .content-manage-meta a.content-manage-link {
   color: var(--green);
   font-weight: 600;
+  font-size: 10px;
+  line-height: 1.3;
   text-decoration: underline;
   text-decoration-color: rgba(8, 122, 75, 0.35);
 }

@@ -1450,6 +1450,22 @@ const CONTENT_TYPE_META = {
     emptyText: "Dokumen pengurus paguyuban belum ditambahkan petugas RT.",
     waLabel: "",
   },
+  // [BARU] Jadwal Tukang Sampah & Security — pakai TimeStart/TimeEnd untuk
+  // menampilkan jam shift & badge "Sedang Bertugas" otomatis.
+  sampah: {
+    label: "Jadwal Tukang Sampah",
+    icon: "local_shipping",
+    accent: "trash",
+    emptyText: "Jadwal petugas sampah belum ditambahkan petugas RT.",
+    waLabel: "Hubungi Petugas",
+  },
+  security: {
+    label: "Jadwal Security",
+    icon: "shield_person",
+    accent: "security",
+    emptyText: "Jadwal petugas security belum ditambahkan petugas RT.",
+    waLabel: "Chat Pos Satpam",
+  },
 };
 
 // Badge ikon/gambar kecil untuk tiap kartu konten (fix #1). Kalau admin
@@ -1468,6 +1484,121 @@ function waLink(phone, message) {
   const digits = String(phone || "").replace(/[^\d]/g, "");
   if (!digits) return "";
   return `https://wa.me/${digits}?text=${encodeURIComponent(message || "")}`;
+}
+
+// ------------------------------------------------------------
+// [BARU] JADWAL TUKANG SAMPAH & SECURITY — badge "Sedang Bertugas" otomatis
+// berdasarkan jam saat ini vs TimeStart/TimeEnd. Menangani shift yang
+// melewati tengah malam (mis. 22:00–06:00) dengan benar.
+// ------------------------------------------------------------
+function isCurrentlyOnDuty(timeStart, timeEnd) {
+  if (!timeStart || !timeEnd) return false;
+  const toMinutes = (t) => {
+    const [h, m] = String(t).split(":").map(Number);
+    if (Number.isNaN(h) || Number.isNaN(m)) return null;
+    return h * 60 + m;
+  };
+  const start = toMinutes(timeStart);
+  const end = toMinutes(timeEnd);
+  if (start === null || end === null) return false;
+
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  if (start === end) return false; // rentang kosong/tidak valid
+  if (start < end) {
+    // Shift normal dalam satu hari (mis. 06:00 - 14:00)
+    return nowMinutes >= start && nowMinutes < end;
+  }
+  // Shift lewat tengah malam (mis. 22:00 - 06:00)
+  return nowMinutes >= start || nowMinutes < end;
+}
+
+function formatTimeRange(timeStart, timeEnd) {
+  if (!timeStart && !timeEnd) return "";
+  return `${timeStart || "--:--"} – ${timeEnd || "--:--"}`;
+}
+
+function renderDutyItems(items, box, type) {
+  if (!box) return;
+  const meta = CONTENT_TYPE_META[type] || {};
+  if (!items.length) {
+    box.innerHTML = "";
+    return;
+  }
+  box.innerHTML = `
+    <div class="duty-card duty-card-${type}">
+      <div class="duty-header-row">
+        <div class="duty-badge-pulse">
+          <span class="pulse-dot"></span>
+          <span>${escapeHtml(meta.label || "")}</span>
+        </div>
+        <span class="material-symbols-rounded duty-shield">${meta.icon || "shield_person"}</span>
+      </div>
+      ${items
+        .map((it) => {
+          const onDuty = isCurrentlyOnDuty(it.timeStart, it.timeEnd);
+          const timeRange = formatTimeRange(it.timeStart, it.timeEnd);
+          return `
+        <div class="duty-body ${onDuty ? "duty-body-active" : ""}">
+          <div class="duty-body-top">
+            <b>${escapeHtml(it.title)}</b>
+            ${onDuty ? `<span class="duty-active-badge">🟢 Sedang Bertugas</span>` : ""}
+          </div>
+          ${it.subtitle ? `<div class="duty-subtitle">${escapeHtml(it.subtitle)}</div>` : ""}
+          ${timeRange ? `<div class="duty-time-chip"><span class="material-symbols-rounded">schedule</span>${escapeHtml(timeRange)}</div>` : ""}
+          ${it.description ? `<p>${escapeHtml(it.description)}</p>` : ""}
+          ${
+            it.phone
+              ? `<a href="${waLink(it.phone, `Halo ${it.title}, saya warga MY PRR ingin menghubungi...`)}" target="_blank" class="whatsapp-btn duty-wa-btn">
+                  <span class="material-symbols-rounded">chat</span> ${meta.waLabel || "Chat WhatsApp"}
+                </a>`
+              : ""
+          }
+        </div>`;
+        })
+        .join("")}
+    </div>`;
+}
+
+async function loadDutySchedule(type, boxSelector) {
+  const box = $(boxSelector);
+  if (!box) return;
+  const cache = readContentCache();
+  const cachedItems = cache && Array.isArray(cache[type]) ? cache[type] : null;
+
+  // Fix #3: kalau ada cache, tampilkan langsung (tanpa shimmer berkedip).
+  // Data disegarkan diam-diam HANYA kalau memang ada perubahan di spreadsheet.
+  if (cachedItems) {
+    renderDutyItems(cachedItems, box, type);
+  } else {
+    box.innerHTML = `
+      <div class="duty-card">
+        <div class="skeleton-card" style="margin-bottom: 0">
+          <div class="skeleton-thumb shimmer"></div>
+          <div class="skeleton-lines">
+            <div class="skeleton-line shimmer skeleton-line-title"></div>
+            <div class="skeleton-line shimmer skeleton-line-sub"></div>
+            <div class="skeleton-line shimmer skeleton-line-full"></div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  try {
+    const { items, fromCache } = await getContentCardsSmart(type);
+    if (!fromCache) renderDutyItems(items, box, type);
+  } catch (err) {
+    if (!cachedItems) box.innerHTML = "";
+  }
+}
+
+async function loadSecurityDuty() {
+  await loadDutySchedule("security", "#securityDutyContent");
+}
+
+async function loadTrashDuty() {
+  await loadDutySchedule("sampah", "#trashDutyContent");
 }
 
 // ------------------------------------------------------------
@@ -1908,6 +2039,7 @@ function renderContentManagerGrid(type, items) {
         </div>
       </div>
       ${it.subtitle ? `<small class="content-manage-subtitle">${escapeHtml(it.subtitle)}</small>` : ""}
+      ${it.timeStart || it.timeEnd ? `<div class="content-manage-meta"><span class="material-symbols-rounded">schedule</span>${escapeHtml(formatTimeRange(it.timeStart, it.timeEnd))}</div>` : ""}
       ${it.description ? `<p class="content-manage-desc">${escapeHtml(it.description)}</p>` : ""}
       ${it.phone ? `<div class="content-manage-meta"><span class="material-symbols-rounded">call</span>${escapeHtml(it.phone)}</div>` : ""}
       ${it.linkUrl ? `<div class="content-manage-meta"><span class="material-symbols-rounded">link</span><a href="${it.linkUrl}" target="_blank" rel="noopener" class="content-manage-link">${escapeHtml(it.linkUrl)}</a></div>` : ""}
@@ -1959,6 +2091,10 @@ function refreshPublicContentIfOpen(type) {
     loadAnnouncements();
     loadAdartDoc();
   }
+  // [BARU] Card Security & Tukang Sampah selalu tampil di beranda (bukan di
+  // dalam dialog), jadi langsung disegarkan tanpa perlu cek dialog terbuka.
+  if (type === "security") loadSecurityDuty();
+  if (type === "sampah") loadTrashDuty();
 }
 
 function contentFormFieldVisibility(type) {
@@ -1966,9 +2102,18 @@ function contentFormFieldVisibility(type) {
   const phoneLabel = $("#contentPhoneLabel");
   const linkLabel = $("#contentLinkLabel");
   const categoryLabel = $("#contentCategoryLabel");
-  if (!subtitleLabel || !phoneLabel || !linkLabel || !categoryLabel) return;
+  const timeLabel = $("#contentTimeLabel");
+  if (
+    !subtitleLabel ||
+    !phoneLabel ||
+    !linkLabel ||
+    !categoryLabel ||
+    !timeLabel
+  )
+    return;
 
   const isServiceType = type === "jasa" || type === "internet";
+  const isDutyType = type === "sampah" || type === "security";
   phoneLabel.style.display =
     type === "pengumuman" || type === "adart" ? "none" : "block";
   linkLabel.style.display =
@@ -1978,6 +2123,8 @@ function contentFormFieldVisibility(type) {
   // cuma mengandalkan tab admin mana yang aktif saat itu), supaya data yang
   // tersimpan selalu konsisten/seragam dan admin bisa mengubahnya langsung.
   categoryLabel.style.display = isServiceType ? "block" : "none";
+  // [BARU] Field jam mulai/selesai HANYA untuk jadwal Tukang Sampah & Security.
+  timeLabel.style.display = isDutyType ? "block" : "none";
 }
 
 function openContentForm(type, item) {
@@ -2013,6 +2160,8 @@ function openContentForm(type, item) {
     form.querySelector("[name='linkUrl']").value = item.linkUrl || "";
     form.querySelector("[name='imageUrl']").value = item.imageUrl || "";
     form.querySelector("[name='order']").value = item.order || 0;
+    form.querySelector("[name='timeStart']").value = item.timeStart || "";
+    form.querySelector("[name='timeEnd']").value = item.timeEnd || "";
   }
 
   dialog.showModal();
@@ -2063,6 +2212,10 @@ document.addEventListener("DOMContentLoaded", () => {
     requestNotificationPermission();
     loadNotifications();
     startNotifPolling();
+    // [BARU] Muat card Security & Tukang Sampah di beranda (dinamis, dengan
+    // shimmer + cache-hanya-refresh-saat-berubah, sama seperti konten lain).
+    loadSecurityDuty();
+    loadTrashDuty();
   };
 
   setTimeout(() => {
@@ -2376,6 +2529,8 @@ document.addEventListener("DOMContentLoaded", () => {
         linkUrl: formData.linkUrl,
         imageUrl: formData.imageUrl,
         order: Number(formData.order) || 0,
+        timeStart: formData.timeStart || "",
+        timeEnd: formData.timeEnd || "",
       };
 
       try {

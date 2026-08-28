@@ -390,33 +390,12 @@
               <div class="quick-pager-dots" id="quickPagerDots"></div>
             </div>
 
-            <div class="security-duty-card modern-security">
-              <div class="security-header-row">
-                <div class="security-badge-pulse">
-                  <span class="pulse-dot"></span>
-                  <span>Pos Utama • Siaga 24/7</span>
-                </div>
-                <span class="material-symbols-rounded security-shield"
-                  >shield_person</span
-                >
-              </div>
-              <div class="security-body">
-                <b>Petugas Jaga: Bpk. Slamet & Bpk. Mulyadi</b>
-                <p>
-                  Patroli keliling rutin & pengawasan gerbang kawasan perumahan.
-                </p>
-              </div>
-              <div class="security-actions">
-                <a
-                  href="https://wa.me/6281234567890?text=Halo%20Pos%20Satpam,%20saya%20warga%20MY%20PRR%20ingin%20melaporkan..."
-                  target="_blank"
-                  class="whatsapp-btn security-wa-btn"
-                >
-                  <span class="material-symbols-rounded">chat</span> Chat Pos
-                  Satpam WA
-                </a>
-              </div>
-            </div>
+            <!-- [BARU] Card Security & Tukang Sampah — DINAMIS, dikelola admin
+                 lewat "Kelola Konten" (tab Security / Tukang Sampah). Diisi
+                 oleh JS (loadSecurityDuty/loadTrashDuty) dengan shimmer saat
+                 memuat & badge "Sedang Bertugas" otomatis sesuai jam saat ini. -->
+            <div id="securityDutyContent"></div>
+            <div id="trashDutyContent"></div>
           </section>
 
           <!-- UPDATE WARGA -->
@@ -1265,6 +1244,12 @@
           <button type="button" class="tukang-tab-btn" data-ctype="adart">
             Dok. Pengurus
           </button>
+          <button type="button" class="tukang-tab-btn" data-ctype="sampah">
+            Tukang Sampah
+          </button>
+          <button type="button" class="tukang-tab-btn" data-ctype="security">
+            Security
+          </button>
         </div>
 
         <div
@@ -1365,6 +1350,38 @@
             name="subtitle"
             placeholder="Contoh: Bengkel Motor & Las"
           />
+        </label>
+        <label id="contentTimeLabel" style="display: none">
+          Jam Bertugas
+          <div class="form-row" style="margin-top: 4px">
+            <div>
+              <small
+                style="font-weight: 400; color: var(--muted); font-size: 10.5px"
+                >Mulai</small
+              >
+              <input type="time" name="timeStart" />
+            </div>
+            <div>
+              <small
+                style="font-weight: 400; color: var(--muted); font-size: 10.5px"
+                >Selesai</small
+              >
+              <input type="time" name="timeEnd" />
+            </div>
+          </div>
+          <small
+            style="
+              display: block;
+              margin-top: 4px;
+              font-weight: 400;
+              color: var(--muted);
+              font-size: 10.5px;
+            "
+          >
+            Warga akan melihat badge "Sedang Bertugas" otomatis saat jam
+            sekarang ada di rentang ini. Untuk shift malam yang melewati tengah
+            malam (mis. 22:00–06:00), tetap isi seperti biasa.
+          </small>
         </label>
         <label
           >Deskripsi
