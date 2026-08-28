@@ -706,18 +706,13 @@ body {
     box-shadow: 0 0 0 0 rgba(185, 243, 92, 0);
   }
 }
-.duty-body {
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-}
-.duty-body + .duty-body {
-  margin-top: -2px;
-}
-.duty-body-active {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(185, 243, 92, 0.5);
+/* [BARU] Desain disederhanakan sesuai referensi: teks langsung di atas
+   gradient, tanpa kotak putih transparan bertumpuk. Kalau ada beberapa
+   entri hari ini (mis. shift pagi & malam), dipisah garis tipis. */
+.duty-entry-divider {
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  padding-top: 10px;
+  margin-top: 2px;
 }
 .duty-body-top {
   display: flex;
@@ -727,8 +722,14 @@ body {
   flex-wrap: wrap;
 }
 .duty-body-top b {
-  font-size: 13px;
+  font-size: 15px;
+  font-weight: 700;
   color: #fff;
+}
+.duty-subtitle-inline {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
 }
 .duty-active-badge {
   font-size: 9.5px;
@@ -739,31 +740,16 @@ body {
   border-radius: 20px;
   white-space: nowrap;
 }
-.duty-subtitle {
-  font-size: 10.5px;
-  color: rgba(255, 255, 255, 0.75);
-  font-weight: 700;
-  margin-top: 2px;
+.duty-datetime {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 600;
+  margin: 4px 0 0;
 }
-.duty-time-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10.5px;
-  font-weight: 700;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.18);
-  padding: 3px 9px;
-  border-radius: 10px;
-  margin-top: 6px;
-}
-.duty-time-chip .material-symbols-rounded {
-  font-size: 13px;
-}
-.duty-body p {
-  font-size: 11px;
-  color: #f0f0f0;
-  margin: 6px 0 0;
+.duty-desc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 4px 0 0;
   line-height: 1.4;
 }
 .duty-wa-btn {
@@ -771,10 +757,11 @@ body {
   color: #fff !important;
   width: 100%;
   justify-content: center;
-  padding: 8px 14px;
-  border-radius: 12px;
-  font-size: 12px;
-  margin-top: 8px;
+  padding: 10px 14px;
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 10px;
 }
 
 .inventory-section {
@@ -2221,6 +2208,25 @@ textarea:focus {
   border-color: var(--green);
 }
 
+/* [BARU] Reset tampilan native <select> supaya konsisten di semua platform
+   (iOS Safari, Android Chrome, desktop) — sebelumnya select memakai gaya
+   bawaan tiap OS yang beda-beda (panah & padding tidak seragam dengan
+   desain kita). Panah kustom digambar pakai SVG background supaya selalu
+   terlihat sama persis di semua browser/perangkat. */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23087a4b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px;
+  padding-right: 38px;
+  cursor: pointer;
+}
+select::-ms-expand {
+  display: none;
+}
+
 @media (min-width: 1024px) {
   input:not([type="file"]),
   select,
@@ -2258,6 +2264,44 @@ input[type="date"]::-webkit-date-and-time-value {
   line-height: 43px;
 }
 input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.6;
+  padding: 4px;
+  cursor: pointer;
+}
+
+/* [BARU] Presisi input JAM (type="time") khusus Safari/iOS — dipakai untuk
+   field "Jam Bertugas" (Tukang Sampah & Security). Tanpa ini, teks jam bisa
+   tampil terpotong/tidak center secara vertikal di iOS, sama seperti kasus
+   yang sebelumnya terjadi pada input[type="date"]. */
+input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  height: 46px;
+  font-family: inherit;
+  font-size: 16px;
+  padding: 0 14px;
+  text-align: left;
+  background-color: #fff;
+  color: var(--ink);
+}
+input[type="time"]::-webkit-datetime-edit {
+  display: block;
+  padding: 0;
+  margin: 0;
+  height: 100%;
+  line-height: 43px;
+}
+input[type="time"]::-webkit-date-and-time-value {
+  display: block;
+  padding: 0;
+  margin: 0;
+  line-height: 43px;
+  text-align: left;
+}
+input[type="time"]::-webkit-calendar-picker-indicator {
   opacity: 0.6;
   padding: 4px;
   cursor: pointer;

@@ -1536,9 +1536,38 @@ const DAY_NAMES_ID_CLIENT = [
   "Jumat",
   "Sabtu",
 ];
+const MONTH_ABBR_ID_CLIENT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "Mei",
+  "Jun",
+  "Jul",
+  "Agu",
+  "Sep",
+  "Okt",
+  "Nov",
+  "Des",
+];
 
 function todayNameId() {
   return DAY_NAMES_ID_CLIENT[new Date().getDay()];
+}
+
+// [BARU] Format "Senin, 15 Sep 2026" — dipakai bersama jam pada kartu duty
+// (Security/Sampah), sesuai format yang diminta: "Senin, dd mmm yyyy hh:MM".
+function formatTodayDateId() {
+  const now = new Date();
+  return `${now.getDate()} ${MONTH_ABBR_ID_CLIENT[now.getMonth()]} ${now.getFullYear()}`;
+}
+
+function formatDutyDateTime(timeStart, timeEnd) {
+  const dayDate = `${todayNameId()}, ${formatTodayDateId()}`;
+  const timeRange = formatTimeRange(timeStart, timeEnd);
+  return timeRange
+    ? `${dayDate} • ${timeRange}`
+    : `${dayDate} • Jam belum diatur`;
 }
 
 function parseDaysField(daysStr) {
@@ -1576,28 +1605,30 @@ function renderDutyItems(items, box, type) {
     box.innerHTML = "";
     return;
   }
+  // [BARU] Desain disederhanakan mengikuti referensi: teks langsung di atas
+  // gradient (tanpa kotak putih transparan bertumpuk), badge status di kiri
+  // atas, ikon kategori di kanan atas. Kalau lebih dari 1 entri hari ini
+  // (mis. shift pagi & malam), dipisah garis tipis, bukan kotak terpisah.
   box.innerHTML = `
     <div class="duty-card duty-card-${type}">
       <div class="duty-header-row">
         <div class="duty-badge-pulse">
           <span class="pulse-dot"></span>
-          <span>${escapeHtml(meta.label || "")} • ${escapeHtml(todayNameId())}</span>
+          <span>${escapeHtml(meta.label || "")} • Siaga Hari Ini</span>
         </div>
         <span class="material-symbols-rounded duty-shield">${meta.icon || "shield_person"}</span>
       </div>
       ${todayItems
-        .map((it) => {
+        .map((it, idx) => {
           const onDuty = isCurrentlyOnDuty(it.timeStart, it.timeEnd);
-          const timeRange = formatTimeRange(it.timeStart, it.timeEnd);
           return `
-        <div class="duty-body ${onDuty ? "duty-body-active" : ""}">
+        <div class="duty-entry${idx > 0 ? " duty-entry-divider" : ""}">
           <div class="duty-body-top">
-            <b>${escapeHtml(it.title)}</b>
-            ${onDuty ? `<span class="duty-active-badge">🟢 Sedang Bertugas</span>` : ""}
+            <b>${escapeHtml(it.title)}${it.subtitle ? ` <span class="duty-subtitle-inline">— ${escapeHtml(it.subtitle)}</span>` : ""}</b>
+            ${onDuty ? `<span class="duty-active-badge">🟢 Bertugas</span>` : ""}
           </div>
-          ${it.subtitle ? `<div class="duty-subtitle">${escapeHtml(it.subtitle)}</div>` : ""}
-          <div class="duty-time-chip"><span class="material-symbols-rounded">schedule</span>${escapeHtml(timeRange || "Jam belum diatur")}</div>
-          ${it.description ? `<p>${escapeHtml(it.description)}</p>` : ""}
+          <p class="duty-datetime">${escapeHtml(formatDutyDateTime(it.timeStart, it.timeEnd))}</p>
+          ${it.description ? `<p class="duty-desc">${escapeHtml(it.description)}</p>` : ""}
           ${
             it.phone
               ? `<a href="${waLink(it.phone, `Halo ${it.title}, saya warga MY PRR ingin menghubungi...`)}" target="_blank" class="whatsapp-btn duty-wa-btn">
@@ -2148,6 +2179,68 @@ function refreshPublicContentIfOpen(type) {
   if (type === "sampah") loadTrashDuty();
 }
 
+// [BARU] Fix #2: placeholder form disesuaikan per kategori (sebelumnya
+// selalu memakai contoh "Bengkel Pak Ujang" walau sedang menambah kartu
+// Security/Sampah/Pengumuman — bikin bingung karena tidak nyambung).
+const CONTENT_FORM_PLACEHOLDERS = {
+  jasa: {
+    title: "Contoh: Bengkel Pak Ujang",
+    subtitle: "Contoh: Bengkel Motor & Las",
+    description: "Keterangan singkat jasa yang ditawarkan...",
+    phone: "+6281234567890",
+  },
+  internet: {
+    title: "Contoh: Biznet Home",
+    subtitle: "Contoh: Internet Fiber 50 Mbps",
+    description: "Keterangan paket/layanan internet...",
+    phone: "+6281234567890",
+  },
+  kesehatan: {
+    title: "Contoh: Klinik Sehat Sentosa",
+    subtitle: "Contoh: Klinik 24 Jam",
+    description: "Keterangan layanan medis darurat...",
+    phone: "+6281234567890",
+  },
+  pengumuman: {
+    title: "Contoh: Kerja Bakti Lingkungan",
+    subtitle: "Contoh: Info Warga",
+    description: "Isi pengumuman lengkap untuk warga...",
+    phone: "",
+  },
+  adart: {
+    title: "Contoh: AD/ART Paguyuban PRR 2026",
+    subtitle: "",
+    description: "Keterangan dokumen (opsional)...",
+    phone: "",
+  },
+  sampah: {
+    title: "Contoh: Pak Ujang",
+    subtitle: "Contoh: Rute Blok A–C",
+    description: "Catatan tambahan (opsional)...",
+    phone: "+6281234567890",
+  },
+  security: {
+    title: "Contoh: Bpk. Slamet",
+    subtitle: "Contoh: Pos Utama Gerbang Depan",
+    description: "Catatan tugas (opsional)...",
+    phone: "+6281234567890",
+  },
+};
+
+function applyContentFormPlaceholders(type) {
+  const p = CONTENT_FORM_PLACEHOLDERS[type] || CONTENT_FORM_PLACEHOLDERS.jasa;
+  const form = $("#contentForm");
+  if (!form) return;
+  const titleInput = form.querySelector("[name='title']");
+  const subtitleInput = form.querySelector("[name='subtitle']");
+  const descInput = form.querySelector("[name='description']");
+  const phoneInput = form.querySelector("[name='phone']");
+  if (titleInput) titleInput.placeholder = p.title;
+  if (subtitleInput) subtitleInput.placeholder = p.subtitle;
+  if (descInput) descInput.placeholder = p.description;
+  if (phoneInput) phoneInput.placeholder = p.phone;
+}
+
 function contentFormFieldVisibility(type) {
   const subtitleLabel = $("#contentSubtitleLabel");
   const phoneLabel = $("#contentPhoneLabel");
@@ -2176,6 +2269,7 @@ function contentFormFieldVisibility(type) {
   categoryLabel.style.display = isServiceType ? "block" : "none";
   // [BARU] Field jam mulai/selesai HANYA untuk jadwal Tukang Sampah & Security.
   timeLabel.style.display = isDutyType ? "block" : "none";
+  applyContentFormPlaceholders(type);
 }
 
 function openContentForm(type, item) {
@@ -2477,29 +2571,38 @@ document.addEventListener("DOMContentLoaded", () => {
   // ------------------------------------------------------------
   const contentAdminBtn = $("#contentAdminBtn");
   const contentManagerDialog = $("#contentManagerDialog");
-  const contentTabs = $("#contentTabs");
+  const contentTypeSelect = $("#contentTypeSelect");
   const contentRefreshBtn = $("#contentRefreshBtn");
   const contentAddBtn = $("#contentAddBtn");
+  const contentBulkUploadBtn = $("#contentBulkUploadBtn");
   const contentFormDialog = $("#contentFormDialog");
   const contentForm = $("#contentForm");
+
+  // [BARU] Fix #2: tombol "Upload Massal" cuma tampil untuk kategori yang
+  // memang butuh rostering banyak baris sekaligus (Tukang Sampah & Security).
+  function updateBulkUploadBtnVisibility() {
+    if (!contentBulkUploadBtn) return;
+    const isDutyType =
+      activeContentTab === "sampah" || activeContentTab === "security";
+    contentBulkUploadBtn.style.display = isDutyType ? "inline-flex" : "none";
+  }
 
   if (contentAdminBtn && contentManagerDialog) {
     contentAdminBtn.addEventListener("click", () => {
       contentManagerDialog.showModal();
+      if (contentTypeSelect) contentTypeSelect.value = activeContentTab;
+      updateBulkUploadBtnVisibility();
       loadContentManagerGrid(activeContentTab);
     });
   }
 
-  if (contentTabs) {
-    contentTabs.querySelectorAll("[data-ctype]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        contentTabs
-          .querySelectorAll("[data-ctype]")
-          .forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        activeContentTab = btn.dataset.ctype;
-        loadContentManagerGrid(activeContentTab);
-      });
+  // [BARU] Fix #2: dropdown kategori menggantikan 7 tombol tab horizontal
+  // yang sebelumnya bikin panel terasa sesak/berantakan.
+  if (contentTypeSelect) {
+    contentTypeSelect.addEventListener("change", () => {
+      activeContentTab = contentTypeSelect.value;
+      updateBulkUploadBtnVisibility();
+      loadContentManagerGrid(activeContentTab);
     });
   }
 
@@ -2513,6 +2616,95 @@ document.addEventListener("DOMContentLoaded", () => {
     contentAddBtn.addEventListener("click", () =>
       openContentForm(activeContentTab, null),
     );
+  }
+
+  // ------------------------------------------------------------
+  // [BARU] Fix #2: UPLOAD MASSAL — admin tempel data dari Excel sekaligus
+  // (banyak baris shift), diparse jadi banyak kartu, dikirim dalam SATU
+  // request backend (bukan satu-satu), jauh lebih cepat untuk rostering.
+  // ------------------------------------------------------------
+  const bulkUploadDialog = $("#bulkUploadDialog");
+  const bulkUploadForm = $("#bulkUploadForm");
+  const bulkUploadTextarea = $("#bulkUploadTextarea");
+  const bulkUploadPreview = $("#bulkUploadPreview");
+
+  // Menerima paste dari Excel (dipisah TAB) maupun ketik manual (dipisah ";").
+  // Kolom: Nama, Hari (dipisah koma), JamMulai, JamSelesai, Telepon(opsional).
+  function parseBulkUploadText(text) {
+    return String(text || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const cols = (
+          line.includes("\t") ? line.split("\t") : line.split(";")
+        ).map((c) => (c || "").trim());
+        const [title, days, timeStart, timeEnd, phone] = cols;
+        return {
+          title: title || "",
+          days: days || "",
+          timeStart: timeStart || "",
+          timeEnd: timeEnd || "",
+          phone: phone || "",
+        };
+      })
+      .filter((item) => item.title); // baris tanpa nama dianggap tidak valid, dilewati
+  }
+
+  if (contentBulkUploadBtn && bulkUploadDialog) {
+    contentBulkUploadBtn.addEventListener("click", () => {
+      const label =
+        CONTENT_TYPE_META[activeContentTab]?.label || activeContentTab;
+      $("#bulkUploadEyebrow").textContent = "UPLOAD MASSAL · " + label;
+      $("#bulkUploadTitle").textContent = "Upload Rostering " + label;
+      if (bulkUploadTextarea) bulkUploadTextarea.value = "";
+      if (bulkUploadPreview) bulkUploadPreview.textContent = "";
+      bulkUploadDialog.showModal();
+    });
+  }
+
+  if (bulkUploadTextarea && bulkUploadPreview) {
+    bulkUploadTextarea.addEventListener("input", () => {
+      const items = parseBulkUploadText(bulkUploadTextarea.value);
+      bulkUploadPreview.textContent = items.length
+        ? `✅ ${items.length} baris terdeteksi valid & siap diupload.`
+        : "";
+    });
+  }
+
+  if (bulkUploadForm) {
+    bulkUploadForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const items = parseBulkUploadText(bulkUploadTextarea.value);
+      if (!items.length) {
+        showToast(
+          "Tidak ada baris valid untuk diupload. Pastikan kolom Nama terisi.",
+        );
+        return;
+      }
+      const adminUnit = localStorage.getItem("pondok_rajeg_user");
+      const submitBtn = $("#bulkUploadSubmitBtn");
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = "Mengupload...";
+      try {
+        const result = await sendToBackend("adminBulkAddContentCards", {
+          adminUnit,
+          type: activeContentTab,
+          items,
+        });
+        showToast(result.message);
+        bulkUploadDialog?.close();
+        bustContentCache();
+        loadContentManagerGrid(activeContentTab);
+        refreshPublicContentIfOpen(activeContentTab);
+      } catch (err) {
+        showToast(`Gagal: ${err.message}`);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
+    });
   }
 
   // [BARU FIX #2/#3] Tombol diagnostik: admin bisa langsung tes apakah push

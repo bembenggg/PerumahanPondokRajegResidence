@@ -1236,29 +1236,21 @@
           kategorinya. Tambah, ubah, atau hapus kapan saja.
         </p>
 
-        <div class="tukang-tabs" id="contentTabs">
-          <button type="button" class="tukang-tab-btn active" data-ctype="jasa">
-            Jasa
-          </button>
-          <button type="button" class="tukang-tab-btn" data-ctype="internet">
-            Internet
-          </button>
-          <button type="button" class="tukang-tab-btn" data-ctype="kesehatan">
-            Darurat Medis
-          </button>
-          <button type="button" class="tukang-tab-btn" data-ctype="pengumuman">
-            Pengumuman
-          </button>
-          <button type="button" class="tukang-tab-btn" data-ctype="adart">
-            Dok. Pengurus
-          </button>
-          <button type="button" class="tukang-tab-btn" data-ctype="sampah">
-            Tukang Sampah
-          </button>
-          <button type="button" class="tukang-tab-btn" data-ctype="security">
-            Security
-          </button>
-        </div>
+        <!-- [BARU] Fix #2: dropdown kategori menggantikan 7 tombol tab
+             horizontal yang bikin sesak/berantakan. Lebih ringkas & rapi
+             di layar sempit, dan tetap jelas kategori mana yang aktif. -->
+        <label style="margin-bottom: 10px">
+          Kategori Konten
+          <select id="contentTypeSelect">
+            <option value="jasa">🔧 Jasa</option>
+            <option value="internet">📶 Internet</option>
+            <option value="kesehatan">🚑 Darurat Medis</option>
+            <option value="pengumuman">📢 Pengumuman</option>
+            <option value="adart">📄 Dokumen Pengurus</option>
+            <option value="sampah">🚛 Jadwal Tukang Sampah</option>
+            <option value="security">🛡️ Jadwal Security</option>
+          </select>
+        </label>
 
         <div
           style="
@@ -1266,6 +1258,8 @@
             justify-content: space-between;
             align-items: center;
             margin: 4px 0 10px;
+            flex-wrap: wrap;
+            gap: 8px;
           "
         >
           <button type="button" id="contentRefreshBtn" class="text-link-btn">
@@ -1276,9 +1270,24 @@
             >
             Muat ulang
           </button>
-          <button type="button" id="contentAddBtn" class="text-link-btn">
-            + Tambah Kartu
-          </button>
+          <div style="display: flex; gap: 14px">
+            <button
+              type="button"
+              id="contentBulkUploadBtn"
+              class="text-link-btn"
+              style="display: none"
+            >
+              <span
+                class="material-symbols-rounded"
+                style="font-size: 14px; vertical-align: middle"
+                >upload_file</span
+              >
+              Upload Massal
+            </button>
+            <button type="button" id="contentAddBtn" class="text-link-btn">
+              + Tambah Kartu
+            </button>
+          </div>
         </div>
 
         <div id="contentManagerGrid" class="content-card-grid">
@@ -1306,6 +1315,66 @@
 
         <button class="primary-button" value="cancel" style="margin-top: 10px">
           Tutup
+        </button>
+      </form>
+    </dialog>
+
+    <!-- [BARU] MODAL UPLOAD MASSAL (ROSTERING SAMPAH/SECURITY) -->
+    <dialog id="bulkUploadDialog" class="modal">
+      <form id="bulkUploadForm" method="dialog">
+        <button type="button" class="close" value="cancel" aria-label="Tutup">
+          ×
+        </button>
+        <p class="eyebrow" id="bulkUploadEyebrow">UPLOAD MASSAL</p>
+        <h2 id="bulkUploadTitle">Upload Rostering</h2>
+        <p
+          style="
+            font-size: 12px;
+            color: var(--muted);
+            margin: 0 0 10px;
+            line-height: 1.5;
+          "
+        >
+          Tempel data dari Excel/Spreadsheet (salin beberapa baris & kolom
+          sekaligus, lalu paste di bawah). Urutan kolom:
+          <b
+            >Nama Petugas, Hari (pisah koma), Jam Mulai, Jam Selesai, No. WA
+            (opsional)</b
+          >.
+        </p>
+        <p
+          style="
+            font-size: 11px;
+            color: var(--muted);
+            margin: 0 0 10px;
+            background: var(--soft);
+            padding: 8px 10px;
+            border-radius: 10px;
+            line-height: 1.6;
+          "
+        >
+          Contoh baris:<br />
+          <code
+            >Bpk.
+            Slamet&#9;Senin,Rabu,Jumat&#9;06:00&#9;14:00&#9;081234567890</code
+          ><br />
+          <code>Bpk. Mulyadi&#9;Selasa,Kamis,Sabtu&#9;14:00&#9;22:00&#9;</code>
+        </p>
+        <label>
+          Tempel Data di Sini
+          <textarea
+            id="bulkUploadTextarea"
+            rows="8"
+            placeholder="Tempel dari Excel di sini (Ctrl+V)... atau ketik manual dipisah TAB/titik-koma per kolom, baris baru per orang."
+            style="font-family: monospace; font-size: 16px"
+          ></textarea>
+        </label>
+        <div
+          id="bulkUploadPreview"
+          style="font-size: 11.5px; color: var(--muted); margin: 8px 0"
+        ></div>
+        <button class="primary-button" type="submit" id="bulkUploadSubmitBtn">
+          Upload Semua <span>→</span>
         </button>
       </form>
     </dialog>
