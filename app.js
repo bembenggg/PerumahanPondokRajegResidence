@@ -4065,24 +4065,19 @@ document.addEventListener("DOMContentLoaded", () => {
   const openComplaintModalBtn = $("#openComplaintModalBtn");
   const openComplaintModalBtnRight = $("#openComplaintModalBtnRight");
   const complaintDialog = $("#complaintDialog");
-  // [BARU] Fix #6: khusus admin, field "Lokasi/Blok" diisi daftar unit
-  // warga terdaftar (dari sheet Users) via <datalist> — bisa dicari/pilih,
-  // TAPI tetap bebas diketik manual (bukan dikunci ke pilihan saja). Warga
-  // biasa tidak perlu ini karena cuma punya 1 unit (dirinya sendiri).
+  // [FIX] Sebelumnya cuma admin yang dapat datalist (pakai adminListUsers
+  // yang admin-only) — sekarang SEMUA warga bisa melaporkan atas nama unit
+  // LAIN juga (bukan cuma unitnya sendiri), jadi datalist ini dimuat untuk
+  // SEMUA role, lewat action publik "listAllUnits" (bukan admin-only).
   let unitDatalistLoaded = false;
   async function populateUnitDatalist() {
     if (unitDatalistLoaded) return;
     const datalist = $("#unitDatalist");
     if (!datalist) return;
-    const adminUnit = localStorage.getItem("pondok_rajeg_user");
     try {
-      const result = await sendToBackend(
-        "adminListUsers",
-        { adminUnit },
-        { silent: true },
-      );
-      const users = result.users || [];
-      datalist.innerHTML = users
+      const result = await sendToBackend("listAllUnits", {}, { silent: true });
+      const units = result.units || [];
+      datalist.innerHTML = units
         .map(
           (u) =>
             `<option value="${escapeHtml(u.unit)}">${escapeHtml(u.name)}</option>`,
@@ -4095,21 +4090,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   const showComplaintModal = () => {
-    const role = localStorage.getItem(ROLE_KEY);
+    // Field lokasi diautofill dengan unit sesi yang login DULU sebagai
+    // default, BARU datalist disiapkan (untuk SEMUA role sekarang) supaya
+    // bisa dicari/diubah ke unit lain kalau memang melaporkan masalah di
+    // unit tetangga, bukan unit sendiri.
     const locationInput = complaintForm?.querySelector("[name='location']");
-
-    if (role === "admin") {
-      // Admin: JANGAN autofill (mereka melapor atas nama unit lain, bukan
-      // dirinya sendiri) — tapi siapkan datalist supaya bisa cari/pilih.
-      populateUnitDatalist();
-    } else {
-      // Warga: autofill sesuai unit yang sedang login, supaya tidak perlu
-      // ketik ulang manual. Tetap bisa diubah kalau masalahnya di lokasi
-      // lain (fasilitas umum, dsb).
-      if (locationInput && !locationInput.value) {
-        locationInput.value = localStorage.getItem("pondok_rajeg_user") || "";
-      }
+    if (locationInput && !locationInput.value) {
+      locationInput.value = localStorage.getItem("pondok_rajeg_user") || "";
     }
+    populateUnitDatalist();
     complaintDialog?.showModal();
   };
   if (openComplaintModalBtn)
