@@ -1819,23 +1819,26 @@
             <option value="Lainnya">Lainnya</option>
           </select>
         </label>
-        <label
+        <label style="position: relative"
           >Lokasi / Blok Rumah Terkait
-          <!-- [BARU] Fix #6: list="unitDatalist" membuat field ini jadi
-               kombinasi cari+ketik (datalist native) — admin bisa cari unit
-               dari daftar warga terdaftar, TAPI tetap bebas ketik manual
-               (mis. "Fasilitas Umum", "Pos Satpam") kalau bukan unit
-               spesifik. Daftarnya diisi JS khusus untuk admin (lihat
-               populateUnitDatalist di app.js) — untuk warga biasa dibiarkan
-               kosong karena mereka cuma perlu autofill unit sendiri. -->
+          <!-- [FIX] Sebelumnya pakai <datalist> native — ternyata dropdown
+               sarannya TIDAK muncul sama sekali di Safari iOS (keterbatasan
+               browser yang terkenal, bukan bug kita — datanya sebenarnya
+               sudah ada, cuma browser-nya tidak menampilkan visualnya).
+               Diganti dropdown custom yang kita kontrol penuh tampilannya,
+               dijamin konsisten di semua browser/perangkat. -->
           <input
             required
             name="location"
             placeholder="Contoh: Blok B-05"
-            list="unitDatalist"
             autocomplete="off"
+            id="complaintLocationInput"
           />
-          <datalist id="unitDatalist"></datalist>
+          <div
+            id="unitSuggestList"
+            class="unit-suggest-list"
+            style="display: none"
+          ></div>
         </label>
         <label
           >Keterangan Lengkap

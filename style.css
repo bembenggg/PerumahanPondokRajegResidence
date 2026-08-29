@@ -2334,6 +2334,52 @@ body {
   flex-shrink: 0;
 }
 
+/* [BARU] Fix: pengganti <datalist> native (tidak tampil di Safari iOS) —
+   dropdown saran unit custom, dikontrol penuh via JS, konsisten di semua
+   browser/perangkat. */
+.unit-suggest-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin-top: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(6, 43, 28, 0.12);
+}
+.unit-suggest-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--soft);
+}
+.unit-suggest-item:last-child {
+  border-bottom: none;
+}
+.unit-suggest-item:hover,
+.unit-suggest-item:active {
+  background: var(--soft);
+}
+.unit-suggest-item b {
+  color: var(--dark);
+  font-weight: 700;
+}
+.unit-suggest-item span {
+  color: var(--muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .day-picker-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -3212,7 +3258,24 @@ dialog#aiLoadingModal::backdrop {
 }
 
 @media (min-width: 1024px) {
+  /* [FIX] Sebelumnya body dikunci overflow:hidden secara GLOBAL (perbaikan
+     bottom-nav yang "geser-geser" di mobile) — tapi di desktop, .app-shell
+     sengaja height:auto (tumbuh mengikuti konten) dan TIDAK scroll sendiri,
+     jadi body-lah yang seharusnya scroll. Kuncian global itu bikin
+     TIDAK ADA yang bisa di-scroll sama sekali di desktop, kecuali elemen
+     yang punya scroll internal sendiri (mis. sidebar Update Warga).
+     [FIX LANJUTAN] Sebelumnya cuma <body> yang dikembalikan overflow:auto —
+     <html> (root) TERLEWAT masih overflow:hidden. Menurut spesifikasi CSS,
+     <html>-lah yang menentukan elemen scroll dokumen ("the root scroller");
+     kalau html masih hidden, body:auto jadi percuma, dokumen tetap tidak
+     bisa di-scroll sama sekali. Keduanya sekarang dikembalikan bersamaan. */
+  html {
+    overflow: auto;
+  }
   body {
+    overflow: auto;
+    height: auto;
+    min-height: 100vh;
     background: #e4ede7;
     padding: 32px;
     align-items: flex-start;

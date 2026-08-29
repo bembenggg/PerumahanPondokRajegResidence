@@ -4065,40 +4065,95 @@ document.addEventListener("DOMContentLoaded", () => {
   const openComplaintModalBtn = $("#openComplaintModalBtn");
   const openComplaintModalBtnRight = $("#openComplaintModalBtnRight");
   const complaintDialog = $("#complaintDialog");
-  // [FIX] Sebelumnya cuma admin yang dapat datalist (pakai adminListUsers
-  // yang admin-only) — sekarang SEMUA warga bisa melaporkan atas nama unit
-  // LAIN juga (bukan cuma unitnya sendiri), jadi datalist ini dimuat untuk
-  // SEMUA role, lewat action publik "listAllUnits" (bukan admin-only).
-  let unitDatalistLoaded = false;
-  async function populateUnitDatalist() {
-    if (unitDatalistLoaded) return;
-    const datalist = $("#unitDatalist");
-    if (!datalist) return;
+  const unitSuggestList = $("#unitSuggestList");
+  // [FIX] Dropdown saran unit dimuat untuk SEMUA role (warga & admin) lewat
+  // action publik "listAllUnits" — warga sekarang juga bisa melaporkan atas
+  // nama unit LAIN, bukan cuma unitnya sendiri.
+  let unitListCache = null;
+  async function loadUnitListCache() {
+    if (unitListCache) return unitListCache;
     try {
       const result = await sendToBackend("listAllUnits", {}, { silent: true });
-      const units = result.units || [];
-      datalist.innerHTML = units
-        .map(
-          (u) =>
-            `<option value="${escapeHtml(u.unit)}">${escapeHtml(u.name)}</option>`,
-        )
-        .join("");
-      unitDatalistLoaded = true;
+      unitListCache = result.units || [];
     } catch (err) {
-      console.error("Gagal memuat daftar unit untuk autofill lokasi:", err);
+      console.error("Gagal memuat daftar unit untuk saran lokasi:", err);
+      unitListCache = [];
     }
+    return unitListCache;
+  }
+
+  // [FIX] Pengganti <datalist> native — TIDAK menampilkan saran sama sekali
+  // di Safari iOS meski datanya sudah ada (keterbatasan browser terkenal).
+  // Dropdown ini dibangun & dikontrol sendiri lewat JS, jadi tampil
+  // konsisten di semua browser/perangkat termasuk iOS.
+  async function showUnitSuggestions(query) {
+    if (!unitSuggestList) return;
+    const units = await loadUnitListCache();
+    const q = query.trim().toLowerCase();
+    const matches = (
+      q
+        ? units.filter(
+            (u) =>
+              u.unit.toLowerCase().includes(q) ||
+              u.name.toLowerCase().includes(q),
+          )
+        : units
+    ).slice(0, 8);
+
+    if (!matches.length) {
+      unitSuggestList.style.display = "none";
+      return;
+    }
+    unitSuggestList.innerHTML = matches
+      .map(
+        (u) =>
+          `<div class="unit-suggest-item" data-unit="${escapeHtml(u.unit)}"><b>${escapeHtml(u.unit)}</b><span>${escapeHtml(u.name)}</span></div>`,
+      )
+      .join("");
+    unitSuggestList.style.display = "block";
+  }
+
+  const complaintLocationInput = $("#complaintLocationInput");
+  if (complaintLocationInput && unitSuggestList) {
+    // [FIX BUG] Sebelumnya saat field DI-FOKUS, langsung filter pakai nilai
+    // yang SUDAH ter-autofill (unit sendiri) — jadi cuma unit itu sendiri
+    // yang muncul di daftar, seolah-olah unit lain "hilang" padahal datanya
+    // ada di sheet. Sekarang saat fokus, tampilkan SEMUA unit dulu (query
+    // kosong) — filter berdasarkan ketikan HANYA berlaku saat user benar-
+    // benar mengetik (event "input"), bukan otomatis dari nilai autofill.
+    complaintLocationInput.addEventListener("focus", () => {
+      showUnitSuggestions("");
+    });
+    complaintLocationInput.addEventListener("input", () => {
+      showUnitSuggestions(complaintLocationInput.value);
+    });
+    unitSuggestList.addEventListener("click", (e) => {
+      const item = e.target.closest("[data-unit]");
+      if (!item) return;
+      complaintLocationInput.value = item.dataset.unit;
+      unitSuggestList.style.display = "none";
+    });
+    // Tutup dropdown kalau klik di luar area field/dropdown-nya.
+    document.addEventListener("click", (e) => {
+      if (
+        !complaintLocationInput.contains(e.target) &&
+        !unitSuggestList.contains(e.target)
+      ) {
+        unitSuggestList.style.display = "none";
+      }
+    });
   }
 
   const showComplaintModal = () => {
     // Field lokasi diautofill dengan unit sesi yang login DULU sebagai
-    // default, BARU datalist disiapkan (untuk SEMUA role sekarang) supaya
-    // bisa dicari/diubah ke unit lain kalau memang melaporkan masalah di
-    // unit tetangga, bukan unit sendiri.
-    const locationInput = complaintForm?.querySelector("[name='location']");
-    if (locationInput && !locationInput.value) {
-      locationInput.value = localStorage.getItem("pondok_rajeg_user") || "";
+    // default, BARU daftar unit disiapkan di cache (untuk SEMUA role)
+    // supaya bisa dicari/diubah ke unit lain kalau memang melaporkan
+    // masalah di unit tetangga, bukan unit sendiri.
+    if (complaintLocationInput && !complaintLocationInput.value) {
+      complaintLocationInput.value =
+        localStorage.getItem("pondok_rajeg_user") || "";
     }
-    populateUnitDatalist();
+    loadUnitListCache();
     complaintDialog?.showModal();
   };
   if (openComplaintModalBtn)
