@@ -707,7 +707,7 @@ function goToPost(postId) {
 // 2) parameter URL (?refType=...&refId=...), kalau notifikasi di-tap saat
 //    app BELUM terbuka sama sekali (service worker buka tab baru lewat
 //    clients.openWindow, lihat notificationclick di service-worker.js).
-function handleNotifNavigation(refType, refId) {
+function handleNotifNavigation(refType, refId, title, body) {
   if (refType === "post" && refId) {
     goToPost(refId);
   } else if (refType === "complaint") {
@@ -718,27 +718,39 @@ function handleNotifNavigation(refType, refId) {
         block: "start",
       });
     }, 350);
+  } else if (title || body) {
+    // [BARU] Fix #2: refType lain (panic/content/payment/expense/trash/dll)
+    // TIDAK punya halaman/section khusus untuk dituju — daripada warga
+    // dibawa ke Beranda tanpa konteks (lalu bingung notifikasi ini soal
+    // apa), langsung tampilkan ISI notifikasinya lewat modal.
+    showAppModal(title || "Notifikasi", body || "", true);
   }
-  // refType lain (content/payment/panic/dll) -> cukup fokus ke Beranda saja
-  // (link default sudah "./" tanpa parameter, tidak akan sampai ke sini).
 }
 
 // Jalur 1: app SUDAH terbuka di tab lain saat notifikasi ditekan.
 if (navigator.serviceWorker) {
   navigator.serviceWorker.addEventListener("message", (event) => {
     if (event.data && event.data.type === "my-prr-notif-navigate") {
-      handleNotifNavigation(event.data.refType, event.data.refId);
+      handleNotifNavigation(
+        event.data.refType,
+        event.data.refId,
+        event.data.title,
+        event.data.body,
+      );
     }
   });
 }
 
-// Jalur 2: app baru dibuka lewat notifikasi (tab baru), refType/refId
-// datang lewat parameter URL. Ditunda beberapa saat supaya app sempat boot
+// Jalur 2: app baru dibuka lewat notifikasi (tab baru), refType/refId/
+// notifTitle/notifBody datang lewat parameter URL (dibangun service worker
+// saat clients.openWindow). Ditunda beberapa saat supaya app sempat boot
 // (login otomatis, data feed dimuat) dulu sebelum mencoba navigasi.
 (function checkNotifDeepLinkOnLoad() {
   const params = new URLSearchParams(window.location.search);
   const refType = params.get("refType");
-  if (!refType) return;
+  const notifTitle = params.get("notifTitle");
+  const notifBody = params.get("notifBody");
+  if (!refType && !notifTitle) return;
   const refId = params.get("refId") || "";
 
   // Bersihkan URL supaya parameter ini tidak ke-trigger ulang kalau
@@ -749,7 +761,12 @@ if (navigator.serviceWorker) {
     const mainApp = $("#mainApp");
     const isBooted = mainApp && mainApp.style.display !== "none";
     if (isBooted) {
-      handleNotifNavigation(refType, refId);
+      handleNotifNavigation(
+        refType || "",
+        refId,
+        notifTitle || "",
+        notifBody || "",
+      );
       return;
     }
     if (attempt < 10) setTimeout(() => tryNavigate(attempt + 1), 400);
@@ -1127,19 +1144,55 @@ async function toggleLike(postId) {
   const unit = localStorage.getItem("pondok_rajeg_user");
   if (!unit) return;
   const unitKey = unit.trim().toLowerCase();
+  const name = localStorage.getItem("pondok_rajeg_name") || unit;
   const postRef = db.collection("posts").doc(postId);
   try {
+    // [BARU] Fix #1: perlu tahu apakah ini AKSI MENAMBAH suka (bukan
+    // membatalkan) dan siapa pemilik post-nya, supaya notifikasi cuma
+    // dikirim saat ada suka BARU (bukan tiap kali toggle), dan hanya ke
+    // pemilik postingan — bukan broadcast ke semua warga.
+    let didLike = false;
+    let ownerUnit = "";
+    let ownerName = "";
+    let postSnippet = "";
     await db.runTransaction(async (tx) => {
       const docSnap = await tx.get(postRef);
       if (!docSnap.exists) return;
-      const likes = Object.assign({}, docSnap.data().likes || {});
+      const postData = docSnap.data();
+      const likes = Object.assign({}, postData.likes || {});
       if (likes[unitKey]) {
         delete likes[unitKey];
+        didLike = false;
       } else {
         likes[unitKey] = true;
+        didLike = true;
+        ownerUnit = postData.unit || "";
+        ownerName = postData.name || "";
+        postSnippet = String(postData.text || "").slice(0, 80);
       }
       tx.update(postRef, { likes: likes });
     });
+
+    if (didLike && ownerUnit) {
+      try {
+        await sendToBackend(
+          "notifyLike",
+          {
+            unit,
+            name,
+            postOwnerUnit: ownerUnit,
+            postOwnerName: ownerName,
+            postId,
+            postSnippet,
+          },
+          { silent: true },
+        );
+      } catch (err) {
+        // Jangan ganggu UX like utama kalau pengiriman notifikasi gagal —
+        // suka-nya sendiri tetap tersimpan di Firestore di atas.
+        console.error("Gagal mengirim notifikasi suka:", err);
+      }
+    }
   } catch (err) {
     showToast(`Gagal memproses suka: ${err.message}`);
   }
@@ -1158,15 +1211,16 @@ async function submitComment(postId, text) {
     }),
   });
 
-  // [BARU FIX #3] Sebelumnya komentar TIDAK PERNAH mengirim notifikasi sama
-  // sekali (hanya tersimpan di Firestore). Sekarang setiap komentar baru
-  // juga memicu notifikasi + push ke warga lain, sama seperti postingan baru.
+  // [FIX #1] Sebelumnya komentar di-broadcast ke SEMUA warga. Sekarang
+  // ditargetkan ke pemilik postingan saja (backend yang menentukan,
+  // butuh postOwnerUnit — bukan cuma nama — supaya bisa ditargetkan tepat).
   try {
     const snap = await postRef.get();
+    const postOwnerUnit = snap.exists ? snap.data().unit || "" : "";
     const postOwnerName = snap.exists ? snap.data().name || "" : "";
     await sendToBackend(
       "notifyComment",
-      { unit, name, text, postOwnerName, postId },
+      { unit, name, text, postOwnerUnit, postOwnerName, postId },
       { silent: true },
     );
   } catch (err) {
@@ -2780,18 +2834,21 @@ function contentFormFieldVisibility(type) {
   applyContentFormPlaceholders(type);
 }
 
-// [BARU] Fix #1: isi opsi dropdown Jam (00-23) & Menit (kelipatan 15) sekali
-// saat halaman dimuat, menggantikan input[type="time"] yang picker native-nya
-// sering terpotong di layar HP.
+// [FIX #5] Isi opsi dropdown Jam (00-23) saja — pilihan menit dihapus,
+// jadwal shift selalu dibulatkan ke jam pas (:00).
 function populateTimeSelectOptions() {
   const hourSelects = document.querySelectorAll(
     "[name='timeStartHour'], [name='timeEndHour']",
   );
-  const minuteSelects = document.querySelectorAll(
-    "[name='timeStartMinute'], [name='timeEndMinute']",
-  );
   hourSelects.forEach((sel) => {
     if (sel.dataset.filled) return;
+    // [FIX] Opsi kosong di awal — tanpa ini, <select> otomatis "terisi" ke
+    // opsi pertama (00) meski admin belum sentuh sama sekali, bikin jam
+    // seolah-olah sengaja diisi "00:00" padahal harusnya tetap kosong/opsional.
+    const emptyOpt = document.createElement("option");
+    emptyOpt.value = "";
+    emptyOpt.textContent = "-- : --";
+    sel.appendChild(emptyOpt);
     for (let h = 0; h < 24; h++) {
       const opt = document.createElement("option");
       opt.value = String(h).padStart(2, "0");
@@ -2800,48 +2857,23 @@ function populateTimeSelectOptions() {
     }
     sel.dataset.filled = "1";
   });
-  minuteSelects.forEach((sel) => {
-    if (sel.dataset.filled) return;
-    [0, 15, 30, 45].forEach((m) => {
-      const opt = document.createElement("option");
-      opt.value = String(m).padStart(2, "0");
-      opt.textContent = String(m).padStart(2, "0");
-      sel.appendChild(opt);
-    });
-    sel.dataset.filled = "1";
-  });
 }
 
-// Set dropdown Jam/Menit dari string "HH:MM" (atau kosongkan kalau tidak ada).
+// Set dropdown Jam dari string "HH:MM" (menitnya diabaikan — selalu :00).
 function setTimeSelectValue(form, prefix, value) {
-  const [h, m] = String(value || "").split(":");
+  const [h] = String(value || "").split(":");
   const hourSel = form.querySelector(`[name='${prefix}Hour']`);
-  const minSel = form.querySelector(`[name='${prefix}Minute']`);
   if (hourSel) hourSel.value = h || "";
-  if (minSel) {
-    // Menit hanya tersedia kelipatan 15 (00/15/30/45) — kalau data lama
-    // punya menit lain (mis. dari input manual/upload massal), bulatkan
-    // ke kelipatan 15 terdekat supaya tetap valid dipilih di dropdown.
-    if (m) {
-      const rounded = String((Math.round(Number(m) / 15) * 15) % 60).padStart(
-        2,
-        "0",
-      );
-      minSel.value = rounded;
-    } else {
-      minSel.value = "";
-    }
-  }
 }
 
-// Gabungkan dropdown Jam+Menit jadi string "HH:MM", atau "" kalau belum diisi.
+// Ambil dropdown Jam, gabung jadi string "HH:00" (menit selalu 00), atau ""
+// kalau belum diisi.
 function getTimeSelectValue(form, prefix) {
   const hourSel = form.querySelector(`[name='${prefix}Hour']`);
-  const minSel = form.querySelector(`[name='${prefix}Minute']`);
   const h = hourSel ? hourSel.value : "";
-  const m = minSel ? minSel.value : "";
-  if (!h || !m) return "";
-  return `${h}:${m}`;
+  // [FIX #5] Menit selalu ":00" — dropdown menit sudah dihapus dari form.
+  if (!h) return "";
+  return `${h}:00`;
 }
 
 function openContentForm(type, item) {
@@ -4033,13 +4065,50 @@ document.addEventListener("DOMContentLoaded", () => {
   const openComplaintModalBtn = $("#openComplaintModalBtn");
   const openComplaintModalBtnRight = $("#openComplaintModalBtnRight");
   const complaintDialog = $("#complaintDialog");
+  // [BARU] Fix #6: khusus admin, field "Lokasi/Blok" diisi daftar unit
+  // warga terdaftar (dari sheet Users) via <datalist> — bisa dicari/pilih,
+  // TAPI tetap bebas diketik manual (bukan dikunci ke pilihan saja). Warga
+  // biasa tidak perlu ini karena cuma punya 1 unit (dirinya sendiri).
+  let unitDatalistLoaded = false;
+  async function populateUnitDatalist() {
+    if (unitDatalistLoaded) return;
+    const datalist = $("#unitDatalist");
+    if (!datalist) return;
+    const adminUnit = localStorage.getItem("pondok_rajeg_user");
+    try {
+      const result = await sendToBackend(
+        "adminListUsers",
+        { adminUnit },
+        { silent: true },
+      );
+      const users = result.users || [];
+      datalist.innerHTML = users
+        .map(
+          (u) =>
+            `<option value="${escapeHtml(u.unit)}">${escapeHtml(u.name)}</option>`,
+        )
+        .join("");
+      unitDatalistLoaded = true;
+    } catch (err) {
+      console.error("Gagal memuat daftar unit untuk autofill lokasi:", err);
+    }
+  }
+
   const showComplaintModal = () => {
-    // [BARU] Fix #5: field "Lokasi/Blok" di-autofill sesuai unit warga yang
-    // sedang login, supaya tidak perlu ketik ulang manual. Tetap bisa
-    // diubah kalau masalahnya di lokasi lain (fasilitas umum, dsb).
+    const role = localStorage.getItem(ROLE_KEY);
     const locationInput = complaintForm?.querySelector("[name='location']");
-    if (locationInput && !locationInput.value) {
-      locationInput.value = localStorage.getItem("pondok_rajeg_user") || "";
+
+    if (role === "admin") {
+      // Admin: JANGAN autofill (mereka melapor atas nama unit lain, bukan
+      // dirinya sendiri) — tapi siapkan datalist supaya bisa cari/pilih.
+      populateUnitDatalist();
+    } else {
+      // Warga: autofill sesuai unit yang sedang login, supaya tidak perlu
+      // ketik ulang manual. Tetap bisa diubah kalau masalahnya di lokasi
+      // lain (fasilitas umum, dsb).
+      if (locationInput && !locationInput.value) {
+        locationInput.value = localStorage.getItem("pondok_rajeg_user") || "";
+      }
     }
     complaintDialog?.showModal();
   };
@@ -4094,9 +4163,22 @@ document.addEventListener("DOMContentLoaded", () => {
   const panicButton = $("#panicButton");
   const panicDialog = $("#panicDialog");
   const panicForm = $("#panicForm");
+  const panicEmergencySelect = $("#panicEmergencySelect");
+  const panicOtherDetailLabel = $("#panicOtherDetailLabel");
 
   if (panicButton && panicDialog) {
     panicButton.addEventListener("click", () => panicDialog.showModal());
+  }
+
+  // [FIX #3] Field "Keterangan Tambahan" hanya muncul saat kategori
+  // "Lainnya" dipilih di dropdown darurat.
+  if (panicEmergencySelect && panicOtherDetailLabel) {
+    panicEmergencySelect.addEventListener("change", () => {
+      const isOther = panicEmergencySelect.value === "Lainnya";
+      panicOtherDetailLabel.style.display = isOther ? "block" : "none";
+      panicOtherDetailLabel.querySelector("textarea").required = isOther;
+      if (!isOther) panicOtherDetailLabel.querySelector("textarea").value = "";
+    });
   }
 
   if (panicForm) {

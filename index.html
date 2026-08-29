@@ -1598,37 +1598,28 @@
         </label>
         <label id="contentTimeLabel" style="display: none">
           Jam Bertugas
-          <!-- [BARU] Fix #1: input[type="time"] diganti dropdown Jam/Menit
-               kustom — picker native OS untuk type="time" sering terpotong
-               di HP (tidak pas dengan layar). Dropdown ini sepenuhnya kita
-               kontrol tampilannya, dijamin tidak pernah terpotong. -->
+          <!-- [FIX #5] Pilihan menit dihapus — jadwal shift selalu dibulatkan
+               ke jam pas (:00), tidak perlu presisi menit. Dropdown Jam saja
+               (00-23), tanpa picker native OS yang sering terpotong di HP. -->
           <div class="form-row" style="margin-top: 4px">
             <div>
               <small
                 style="font-weight: 400; color: var(--muted); font-size: 10.5px"
-                >Mulai</small
+                >Mulai (jam)</small
               >
               <div class="time-select-row">
                 <select name="timeStartHour" aria-label="Jam mulai"></select>
-                <span class="time-select-colon">:</span>
-                <select
-                  name="timeStartMinute"
-                  aria-label="Menit mulai"
-                ></select>
+                <span class="time-select-colon">:00</span>
               </div>
             </div>
             <div>
               <small
                 style="font-weight: 400; color: var(--muted); font-size: 10.5px"
-                >Selesai</small
+                >Selesai (jam)</small
               >
               <div class="time-select-row">
                 <select name="timeEndHour" aria-label="Jam selesai"></select>
-                <span class="time-select-colon">:</span>
-                <select
-                  name="timeEndMinute"
-                  aria-label="Menit selesai"
-                ></select>
+                <span class="time-select-colon">:00</span>
               </div>
             </div>
           </div>
@@ -1830,7 +1821,21 @@
         </label>
         <label
           >Lokasi / Blok Rumah Terkait
-          <input required name="location" placeholder="Contoh: Blok B-05" />
+          <!-- [BARU] Fix #6: list="unitDatalist" membuat field ini jadi
+               kombinasi cari+ketik (datalist native) — admin bisa cari unit
+               dari daftar warga terdaftar, TAPI tetap bebas ketik manual
+               (mis. "Fasilitas Umum", "Pos Satpam") kalau bukan unit
+               spesifik. Daftarnya diisi JS khusus untuk admin (lihat
+               populateUnitDatalist di app.js) — untuk warga biasa dibiarkan
+               kosong karena mereka cuma perlu autofill unit sendiri. -->
+          <input
+            required
+            name="location"
+            placeholder="Contoh: Blok B-05"
+            list="unitDatalist"
+            autocomplete="off"
+          />
+          <datalist id="unitDatalist"></datalist>
         </label>
         <label
           >Keterangan Lengkap
@@ -2002,20 +2007,24 @@
         <h2>Butuh bantuan segera?</h2>
         <label style="text-align: left"
           >Jenis keadaan darurat
-          <select name="emergency">
+          <select name="emergency" id="panicEmergencySelect">
             <option>Darurat Medis / Panggil Ambulans</option>
             <option>Keamanan / kejadian mencurigakan</option>
             <option>Kebakaran</option>
+            <option value="Lainnya">Lainnya</option>
           </select>
         </label>
-        <!-- [BARU] Field bebas seperti di menu Pengaduan, supaya warga bisa
-             kasih detail tambahan (opsional) selain kategori saja. -->
-        <label style="text-align: left"
-          >Keterangan Tambahan (Opsional)
+        <!-- [FIX #3] Field ini sebelumnya SELALU tampil untuk semua kategori
+             — sekarang HANYA muncul kalau kategori "Lainnya" dipilih, sesuai
+             permintaan. Untuk kategori lain, tetap tersimpan kosong (opsional). -->
+        <label
+          id="panicOtherDetailLabel"
+          style="text-align: left; display: none"
+          >Keterangan Tambahan
           <textarea
             name="description"
             rows="2"
-            placeholder="Contoh: lokasi tepatnya, kondisi korban, dll..."
+            placeholder="Jelaskan jenis keadaan darurat & lokasi tepatnya..."
           ></textarea>
         </label>
         <button

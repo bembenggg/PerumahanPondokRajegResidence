@@ -1,4 +1,4 @@
-const CACHE_NAME = "my-prr-warga-v0.4";
+const CACHE_NAME = "my-prr-warga-v0.5";
 const urlsToCache = ["./", "./index.html", "./style.css", "./app.js"];
 
 importScripts(
@@ -88,7 +88,22 @@ self.addEventListener("notificationclick", (event) => {
   const data = event.notification.data || {};
   const refType = data.refType || "";
   const refId = data.refId || "";
-  const targetUrl = data.link || "./";
+  const title = data.title || "";
+  const body = data.body || "";
+
+  // [BARU] Fix #2: sertakan title/body sebagai parameter URL juga (dipakai
+  // app.js sebagai fallback MODAL kalau refType tidak punya halaman/section
+  // spesifik untuk dituju, mis. panic/content/payment — supaya warga tidak
+  // "dibuang" ke Beranda tanpa konteks, tapi langsung lihat isi notifnya).
+  let targetUrl = data.link || "./";
+  try {
+    const urlObj = new URL(targetUrl, self.location.origin);
+    if (title) urlObj.searchParams.set("notifTitle", title);
+    if (body) urlObj.searchParams.set("notifBody", body);
+    targetUrl = urlObj.pathname + urlObj.search;
+  } catch (e) {
+    // URL tidak valid (jarang terjadi) -> pakai targetUrl apa adanya.
+  }
 
   event.waitUntil(
     clients
@@ -99,13 +114,13 @@ self.addEventListener("notificationclick", (event) => {
             client.focus();
             // Tab sudah terbuka -> tidak perlu reload, cukup kirim pesan
             // navigasi langsung ke app.js yang sedang berjalan.
-            if (refType) {
-              client.postMessage({
-                type: "my-prr-notif-navigate",
-                refType,
-                refId,
-              });
-            }
+            client.postMessage({
+              type: "my-prr-notif-navigate",
+              refType,
+              refId,
+              title,
+              body,
+            });
             return;
           }
         }
