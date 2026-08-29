@@ -216,7 +216,7 @@
                 >
               </div>
               <div class="warning-content">
-                <b id="warningTitle">SURAT PERINGATAN RESMI RT</b>
+                <b id="warningTitle">SURAT PERINGATAN RESMI PAGUYUBAN PRR</b>
                 <p id="warningDesc">
                   Tunggakan IPL terdeteksi selama
                   <span id="unpaidCount">0</span> bulan.
@@ -424,42 +424,14 @@
             </div>
           </section>
 
-          <!-- INVENTARIS PRR -->
+          <!-- INVENTARIS PRR — [BARU] Fix #4: dinamis, admin yang mengisi
+               lewat "Kelola Konten" (kategori Inventaris), bukan hardcoded. -->
           <section class="inventory-section">
             <div class="section-heading">
               <h2>Inventaris MY PRR</h2>
               <span>Fasilitas Warga</span>
             </div>
-            <div class="inventory-grid">
-              <div class="inventory-card">
-                <span class="material-symbols-rounded">roofing</span>
-                <div>
-                  <b>Tenda Warga</b>
-                  <small>Tidak Tersedia</small>
-                </div>
-              </div>
-              <div class="inventory-card">
-                <span class="material-symbols-rounded">chair</span>
-                <div>
-                  <b>Kursi Plastik</b>
-                  <small>Tidak Tersedia</small>
-                </div>
-              </div>
-              <div class="inventory-card">
-                <span class="material-symbols-rounded">speaker</span>
-                <div>
-                  <b>Sound System</b>
-                  <small>Tidak Tersedia</small>
-                </div>
-              </div>
-              <div class="inventory-card">
-                <span class="material-symbols-rounded">cleaning_services</span>
-                <div>
-                  <b>Alat Kebersihan</b>
-                  <small>Tidak Tersedia</small>
-                </div>
-              </div>
-            </div>
+            <div id="inventoryListContent" class="inventory-grid"></div>
           </section>
         </div>
 
@@ -1249,6 +1221,7 @@
             <option value="adart">📄 Dokumen Pengurus</option>
             <option value="sampah">🚛 Jadwal Tukang Sampah</option>
             <option value="security">🛡️ Jadwal Security</option>
+            <option value="inventaris">📦 Inventaris Warga</option>
           </select>
         </label>
 
@@ -1430,20 +1403,38 @@
         </label>
         <label id="contentTimeLabel" style="display: none">
           Jam Bertugas
+          <!-- [BARU] Fix #1: input[type="time"] diganti dropdown Jam/Menit
+               kustom — picker native OS untuk type="time" sering terpotong
+               di HP (tidak pas dengan layar). Dropdown ini sepenuhnya kita
+               kontrol tampilannya, dijamin tidak pernah terpotong. -->
           <div class="form-row" style="margin-top: 4px">
             <div>
               <small
                 style="font-weight: 400; color: var(--muted); font-size: 10.5px"
                 >Mulai</small
               >
-              <input type="time" name="timeStart" />
+              <div class="time-select-row">
+                <select name="timeStartHour" aria-label="Jam mulai"></select>
+                <span class="time-select-colon">:</span>
+                <select
+                  name="timeStartMinute"
+                  aria-label="Menit mulai"
+                ></select>
+              </div>
             </div>
             <div>
               <small
                 style="font-weight: 400; color: var(--muted); font-size: 10.5px"
                 >Selesai</small
               >
-              <input type="time" name="timeEnd" />
+              <div class="time-select-row">
+                <select name="timeEndHour" aria-label="Jam selesai"></select>
+                <span class="time-select-colon">:</span>
+                <select
+                  name="timeEndMinute"
+                  aria-label="Menit selesai"
+                ></select>
+              </div>
             </div>
           </div>
           <small
@@ -1699,6 +1690,14 @@
           <label style="margin-bottom: 6px"
             >Pilih bulan yang ingin dibayar</label
           >
+          <!-- [BARU] Fix #6: keterangan singkat arti badge warna, supaya
+               warga tidak bingung membedakan Tunggakan/Bulan Ini/Bayar di
+               Muka sekilas pandang. -->
+          <p class="months-picker-hint">
+            <span class="month-badge badge-overdue">Tunggakan</span>
+            <span class="month-badge badge-current">Bulan Ini</span>
+            <span class="month-badge badge-advance">Bayar di Muka</span>
+          </p>
           <div id="monthsPickerContainer" class="months-picker">
             <div class="empty-state-box" style="border: 0">
               Memuat daftar tagihan...
@@ -1901,7 +1900,7 @@
       <form method="dialog">
         <button class="close" value="cancel">×</button>
         <p class="eyebrow" id="infoModalEyebrow">PUSAT INFORMASI & DOKUMEN</p>
-        <h2 id="infoModalTitle">Info Warga & Dokumen RT</h2>
+        <h2 id="infoModalTitle">Info Warga & Dokumen Paguyuban PRR</h2>
 
         <div id="infoMainTabs" class="tukang-tabs" style="margin-bottom: 14px">
           <button

@@ -152,14 +152,18 @@ async function logPushErrorToServer(errorCode, errorMessage) {
   try {
     const unit = localStorage.getItem("pondok_rajeg_user") || "Tamu";
     const name = localStorage.getItem("pondok_rajeg_name") || unit;
-    await sendToBackend("logPushError", {
-      unit,
-      name,
-      errorCode,
-      errorMessage: String(errorMessage || ""),
-      userAgent: navigator.userAgent || "",
-      platform: navigator.platform || "",
-    });
+    await sendToBackend(
+      "logPushError",
+      {
+        unit,
+        name,
+        errorCode,
+        errorMessage: String(errorMessage || ""),
+        userAgent: navigator.userAgent || "",
+        platform: navigator.platform || "",
+      },
+      { silent: true },
+    );
   } catch (err) {
     console.error("Gagal mencatat error push ke server:", err);
   }
@@ -208,7 +212,11 @@ async function requestNotificationPermission(isManualRetry = false) {
       if (token) {
         const unit = localStorage.getItem("pondok_rajeg_user") || "Tamu";
         try {
-          await sendToBackend("saveFCMToken", { unit, token });
+          await sendToBackend(
+            "saveFCMToken",
+            { unit, token },
+            { silent: true },
+          );
           // [BARU] Modal sukses HANYA muncul kalau ini percobaan manual
           // (tombol "Coba Aktifkan Ulang Notifikasi"). Saat dipanggil
           // otomatis tiap login, sukses tetap SENYAP — tidak perlu
@@ -272,13 +280,80 @@ const getComplaints = () =>
 const saveComplaints = (data) =>
   localStorage.setItem(COMPLAINT_KEY, JSON.stringify(data));
 
-async function sendToBackend(action, data) {
+// [BARU] Fix #3: timeout + pesan kontekstual terpusat — SEMUA pemanggilan
+// backend lewat fungsi ini (dipakai hampir seluruh tombol simpan di app),
+// jadi cukup diperbaiki di SATU tempat. Kalau server lambat merespons
+// (>20 detik) atau koneksi terputus, pesan errornya jelas & actionable,
+// bukan sekadar hang tanpa penjelasan.
+async function sendToBackend(action, data, options = {}) {
   if (!APPS_SCRIPT_URL) return false;
-  const response = await fetch(APPS_SCRIPT_URL, {
-    method: "POST",
-    body: JSON.stringify({ action, data }),
-  });
-  const result = await response.json();
+  // [BARU] Fix #3: opsi { silent: true } dipakai untuk panggilan LATAR
+  // BELAKANG (polling notifikasi, cek versi konten, ambil profil/dashboard,
+  // dsb) supaya TIDAK memunculkan modal "Server Sedang Padat" — modal itu
+  // hanya untuk aksi SIMPAN yang eksplisit ditekan warga/admin. Panggilan
+  // senyap tetap melempar error seperti biasa (form pemanggil yang menangani).
+  const silent = options.silent === true;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 detik
+
+  let response;
+  try {
+    response = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action, data }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timeoutId);
+    // [BARU] Fix #3: sebelumnya error koneksi/timeout ini cuma dilempar
+    // sebagai Error biasa — tampilannya jadi tergantung masing-masing form
+    // (kebanyakan cuma toast singkat yang gampang terlewat). Sekarang untuk
+    // aksi SIMPAN (bukan panggilan senyap), selalu ditampilkan lewat MODAL
+    // terpusat, konsisten di SEMUA tombol Simpan di seluruh aplikasi.
+    if (err.name === "AbortError") {
+      if (!silent) {
+        showAppModal(
+          "Server Sedang Padat",
+          "Server MY PRR sedang padat / responsnya lambat. Mohon tunggu sebentar, lalu coba simpan lagi.",
+          false,
+        );
+      }
+      throw new Error(
+        "Server MY PRR sedang padat, mohon tunggu sebentar lalu coba simpan lagi.",
+      );
+    }
+    if (!silent) {
+      showAppModal(
+        "Gagal Terhubung",
+        "Gagal terhubung ke server. Periksa koneksi internet Anda, lalu coba simpan lagi.",
+        false,
+      );
+    }
+    throw new Error(
+      "Gagal terhubung ke server. Periksa koneksi internet Anda, lalu coba lagi.",
+    );
+  }
+  clearTimeout(timeoutId);
+
+  let result;
+  try {
+    result = await response.json();
+  } catch (err) {
+    // [BARU] Fix #3: server merespons tapi bukan JSON valid (mis. HTML error
+    // page dari Apps Script saat sedang overload) — untuk aksi Simpan, tetap
+    // ditampilkan lewat modal yang sama, bukan dianggap sukses diam-diam.
+    if (!silent) {
+      showAppModal(
+        "Server Sedang Padat",
+        "Server MY PRR sedang padat / merespons tidak sesuai. Mohon tunggu sebentar lalu coba simpan lagi.",
+        false,
+      );
+    }
+    throw new Error(
+      "Server MY PRR sedang padat / merespons tidak sesuai. Mohon tunggu sebentar lalu coba simpan lagi.",
+    );
+  }
   if (!result.ok) throw new Error(result.message || "Gagal menyimpan data.");
   return result;
 }
@@ -314,6 +389,32 @@ function showAppModal(title, message, isSuccess = true) {
   if (dialog) dialog.showModal();
 }
 
+// [BARU] Fix #3: modal khusus kegagalan SIMPAN (bukan toast yang cuma 4.5
+// detik & gampang tidak sempat terbaca). Pesan otomatis dibedakan: kalau
+// penyebabnya server lambat/timeout, disebutkan eksplisit "server sedang
+// padat" — kalau sebab lain, tampilkan pesan error apa adanya. Selalu
+// mendorong untuk mencoba lagi.
+function showSaveFailureModal(err) {
+  const rawMessage =
+    (err && err.message) || "Terjadi kesalahan yang tidak diketahui.";
+  const isServerBusy =
+    rawMessage.includes("padat") ||
+    rawMessage.includes("terhubung ke server") ||
+    rawMessage.includes("merespons tidak sesuai");
+
+  const message = isServerBusy
+    ? rawMessage +
+      "\n\nData Anda BELUM tersimpan. Silakan coba tekan tombol Simpan sekali lagi."
+    : rawMessage +
+      "\n\nSilakan periksa kembali data Anda, lalu coba simpan lagi.";
+
+  showAppModal(
+    isServerBusy ? "Server Sedang Padat" : "Gagal Menyimpan",
+    message,
+    false,
+  );
+}
+
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -330,7 +431,11 @@ let latestUnpaidMonths = [];
 
 async function refreshDashboard(unit) {
   if (!unit) return null;
-  const result = await sendToBackend("getDashboard", { unit });
+  const result = await sendToBackend(
+    "getDashboard",
+    { unit },
+    { silent: true },
+  );
   if (!result || !result.ok)
     throw new Error((result && result.message) || "Gagal memuat data.");
 
@@ -412,7 +517,7 @@ function renderArrears(arrears) {
         warningIconBox.style.color = "#ffffff";
       }
       if (warningTitle) {
-        warningTitle.textContent = "SURAT PERINGATAN RESMI RT";
+        warningTitle.textContent = "SURAT PERINGATAN RESMI PAGUYUBAN PRR";
         warningTitle.style.color = "#854d0e";
       }
       if (warningDesc) {
@@ -598,7 +703,11 @@ async function loadNotifications() {
   const unit = localStorage.getItem("pondok_rajeg_user") || "";
   if (!unit) return;
   try {
-    const result = await sendToBackend("getNotifications", { unit });
+    const result = await sendToBackend(
+      "getNotifications",
+      { unit },
+      { silent: true },
+    );
     notificationCache = (result && result.notifications) || [];
   } catch (err) {
     console.error("Gagal memuat notifikasi:", err);
@@ -961,7 +1070,11 @@ async function submitComment(postId, text) {
   try {
     const snap = await postRef.get();
     const postOwnerName = snap.exists ? snap.data().name || "" : "";
-    await sendToBackend("notifyComment", { unit, name, text, postOwnerName });
+    await sendToBackend(
+      "notifyComment",
+      { unit, name, text, postOwnerName },
+      { silent: true },
+    );
   } catch (err) {
     // Jangan ganggu UX komentar utama kalau pengiriman notifikasi gagal —
     // komentarnya sendiri tetap tersimpan di atas.
@@ -1046,7 +1159,7 @@ function updatePaymentMethodUI(method) {
 
   if (method === "Tunai ke petugas") {
     note.className = "payment-method-note cash-note";
-    note.innerHTML = `⚠️ <b>Metode Tunai:</b> Serahkan uang tunai kepada petugas keuangan RT, lalu foto kwitansi/tanda terima sebagai bukti.`;
+    note.innerHTML = `⚠️ <b>Metode Tunai:</b> Serahkan uang tunai kepada Pengurus Paguyuban PRR bagian keuangan, lalu foto kwitansi/tanda terima sebagai bukti.`;
     proofLabelText.textContent =
       "Bukti Serah Terima Tunai (Foto Kwitansi) — Wajib";
   } else {
@@ -1192,7 +1305,11 @@ async function loadAdminPending() {
   if (listEl) listEl.innerHTML = shimmerListHtml(3);
 
   try {
-    const result = await sendToBackend("adminListPending", { adminUnit });
+    const result = await sendToBackend(
+      "adminListPending",
+      { adminUnit },
+      { silent: true },
+    );
     currentPending = result.pending || [];
     renderAdminPending();
   } catch (err) {
@@ -1326,7 +1443,7 @@ async function confirmAdminPayment(item, btnEl, closeDetail) {
     showToast(result.message);
     loadAdminPending();
   } catch (err) {
-    showToast(`Gagal: ${err.message}`);
+    showSaveFailureModal(err);
     if (btnEl) {
       btnEl.disabled = false;
       btnEl.textContent = "Konfirmasi Lunas";
@@ -1376,7 +1493,11 @@ async function loadExpenses() {
   if (!adminUnit || !listEl) return;
   listEl.innerHTML = shimmerListHtml(3);
   try {
-    const result = await sendToBackend("adminListExpenses", { adminUnit });
+    const result = await sendToBackend(
+      "adminListExpenses",
+      { adminUnit },
+      { silent: true },
+    );
     currentExpenses = (result && result.expenses) || [];
     renderExpenses();
   } catch (err) {
@@ -1471,6 +1592,15 @@ const CONTENT_TYPE_META = {
     emptyText:
       "Jadwal petugas security belum ditambahkan Pengurus Paguyuban PRR.",
     waLabel: "Chat Pos Satpam",
+  },
+  // [BARU] Fix #4: Inventaris Warga — dinamis, admin isi nama barang &
+  // status ketersediaannya sendiri lewat "Kelola Konten".
+  inventaris: {
+    label: "Inventaris Warga",
+    icon: "inventory_2",
+    accent: "info",
+    emptyText: "Belum ada data inventaris.",
+    waLabel: "",
   },
 };
 
@@ -1615,16 +1745,55 @@ function groupDutyItemsByShift(items) {
         titles: [],
         subtitle: it.subtitle || "",
         description: it.description || "",
-        phone: it.phone || "",
+        // [BARU] Fix #2: simpan nama+nomor PER ORANG (bukan cuma 1 nomor
+        // representatif) — supaya kalau nomornya beda-beda, warga bisa
+        // pilih tepat mau menghubungi siapa (lihat renderDutyItems).
+        people: [],
       });
     }
     const g = groups[indexByKey[key]];
     g.titles.push(it.title);
+    g.people.push({ name: it.title, phone: it.phone || "" });
     if (!g.subtitle && it.subtitle) g.subtitle = it.subtitle;
     if (!g.description && it.description) g.description = it.description;
-    if (!g.phone && it.phone) g.phone = it.phone;
   });
   return groups;
+}
+
+// [BARU] Fix #2: kalau semua orang di shift yang sama pakai NOMOR YANG SAMA
+// (atau cuma 1 orang yang punya nomor), tombol WA tunggal sudah cukup jelas.
+// Tapi kalau nomornya BEDA-BEDA antar orang, satu tombol saja jadi ambigu —
+// warga tidak tahu itu menghubungi siapa. Jadi ditampilkan sebagai daftar
+// kontak terpisah per orang, masing-masing jelas namanya.
+function renderDutyContactSection(group, meta) {
+  const peopleWithPhone = group.people.filter((p) => p.phone);
+  if (!peopleWithPhone.length) return "";
+
+  const uniquePhones = [...new Set(peopleWithPhone.map((p) => p.phone))];
+
+  if (uniquePhones.length === 1) {
+    const label =
+      peopleWithPhone.length > 1
+        ? joinDutyNames(group.titles)
+        : peopleWithPhone[0].name;
+    return `<a href="${waLink(uniquePhones[0], `Halo ${label}, saya warga MY PRR ingin menghubungi...`)}" target="_blank" class="whatsapp-btn duty-wa-btn">
+              <span class="material-symbols-rounded">chat</span> ${meta.waLabel || "Chat WhatsApp"}
+            </a>`;
+  }
+
+  // Nomor berbeda-beda -> tampilkan sebagai pilihan kontak terpisah per orang.
+  return `
+    <div class="duty-contact-list">
+      <span class="duty-contact-label">Hubungi:</span>
+      ${peopleWithPhone
+        .map(
+          (p) => `
+        <a href="${waLink(p.phone, `Halo ${p.name}, saya warga MY PRR ingin menghubungi...`)}" target="_blank" class="duty-contact-chip">
+          <span class="material-symbols-rounded">chat</span>${escapeHtml(p.name)}
+        </a>`,
+        )
+        .join("")}
+    </div>`;
 }
 
 function renderDutyItems(items, box, type) {
@@ -1670,13 +1839,7 @@ function renderDutyItems(items, box, type) {
           </div>
           <p class="duty-datetime">${escapeHtml(formatDutyDateTime(g.timeStart, g.timeEnd))}</p>
           ${g.description ? `<p class="duty-desc">${escapeHtml(g.description)}</p>` : ""}
-          ${
-            g.phone
-              ? `<a href="${waLink(g.phone, `Halo ${namesJoined}, saya warga MY PRR ingin menghubungi...`)}" target="_blank" class="whatsapp-btn duty-wa-btn">
-                  <span class="material-symbols-rounded">chat</span> ${meta.waLabel || "Chat WhatsApp"}
-                </a>`
-              : ""
-          }
+          ${renderDutyContactSection(g, meta)}
         </div>`;
         })
         .join("")}
@@ -1800,7 +1963,11 @@ async function getContentCardsSmart(type) {
   const cache = readContentCache();
   let serverVersion = null;
   try {
-    const verResult = await sendToBackend("getContentVersion", {});
+    const verResult = await sendToBackend(
+      "getContentVersion",
+      {},
+      { silent: true },
+    );
     serverVersion = verResult && verResult.version;
   } catch (err) {
     serverVersion = null; // gagal cek versi (mis. offline) -> aman-nya, ambil data langsung
@@ -1826,7 +1993,11 @@ async function getContentCardsSmart(type) {
 }
 
 async function fetchContentCards(type) {
-  const result = await sendToBackend("getContentCards", { type });
+  const result = await sendToBackend(
+    "getContentCards",
+    { type },
+    { silent: true },
+  );
   return (result && result.items) || [];
 }
 
@@ -2058,6 +2229,51 @@ async function loadAdartDoc() {
   }
 }
 
+// [BARU] Fix #4: Inventaris Warga — dinamis, admin isi nama barang & status
+// ketersediaan (mis. "3 dari 5 Tersedia") sendiri lewat "Kelola Konten",
+// menggantikan 4 kartu hardcoded "Tidak Tersedia" yang lama.
+function renderInventoryItems(items, box) {
+  if (!box) return;
+  if (!items.length) {
+    box.innerHTML = `<div class="empty-state-box" style="grid-column: 1 / -1;">${CONTENT_TYPE_META.inventaris.emptyText}</div>`;
+    return;
+  }
+  box.innerHTML = items
+    .map(
+      (it) => `
+    <div class="inventory-card">
+      <span class="material-symbols-rounded">${CONTENT_TYPE_META.inventaris.icon}</span>
+      <div>
+        <b>${escapeHtml(it.title)}</b>
+        <small>${escapeHtml(it.subtitle || "Status belum diatur")}</small>
+      </div>
+    </div>`,
+    )
+    .join("");
+}
+
+async function loadInventoryList() {
+  const box = $("#inventoryListContent");
+  if (!box) return;
+  const cache = readContentCache();
+  const cachedItems =
+    cache && Array.isArray(cache.inventaris) ? cache.inventaris : null;
+
+  if (cachedItems) {
+    renderInventoryItems(cachedItems, box);
+  } else {
+    box.innerHTML = `<div style="grid-column: 1 / -1">${shimmerGridHtml(4)}</div>`;
+  }
+
+  try {
+    const { items, fromCache } = await getContentCardsSmart("inventaris");
+    if (!fromCache) renderInventoryItems(items, box);
+  } catch (err) {
+    if (!cachedItems)
+      box.innerHTML = `<div class="empty-state-box" style="grid-column: 1 / -1;">Gagal memuat: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
 function showInfoArticle(id) {
   const article = announcementCache.find((a) => a.id === id);
   if (!article) return;
@@ -2104,7 +2320,7 @@ function backToInfoList() {
   if (adartPane) adartPane.style.display = "none";
   if (listPane) listPane.style.display = "block";
   if (eyebrowEl) eyebrowEl.textContent = "PUSAT INFORMASI & DOKUMEN";
-  if (titleEl) titleEl.textContent = "Info Warga & Dokumen RT";
+  if (titleEl) titleEl.textContent = "Info Warga & Dokumen Paguyuban PRR";
 
   document.querySelectorAll("[data-infotab]").forEach((b) => {
     b.classList.toggle("active", b.dataset.infotab === "announcements");
@@ -2218,6 +2434,7 @@ function refreshPublicContentIfOpen(type) {
   // dalam dialog), jadi langsung disegarkan tanpa perlu cek dialog terbuka.
   if (type === "security") loadSecurityDuty();
   if (type === "sampah") loadTrashDuty();
+  if (type === "inventaris") loadInventoryList();
 }
 
 // [BARU] Fix #2: placeholder form disesuaikan per kategori (sebelumnya
@@ -2266,6 +2483,12 @@ const CONTENT_FORM_PLACEHOLDERS = {
     description: "Catatan tugas (opsional)...",
     phone: "+6281234567890",
   },
+  inventaris: {
+    title: "Contoh: Tenda Warga",
+    subtitle: "Contoh: 3 dari 5 Tersedia",
+    description: "Catatan kondisi/lokasi penyimpanan (opsional)...",
+    phone: "",
+  },
 };
 
 function applyContentFormPlaceholders(type) {
@@ -2300,7 +2523,9 @@ function contentFormFieldVisibility(type) {
   const isServiceType = type === "jasa" || type === "internet";
   const isDutyType = type === "sampah" || type === "security";
   phoneLabel.style.display =
-    type === "pengumuman" || type === "adart" ? "none" : "block";
+    type === "pengumuman" || type === "adart" || type === "inventaris"
+      ? "none"
+      : "block";
   linkLabel.style.display =
     isServiceType || type === "adart" ? "block" : "none";
   subtitleLabel.style.display = type === "adart" ? "none" : "block";
@@ -2313,11 +2538,76 @@ function contentFormFieldVisibility(type) {
   applyContentFormPlaceholders(type);
 }
 
+// [BARU] Fix #1: isi opsi dropdown Jam (00-23) & Menit (kelipatan 15) sekali
+// saat halaman dimuat, menggantikan input[type="time"] yang picker native-nya
+// sering terpotong di layar HP.
+function populateTimeSelectOptions() {
+  const hourSelects = document.querySelectorAll(
+    "[name='timeStartHour'], [name='timeEndHour']",
+  );
+  const minuteSelects = document.querySelectorAll(
+    "[name='timeStartMinute'], [name='timeEndMinute']",
+  );
+  hourSelects.forEach((sel) => {
+    if (sel.dataset.filled) return;
+    for (let h = 0; h < 24; h++) {
+      const opt = document.createElement("option");
+      opt.value = String(h).padStart(2, "0");
+      opt.textContent = String(h).padStart(2, "0");
+      sel.appendChild(opt);
+    }
+    sel.dataset.filled = "1";
+  });
+  minuteSelects.forEach((sel) => {
+    if (sel.dataset.filled) return;
+    [0, 15, 30, 45].forEach((m) => {
+      const opt = document.createElement("option");
+      opt.value = String(m).padStart(2, "0");
+      opt.textContent = String(m).padStart(2, "0");
+      sel.appendChild(opt);
+    });
+    sel.dataset.filled = "1";
+  });
+}
+
+// Set dropdown Jam/Menit dari string "HH:MM" (atau kosongkan kalau tidak ada).
+function setTimeSelectValue(form, prefix, value) {
+  const [h, m] = String(value || "").split(":");
+  const hourSel = form.querySelector(`[name='${prefix}Hour']`);
+  const minSel = form.querySelector(`[name='${prefix}Minute']`);
+  if (hourSel) hourSel.value = h || "";
+  if (minSel) {
+    // Menit hanya tersedia kelipatan 15 (00/15/30/45) — kalau data lama
+    // punya menit lain (mis. dari input manual/upload massal), bulatkan
+    // ke kelipatan 15 terdekat supaya tetap valid dipilih di dropdown.
+    if (m) {
+      const rounded = String((Math.round(Number(m) / 15) * 15) % 60).padStart(
+        2,
+        "0",
+      );
+      minSel.value = rounded;
+    } else {
+      minSel.value = "";
+    }
+  }
+}
+
+// Gabungkan dropdown Jam+Menit jadi string "HH:MM", atau "" kalau belum diisi.
+function getTimeSelectValue(form, prefix) {
+  const hourSel = form.querySelector(`[name='${prefix}Hour']`);
+  const minSel = form.querySelector(`[name='${prefix}Minute']`);
+  const h = hourSel ? hourSel.value : "";
+  const m = minSel ? minSel.value : "";
+  if (!h || !m) return "";
+  return `${h}:${m}`;
+}
+
 function openContentForm(type, item) {
   const dialog = $("#contentFormDialog");
   const form = $("#contentForm");
   if (!dialog || !form) return;
 
+  populateTimeSelectOptions();
   form.reset();
   form.querySelector("[name='contentType']").value = type;
   form.querySelector("[name='contentId']").value = item ? item.id : "";
@@ -2346,8 +2636,8 @@ function openContentForm(type, item) {
     form.querySelector("[name='linkUrl']").value = item.linkUrl || "";
     form.querySelector("[name='imageUrl']").value = item.imageUrl || "";
     form.querySelector("[name='order']").value = item.order || 0;
-    form.querySelector("[name='timeStart']").value = item.timeStart || "";
-    form.querySelector("[name='timeEnd']").value = item.timeEnd || "";
+    setTimeSelectValue(form, "timeStart", item.timeStart);
+    setTimeSelectValue(form, "timeEnd", item.timeEnd);
     // [BARU] Fix #4/#5: centang ulang checkbox hari sesuai data tersimpan
     // (item.days, dipisah koma) saat membuka form untuk EDIT kartu.
     const selectedDays = parseDaysField(item.days);
@@ -2408,6 +2698,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // shimmer + cache-hanya-refresh-saat-berubah, sama seperti konten lain).
     loadSecurityDuty();
     loadTrashDuty();
+    loadInventoryList();
   };
 
   setTimeout(() => {
@@ -2482,7 +2773,7 @@ document.addEventListener("DOMContentLoaded", () => {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalButtonText;
       } catch (error) {
-        showToast(`Gagal: ${error.message}`);
+        showSaveFailureModal(error);
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalButtonText;
       }
@@ -2599,7 +2890,7 @@ document.addEventListener("DOMContentLoaded", () => {
         safeRefreshDashboard(adminUnit);
         loadNotifications();
       } catch (err) {
-        showToast(`Gagal: ${err.message}`);
+        showSaveFailureModal(err);
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
@@ -2740,7 +3031,7 @@ document.addEventListener("DOMContentLoaded", () => {
         loadContentManagerGrid(activeContentTab);
         refreshPublicContentIfOpen(activeContentTab);
       } catch (err) {
-        showToast(`Gagal: ${err.message}`);
+        showSaveFailureModal(err);
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
@@ -2759,7 +3050,11 @@ document.addEventListener("DOMContentLoaded", () => {
       testPushBtn.innerHTML = "Menguji...";
       testPushBtn.disabled = true;
       try {
-        const result = await sendToBackend("checkPushSetup", { testUnit });
+        const result = await sendToBackend(
+          "checkPushSetup",
+          { testUnit },
+          { silent: true },
+        );
         const d = result.data || result;
         const lines = [
           `Kredensial FCM di server: ${d.credentialsConfigured ? "✅ Sudah diatur" : "❌ BELUM diatur (Script Properties)"}`,
@@ -2829,8 +3124,10 @@ document.addEventListener("DOMContentLoaded", () => {
         linkUrl: formData.linkUrl,
         imageUrl: formData.imageUrl,
         order: Number(formData.order) || 0,
-        timeStart: formData.timeStart || "",
-        timeEnd: formData.timeEnd || "",
+        // [BARU] Fix #1: digabung dari 2 dropdown Jam+Menit terpisah (bukan
+        // lagi 1 input[type="time"]), lihat getTimeSelectValue().
+        timeStart: getTimeSelectValue(contentForm, "timeStart"),
+        timeEnd: getTimeSelectValue(contentForm, "timeEnd"),
         days: selectedDays,
       };
 
@@ -2852,7 +3149,7 @@ document.addEventListener("DOMContentLoaded", () => {
           refreshPublicContentIfOpen(formData.contentType);
         }
       } catch (err) {
-        showToast(`Gagal: ${err.message}`);
+        showSaveFailureModal(err);
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
@@ -2887,7 +3184,7 @@ document.addEventListener("DOMContentLoaded", () => {
         rejectTarget = null;
         loadAdminPending();
       } catch (err) {
-        showToast(`Gagal: ${err.message}`);
+        showSaveFailureModal(err);
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
@@ -3059,7 +3356,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!cachedProfile) {
       const unit = localStorage.getItem("pondok_rajeg_user") || "";
       try {
-        const result = await sendToBackend("getProfile", { unit });
+        const result = await sendToBackend(
+          "getProfile",
+          { unit },
+          { silent: true },
+        );
         if (result.ok && result.profile) {
           localStorage.setItem(PROFILE_KEY, JSON.stringify(result.profile));
           populateProfileForm(result.profile);
@@ -3216,7 +3517,7 @@ document.addEventListener("DOMContentLoaded", () => {
         profileForm.querySelector("[name='newPin']").value = "";
         profileForm.querySelector("[name='confirmPin']").value = "";
       } catch (error) {
-        showToast(`Gagal menyimpan: ${error.message}`);
+        showSaveFailureModal(error);
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
@@ -3480,18 +3781,22 @@ document.addEventListener("DOMContentLoaded", () => {
         showToast("Postingan berhasil dibagikan.");
 
         try {
-          await sendToBackend("notifyPost", {
-            unit,
-            name,
-            text,
-            hasPhoto: !!imageDataUrl,
-          });
+          await sendToBackend(
+            "notifyPost",
+            {
+              unit,
+              name,
+              text,
+              hasPhoto: !!imageDataUrl,
+            },
+            { silent: true },
+          );
           loadNotifications();
         } catch (notifErr) {
           console.error("Gagal mengirim notifikasi postingan:", notifErr);
         }
       } catch (err) {
-        showToast(`Gagal posting: ${err.message}`);
+        showSaveFailureModal(err);
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;

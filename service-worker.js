@@ -1,4 +1,4 @@
-const CACHE_NAME = "my-prr-warga-v0.5";
+const CACHE_NAME = "my-prr-warga-v0.6";
 const urlsToCache = ["./", "./index.html", "./style.css", "./app.js"];
 
 importScripts(
