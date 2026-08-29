@@ -1,5 +1,4 @@
 const DEFAULT_BILL = 120000;
-const COMPLAINT_KEY = "pondok-rajeg-complaints";
 const PROFILE_KEY = "pondok-rajeg-profile-data";
 const ROLE_KEY = "pondok_rajeg_role";
 const NOTIF_SEEN_KEY = "pondok_rajeg_notif_seen";
@@ -274,11 +273,6 @@ const rupiah = (value) =>
     currency: "IDR",
     maximumFractionDigits: 0,
   }).format(Number(value) || 0);
-
-const getComplaints = () =>
-  JSON.parse(localStorage.getItem(COMPLAINT_KEY) || "[]");
-const saveComplaints = (data) =>
-  localStorage.setItem(COMPLAINT_KEY, JSON.stringify(data));
 
 // [BARU] Fix #3: timeout + pesan kontekstual terpusat — SEMUA pemanggilan
 // backend lewat fungsi ini (dipakai hampir seluruh tombol simpan di app),
@@ -659,14 +653,51 @@ function renderNotificationList() {
   box.innerHTML = notificationCache
     .map((n) => {
       const isNew = Number(n.millis || 0) > lastSeen;
+      // [BARU] Fix #2: notifikasi terkait postingan/komentar sekarang bisa
+      // diklik, langsung menuju postingan yang dimaksud di Update Warga.
+      const clickable = n.refType === "post" && n.refId;
       return `
-      <div class="notification-item-card${isNew ? " notif-new" : ""}">
+      <div class="notification-item-card${isNew ? " notif-new" : ""}${clickable ? " notif-clickable" : ""}"${clickable ? ` data-ref-post="${escapeHtml(n.refId)}"` : ""}>
         <b>${notifIconFor(n.type)} ${escapeHtml(n.title)}</b>
         <p>${escapeHtml(n.body)}</p>
         <span class="notif-time">${escapeHtml(n.date || "")}</span>
+        ${clickable ? `<span class="notif-goto-hint">Lihat postingan →</span>` : ""}
       </div>`;
     })
     .join("");
+
+  box.querySelectorAll("[data-ref-post]").forEach((el) => {
+    el.addEventListener("click", () => {
+      const postId = el.dataset.refPost;
+      $("#notificationDialog")?.close();
+      goToPost(postId);
+    });
+  });
+}
+
+// [BARU] Fix #2: scroll ke postingan tertentu di feed Update Warga & beri
+// efek highlight sesaat, supaya warga langsung tahu postingan mana yang
+// dimaksud notifikasi yang baru saja diklik.
+function goToPost(postId) {
+  // [BARU] Fix #4/#6: karena Update Warga sekarang halaman terpisah
+  // (#feedPageView, defaultnya display:none), pindah ke halaman itu dulu
+  // sebelum coba scroll — kalau tidak, scrollIntoView tidak akan berefek
+  // apa-apa pada elemen yang sedang disembunyikan.
+  if (typeof window.showAppPage === "function") window.showAppPage("feed");
+
+  const tryScroll = (attempt) => {
+    const el = document.querySelector(`[data-post-id="${CSS.escape(postId)}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("post-highlight");
+      setTimeout(() => el.classList.remove("post-highlight"), 2200);
+      return;
+    }
+    // Postingan mungkin belum ter-render (mis. dialog feed belum dibuka atau
+    // baru saja dimuat) — coba beberapa kali sebelum menyerah.
+    if (attempt < 5) setTimeout(() => tryScroll(attempt + 1), 300);
+  };
+  tryScroll(0);
 }
 
 function updateNotifBadge() {
@@ -731,7 +762,11 @@ function stopNotifPolling() {
 let unsubscribePostsListener = null;
 let latestPostsSnapshotDocs = [];
 let feedTimeRefreshInterval = null;
-let visiblePostsCount = 5;
+// [BARU] Fix #5: sebelumnya feed dibatasi 5 postingan awal (+5 tiap klik
+// "Muat Lebih Banyak"). Sekarang dibuat "unlimited" — semua postingan yang
+// sudah diambil dari Firestore (lihat .limit di attachPostsListener) langsung
+// tampil semua tanpa perlu klik apa pun, biar warga bebas scroll & posting.
+let visiblePostsCount = Infinity;
 
 function escapeHtml(str) {
   return String(str || "")
@@ -803,7 +838,9 @@ function attachPostsListener() {
   unsubscribePostsListener = db
     .collection("posts")
     .orderBy("createdAt", "desc")
-    .limit(50)
+    // [BARU] Fix #5: dinaikkan dari 50 supaya linimasa terasa lebih
+    // "unlimited" untuk komunitas yang aktif, tanpa query jadi terlalu berat.
+    .limit(200)
     .onSnapshot(
       (snapshot) => {
         latestPostsSnapshotDocs = snapshot.docs;
@@ -1072,7 +1109,7 @@ async function submitComment(postId, text) {
     const postOwnerName = snap.exists ? snap.data().name || "" : "";
     await sendToBackend(
       "notifyComment",
-      { unit, name, text, postOwnerName },
+      { unit, name, text, postOwnerName, postId },
       { silent: true },
     );
   } catch (err) {
@@ -1185,9 +1222,6 @@ function applyRoleUI(role) {
   const userAdminBtn = $("#userAdminBtn");
   if (userAdminBtn)
     userAdminBtn.style.display = role === "admin" ? "flex" : "none";
-  const complaintAdminBtn = $("#complaintAdminBtn");
-  if (complaintAdminBtn)
-    complaintAdminBtn.style.display = role === "admin" ? "flex" : "none";
 
   // Susun ulang carousel "Akses cepat" karena jumlah kartu yang tampil berubah
   // (kartu khusus admin baru saja disembunyikan/ditampilkan di atas).
@@ -2572,99 +2606,6 @@ function openResetPinDialog(unit) {
   dialog.showModal();
 }
 
-// ------------------------------------------------------------
-// [BARU] KELOLA PENGADUAN (ADMIN) — sebelumnya TIDAK ADA cara admin melihat
-// pengaduan warga dari dalam aplikasi sama sekali (data cuma tersimpan
-// lokal di HP warga masing-masing). Sekarang admin bisa lihat SEMUA
-// pengaduan (dari sheet "Complaints" pusat) + ubah status penanganannya.
-// ------------------------------------------------------------
-let currentComplaintList = [];
-
-const COMPLAINT_STATUS_META = {
-  Menunggu: { label: "Menunggu", color: "#b45309", bg: "#fef3c7" },
-  Diproses: { label: "Diproses", color: "#1d4ed8", bg: "#dbeafe" },
-  Selesai: { label: "Selesai", color: "#15803d", bg: "#dcfce7" },
-};
-
-async function loadComplaintManagerGrid() {
-  const grid = $("#complaintManagerGrid");
-  if (!grid) return;
-  grid.innerHTML = shimmerListHtml(3);
-  const adminUnit = localStorage.getItem("pondok_rajeg_user");
-  try {
-    const result = await sendToBackend("adminListComplaints", { adminUnit });
-    currentComplaintList = result.complaints || [];
-    renderComplaintManagerGrid();
-  } catch (err) {
-    grid.innerHTML = `<div class="empty-state-box" style="grid-column: 1 / -1;">Gagal memuat: ${escapeHtml(err.message)}</div>`;
-  }
-}
-
-function renderComplaintManagerGrid() {
-  const grid = $("#complaintManagerGrid");
-  if (!grid) return;
-  const filterVal = $("#complaintStatusFilter")?.value || "";
-  const filtered = filterVal
-    ? currentComplaintList.filter((c) => c.status === filterVal)
-    : currentComplaintList;
-
-  if (!filtered.length) {
-    grid.innerHTML = `<div class="empty-state-box" style="grid-column: 1 / -1;">Belum ada pengaduan${filterVal ? ` berstatus "${escapeHtml(filterVal)}"` : ""}.</div>`;
-    return;
-  }
-
-  grid.innerHTML = filtered
-    .map((c) => {
-      const meta =
-        COMPLAINT_STATUS_META[c.status] || COMPLAINT_STATUS_META.Menunggu;
-      return `
-    <div class="content-manage-card" data-complaint-id="${escapeHtml(c.id)}">
-      <div class="content-manage-card-top">
-        <div class="content-thumb content-thumb-sm content-thumb-icon wrench">
-          <span class="material-symbols-rounded">campaign</span>
-        </div>
-        <div class="content-manage-card-headtext">
-          <b>${escapeHtml(c.category)}</b>
-          <span class="content-order-badge" style="background:${meta.bg}; color:${meta.color};">${escapeHtml(meta.label)}</span>
-        </div>
-      </div>
-      <small class="content-manage-subtitle">${escapeHtml(c.name || "Warga")}${c.unit ? ` (${escapeHtml(c.unit)})` : ""} • ${escapeHtml(c.location)}</small>
-      <p class="content-manage-desc">${escapeHtml(c.description)}</p>
-      <div class="content-manage-meta"><span class="material-symbols-rounded">schedule</span>${escapeHtml(c.timestamp)}</div>
-      <div class="content-manage-actions">
-        ${c.status !== "Diproses" ? `<button type="button" class="chip-btn" data-set-status="${escapeHtml(c.id)}|Diproses">Tindak Lanjuti</button>` : ""}
-        ${c.status !== "Selesai" ? `<button type="button" class="chip-btn" data-set-status="${escapeHtml(c.id)}|Selesai">Tandai Selesai</button>` : ""}
-        ${c.status !== "Menunggu" ? `<button type="button" class="chip-btn ghost" data-set-status="${escapeHtml(c.id)}|Menunggu">Batal Proses</button>` : ""}
-      </div>
-    </div>`;
-    })
-    .join("");
-
-  grid.querySelectorAll("[data-set-status]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const [id, status] = btn.dataset.setStatus.split("|");
-      updateComplaintStatus(id, status);
-    });
-  });
-}
-
-async function updateComplaintStatus(id, status) {
-  const adminUnit = localStorage.getItem("pondok_rajeg_user");
-  try {
-    const result = await sendToBackend("adminUpdateComplaintStatus", {
-      adminUnit,
-      id,
-      status,
-    });
-    showToast(result.message);
-    const item = currentComplaintList.find((c) => c.id === id);
-    if (item) item.status = status;
-    renderComplaintManagerGrid();
-  } catch (err) {
-    showToast(`Gagal: ${err.message}`);
-  }
-}
-
 function refreshPublicContentIfOpen(type) {
   // Segarkan tampilan warga bila dialog terkait sedang terbuka di belakang.
   if (type === "jasa" && $("#tukangDialog")?.open) loadTukangList();
@@ -2943,6 +2884,9 @@ document.addEventListener("DOMContentLoaded", () => {
     loadSecurityDuty();
     loadTrashDuty();
     loadInventoryList();
+    // [BARU] Fix #8: pengaduan sekarang dimuat dari backend saat login,
+    // bukan lagi dari localStorage — tetap muncul walau ganti device.
+    loadAndRenderComplaints();
   };
 
   setTimeout(() => {
@@ -3252,31 +3196,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ------------------------------------------------------------
-  // [BARU] PANEL "KELOLA PENGADUAN" (ADMIN)
-  // ------------------------------------------------------------
-  const complaintAdminBtn = $("#complaintAdminBtn");
-  const complaintManagerDialog = $("#complaintManagerDialog");
-  const complaintManagerRefreshBtn = $("#complaintManagerRefreshBtn");
-  const complaintStatusFilter = $("#complaintStatusFilter");
-
-  if (complaintAdminBtn && complaintManagerDialog) {
-    complaintAdminBtn.addEventListener("click", () => {
-      complaintManagerDialog.showModal();
-      loadComplaintManagerGrid();
-    });
-  }
-  if (complaintManagerRefreshBtn) {
-    complaintManagerRefreshBtn.addEventListener("click", () =>
-      loadComplaintManagerGrid(),
-    );
-  }
-  if (complaintStatusFilter) {
-    complaintStatusFilter.addEventListener("change", () =>
-      renderComplaintManagerGrid(),
-    );
-  }
-
-  // ------------------------------------------------------------
   // PANEL "KELOLA KONTEN" (ADMIN)
   // ------------------------------------------------------------
   const contentAdminBtn = $("#contentAdminBtn");
@@ -3569,6 +3488,85 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  // [BARU] Fix #4/#6: "Update Warga" sekarang HALAMAN TERSENDIRI (bukan
+  // scroll-ke-section di Beranda lagi) — showAppPage() menoggle visibilitas
+  // #homePageView <-> #feedPageView & status aktif tab bawah, mirip app
+  // native modern, bukan cuma widget di dashboard.
+  const homePageView = $("#homePageView");
+  const feedPageView = $("#feedPageView");
+  const navHomeBtn = document.querySelector('.nav-item[data-page="home"]');
+  const navFeedBtn = $("#navFeedBtn");
+
+  function showAppPage(page) {
+    const isFeed = page === "feed";
+    if (homePageView) homePageView.style.display = isFeed ? "none" : "";
+    if (feedPageView) feedPageView.style.display = isFeed ? "" : "none";
+    if (navHomeBtn) navHomeBtn.classList.toggle("active", !isFeed);
+    if (navFeedBtn) navFeedBtn.classList.toggle("active", isFeed);
+    // Scroll ke atas tiap pindah halaman, biar tidak "nyangkut" di posisi
+    // scroll halaman sebelumnya.
+    $(".main-content")?.scrollTo({ top: 0, behavior: "instant" });
+  }
+  // Diekspos ke scope global supaya goToPost() (dipanggil dari notifikasi)
+  // bisa memanggil ini juga sebelum scroll ke postingan yang dituju.
+  window.showAppPage = showAppPage;
+
+  if (navFeedBtn) {
+    navFeedBtn.addEventListener("click", () => showAppPage("feed"));
+  }
+  if (navHomeBtn) {
+    navHomeBtn.addEventListener("click", () => showAppPage("home"));
+  }
+
+  // ------------------------------------------------------------
+  // [BARU] Responsif: di mobile, Update Warga tetap halaman terpisah
+  // (#feedPageView, ditoggle showAppPage). Di DESKTOP (>=1024px, breakpoint
+  // sama seperti dipakai di seluruh app ini), kontennya dipindah jadi
+  // sidebar tetap terlihat di kolom kanan (#feedDesktopSlot) — supaya warga
+  // desktop tidak perlu "pindah halaman" untuk lihat linimasa, sesuai
+  // preferensi tata letak yang diminta. Memindah ELEMEN ASLINYA (bukan
+  // clone), jadi semua event listener composer/like/komentar tetap utuh —
+  // pola yang sama seperti buildQuickAccessCarousel() di tempat lain.
+  // ------------------------------------------------------------
+  const FEED_DESKTOP_BREAKPOINT = 1024;
+  function syncFeedPlacement() {
+    const feedDesktopSlot = $("#feedDesktopSlot");
+    const feedSectionEl = document.querySelector(".feed-page-hero");
+    if (!feedDesktopSlot || !feedPageView || !feedSectionEl) return;
+
+    const isDesktop = window.innerWidth >= FEED_DESKTOP_BREAKPOINT;
+    if (isDesktop) {
+      if (feedSectionEl.parentElement !== feedDesktopSlot) {
+        feedDesktopSlot.appendChild(feedSectionEl);
+      }
+      feedDesktopSlot.style.display = "";
+      // Halaman mobile-nya dikosongkan tampilannya (kontennya sudah pindah
+      // ke sidebar); tidak perlu diatur oleh showAppPage lagi di lebar ini.
+      feedPageView.style.display = "none";
+    } else {
+      if (feedSectionEl.parentElement !== feedPageView) {
+        feedPageView.appendChild(feedSectionEl);
+      }
+      feedDesktopSlot.style.display = "none";
+      // TIDAK menyentuh feedPageView.style.display di sini — biar tetap
+      // dikendalikan oleh showAppPage() sesuai tab bawah yang aktif.
+    }
+  }
+  syncFeedPlacement();
+
+  let feedResizeTimer = null;
+  let feedWasDesktop = window.innerWidth >= FEED_DESKTOP_BREAKPOINT;
+  window.addEventListener("resize", () => {
+    clearTimeout(feedResizeTimer);
+    feedResizeTimer = setTimeout(() => {
+      const nowDesktop = window.innerWidth >= FEED_DESKTOP_BREAKPOINT;
+      if (nowDesktop !== feedWasDesktop) {
+        feedWasDesktop = nowDesktop;
+        syncFeedPlacement();
+      }
+    }, 200);
+  });
 
   document.querySelectorAll("[data-page='ipl']").forEach((b) => {
     b.addEventListener("click", async () => {
@@ -3978,7 +3976,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const openComplaintModalBtn = $("#openComplaintModalBtn");
   const openComplaintModalBtnRight = $("#openComplaintModalBtnRight");
   const complaintDialog = $("#complaintDialog");
-  const showComplaintModal = () => complaintDialog?.showModal();
+  const showComplaintModal = () => {
+    // [BARU] Fix #5: field "Lokasi/Blok" di-autofill sesuai unit warga yang
+    // sedang login, supaya tidak perlu ketik ulang manual. Tetap bisa
+    // diubah kalau masalahnya di lokasi lain (fasilitas umum, dsb).
+    const locationInput = complaintForm?.querySelector("[name='location']");
+    if (locationInput && !locationInput.value) {
+      locationInput.value = localStorage.getItem("pondok_rajeg_user") || "";
+    }
+    complaintDialog?.showModal();
+  };
   if (openComplaintModalBtn)
     openComplaintModalBtn.addEventListener("click", showComplaintModal);
   if (openComplaintModalBtnRight)
@@ -3995,32 +4002,34 @@ document.addEventListener("DOMContentLoaded", () => {
         category: data.category,
         location: data.location,
         description: data.description,
-        date: new Date().toLocaleDateString("id-ID", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        }),
         status: "Menunggu",
       };
-      saveComplaints([record, ...getComplaints()]);
       complaintDialog?.close();
       e.currentTarget.reset();
-      renderComplaints();
-      showToast("Laporan pengaduan berhasil dikirim.");
+
+      const submitBtn = complaintForm.querySelector("button[type='submit']");
+      const origBtnText = submitBtn ? submitBtn.innerHTML : "";
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = "Mengirim...";
+      }
 
       try {
-        // [FIX BUG] Sebelumnya payload TIDAK menyertakan unit/nama pelapor —
-        // admin tidak akan pernah tahu pengaduan itu dari warga yang mana.
-        // silent:true supaya tidak muncul modal "Server Sedang Padat" yang
-        // membingungkan tepat setelah toast "berhasil dikirim" di atas —
-        // laporan sudah tersimpan lokal terlepas dari hasil kirim ke server.
-        await sendToBackend(
-          "complaint",
-          { ...record, unit, name },
-          { silent: true },
-        );
+        // [FIX BUG #8] Sebelumnya pengaduan disimpan optimis ke localStorage
+        // (jadi terlihat "berhasil" walau kirimnya gagal, dan HILANG kalau
+        // ganti device). Sekarang menunggu konfirmasi backend dulu, baru
+        // memuat ulang daftar LANGSUNG DARI SERVER — satu sumber data,
+        // konsisten di semua perangkat warga tsb login.
+        await sendToBackend("complaint", { ...record, unit, name });
+        showToast("Laporan pengaduan berhasil dikirim.");
+        loadAndRenderComplaints();
       } catch (err) {
-        console.error("Gagal mengirim pengaduan ke server:", err);
+        showToast(`Gagal mengirim pengaduan: ${err.message}`);
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = origBtnText;
+        }
       }
     });
   }
@@ -4038,6 +4047,7 @@ document.addEventListener("DOMContentLoaded", () => {
       e.preventDefault();
       const formData = new FormData(panicForm);
       const type = formData.get("emergency") || "Darurat";
+      const description = String(formData.get("description") || "").trim();
       const unit = localStorage.getItem("pondok_rajeg_user") || "";
       const name = localStorage.getItem("pondok_rajeg_name") || unit;
 
@@ -4056,6 +4066,7 @@ document.addEventListener("DOMContentLoaded", () => {
           unit,
           name,
           type,
+          description,
         });
         panicDialog?.close();
         showAppModal("Sinyal Darurat Terkirim", result.message, true);
@@ -4155,7 +4166,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const file = selectedPostFile;
         if (file) imageDataUrl = await resizeImageToDataUrl(file);
 
-        await db.collection("posts").add({
+        const docRef = await db.collection("posts").add({
           unit,
           name,
           text,
@@ -4165,7 +4176,6 @@ document.addEventListener("DOMContentLoaded", () => {
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
 
-        visiblePostsCount = 5;
         postComposerDialog?.close();
         showToast("Postingan berhasil dibagikan.");
 
@@ -4177,6 +4187,7 @@ document.addEventListener("DOMContentLoaded", () => {
               name,
               text,
               hasPhoto: !!imageDataUrl,
+              postId: docRef.id,
             },
             { silent: true },
           );
@@ -4308,7 +4319,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   refreshWelcomeHeader();
-  renderComplaints();
 });
 
 function setupWhatsAppFormatter(inputEl) {
@@ -4441,35 +4451,107 @@ function collectTanggungan() {
     .filter((t) => t.name);
 }
 
-function renderComplaints() {
+// ------------------------------------------------------------
+// [BARU] Fix #8/#9: Pengaduan Lingkungan sekarang SEPENUHNYA dari backend
+// (bukan localStorage lagi — riwayat tetap muncul walau ganti device), dan
+// admin mengelola status LANGSUNG di komponen yang sama dengan warga
+// (bukan panel "Kelola Pengaduan" terpisah lagi — sudah dihapus).
+// ------------------------------------------------------------
+let currentComplaintList = [];
+const COMPLAINT_STATUS_META = {
+  Menunggu: { label: "Menunggu", color: "#a46404", bg: "#fff3d5" },
+  Diproses: { label: "Diproses", color: "#1d4ed8", bg: "#dbeafe" },
+  Selesai: { label: "Selesai", color: "#15803d", bg: "#dcfce7" },
+};
+
+async function loadAndRenderComplaints() {
   const list = $("#complaintList");
   if (!list) return;
-  const complaints = getComplaints();
+  const unit = localStorage.getItem("pondok_rajeg_user") || "";
+  const role = localStorage.getItem(ROLE_KEY) || "warga";
+  if (!unit) return;
 
-  if (!complaints.length) {
+  list.innerHTML = shimmerListHtml(2);
+  try {
+    const result =
+      role === "admin"
+        ? await sendToBackend(
+            "adminListComplaints",
+            { adminUnit: unit },
+            { silent: true },
+          )
+        : await sendToBackend("getMyComplaints", { unit }, { silent: true });
+    currentComplaintList = result.complaints || [];
+    renderComplaintList(role === "admin");
+  } catch (err) {
+    list.innerHTML = `<div class="empty-state-box">Gagal memuat pengaduan: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function renderComplaintList(isAdminView) {
+  const list = $("#complaintList");
+  if (!list) return;
+
+  if (!currentComplaintList.length) {
     list.innerHTML = `
       <div class="activity">
         <div class="activity-icon"><span class="material-symbols-rounded">forum</span></div>
-        <div class="activity-text"><b>Belum ada pengaduan</b><small>Laporkan kendala fasilitas umum.</small></div>
+        <div class="activity-text"><b>Belum ada pengaduan</b><small>${isAdminView ? "Belum ada laporan masuk dari warga." : "Laporkan kendala fasilitas umum."}</small></div>
       </div>`;
     return;
   }
 
-  list.innerHTML = complaints
-    .slice(0, 3)
-    .map(
-      (c) => `
+  list.innerHTML = currentComplaintList
+    .map((c) => {
+      const meta =
+        COMPLAINT_STATUS_META[c.status] || COMPLAINT_STATUS_META.Menunggu;
+      // [BARU] Fix #9: admin melihat tombol tindak lanjut LANGSUNG di sini,
+      // tidak perlu buka panel/card terpisah lagi.
+      const adminActions = isAdminView
+        ? `<div class="content-manage-actions" style="margin-top: 6px">
+            ${c.status !== "Diproses" ? `<button type="button" class="chip-btn" data-set-complaint-status="${escapeHtml(c.id)}|Diproses">Tindak Lanjuti</button>` : ""}
+            ${c.status !== "Selesai" ? `<button type="button" class="chip-btn" data-set-complaint-status="${escapeHtml(c.id)}|Selesai">Tandai Selesai</button>` : ""}
+            ${c.status !== "Menunggu" ? `<button type="button" class="chip-btn ghost" data-set-complaint-status="${escapeHtml(c.id)}|Menunggu">Batal Proses</button>` : ""}
+          </div>`
+        : "";
+      return `
     <div class="activity">
       <div class="activity-icon"><span class="material-symbols-rounded">campaign</span></div>
-      <div class="activity-text">
-        <b>${c.category} · ${c.location}</b>
-        <small>${c.description} (${c.date})</small>
+      <div class="activity-text" style="flex: 1;">
+        <b>${escapeHtml(c.category)} · ${escapeHtml(c.location)}</b>
+        <small>${escapeHtml(c.description)}${isAdminView ? ` — ${escapeHtml(c.name || "Warga")} (${escapeHtml(c.unit || "-")})` : ""} · ${escapeHtml(c.timestamp)}</small>
+        ${adminActions}
       </div>
-      <div class="activity-amount" style="color: #a46404; background: #fff3d5; padding: 2px 6px; border-radius: 6px; font-size: 9px;">Menunggu</div>
-    </div>
-  `,
-    )
+      <div class="activity-amount" style="color:${meta.color}; background:${meta.bg}; padding: 2px 6px; border-radius: 6px; font-size: 9px; align-self: flex-start;">${escapeHtml(meta.label)}</div>
+    </div>`;
+    })
     .join("");
+
+  if (isAdminView) {
+    list.querySelectorAll("[data-set-complaint-status]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const [id, status] = btn.dataset.setComplaintStatus.split("|");
+        updateComplaintStatus(id, status);
+      });
+    });
+  }
+}
+
+async function updateComplaintStatus(id, status) {
+  const adminUnit = localStorage.getItem("pondok_rajeg_user");
+  try {
+    const result = await sendToBackend("adminUpdateComplaintStatus", {
+      adminUnit,
+      id,
+      status,
+    });
+    showToast(result.message);
+    const item = currentComplaintList.find((c) => c.id === id);
+    if (item) item.status = status;
+    renderComplaintList(true);
+  } catch (err) {
+    showToast(`Gagal: ${err.message}`);
+  }
 }
 
 // ============================================================

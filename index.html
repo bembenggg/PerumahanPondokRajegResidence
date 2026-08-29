@@ -190,255 +190,365 @@
       </header>
 
       <main class="main-content">
-        <!-- KOLOM KIRI -->
-        <div class="dashboard-left">
-          <section class="hero">
-            <p class="eyebrow" id="welcomeUser">Selamat datang, Warga</p>
-            <h1>Lingkungan nyaman,<br /><em>semua urusan mudah.</em></h1>
-            <p class="hero-copy">
-              Kelola pembayaran IPL dan pantau keuangan kas warga secara
-              transparan.
-            </p>
-            <div class="hero-orb orb-one"></div>
-            <div class="hero-orb orb-two"></div>
-          </section>
+        <!-- [BARU] Fix #4/#6: dibungkus supaya bisa ditoggle show/hide
+             terpisah dari #feedPageView (Update Warga sekarang jadi
+             halaman sendiri, bukan digabung di tampilan utama lagi). -->
+        <div id="homePageView">
+          <!-- KOLOM KIRI -->
+          <div class="dashboard-left">
+            <section class="hero">
+              <p class="eyebrow" id="welcomeUser">Selamat datang, Warga</p>
+              <h1>Lingkungan nyaman,<br /><em>semua urusan mudah.</em></h1>
+              <p class="hero-copy">
+                Kelola pembayaran IPL dan pantau keuangan kas warga secara
+                transparan.
+              </p>
+              <div class="hero-orb orb-one"></div>
+              <div class="hero-orb orb-two"></div>
+            </section>
 
-          <!-- SURAT PERINGATAN -->
-          <section
-            id="arrearsWarningSection"
-            class="arrears-section"
-            style="display: none"
-          >
-            <div class="warning-banner-card" id="warningCardContainer">
-              <div class="warning-icon-box">
-                <span class="material-symbols-rounded" id="warningIconSymbol"
-                  >warning</span
-                >
+            <!-- SURAT PERINGATAN -->
+            <section
+              id="arrearsWarningSection"
+              class="arrears-section"
+              style="display: none"
+            >
+              <div class="warning-banner-card" id="warningCardContainer">
+                <div class="warning-icon-box">
+                  <span class="material-symbols-rounded" id="warningIconSymbol"
+                    >warning</span
+                  >
+                </div>
+                <div class="warning-content">
+                  <b id="warningTitle">SURAT PERINGATAN RESMI PAGUYUBAN PRR</b>
+                  <p id="warningDesc">
+                    Tunggakan IPL terdeteksi selama
+                    <span id="unpaidCount">0</span> bulan.
+                  </p>
+                  <div class="unpaid-months-list">
+                    <small
+                      >History Nunggak:
+                      <span id="unpaidMonthsText" class="text-danger-bold"
+                        >-</span
+                      ></small
+                    >
+                  </div>
+                </div>
               </div>
-              <div class="warning-content">
-                <b id="warningTitle">SURAT PERINGATAN RESMI PAGUYUBAN PRR</b>
-                <p id="warningDesc">
-                  Tunggakan IPL terdeteksi selama
-                  <span id="unpaidCount">0</span> bulan.
-                </p>
-                <div class="unpaid-months-list">
-                  <small
-                    >History Nunggak:
-                    <span id="unpaidMonthsText" class="text-danger-bold"
-                      >-</span
-                    ></small
+            </section>
+
+            <!-- RINGKASAN KEUANGAN -->
+            <section
+              class="balance-card cashflow-card"
+              aria-label="Ringkasan Keuangan"
+            >
+              <div class="net-balance-row">
+                <div class="net-balance-info">
+                  <span class="label"
+                    >Saldo Kas Bersih Paguyuban Bulan ini</span
+                  >
+                  <strong id="netBalance"
+                    ><span class="shimmer-text shimmer"></span
+                  ></strong>
+                </div>
+                <div class="house-icon cash">
+                  <span class="material-symbols-rounded"
+                    >account_balance_wallet</span
                   >
                 </div>
               </div>
-            </div>
-          </section>
 
-          <!-- RINGKASAN KEUANGAN -->
-          <section
-            class="balance-card cashflow-card"
-            aria-label="Ringkasan Keuangan"
-          >
-            <div class="net-balance-row">
-              <div class="net-balance-info">
-                <span class="label">Saldo Kas Bersih Paguyuban Bulan ini</span>
-                <strong id="netBalance"
-                  ><span class="shimmer-text shimmer"></span
-                ></strong>
-              </div>
-              <div class="house-icon cash">
-                <span class="material-symbols-rounded"
-                  >account_balance_wallet</span
-                >
-              </div>
-            </div>
-
-            <div class="finance-rows">
-              <div class="finance-row-item income">
-                <div class="row-left">
-                  <div class="row-icon">
-                    <span class="material-symbols-rounded">trending_down</span>
+              <div class="finance-rows">
+                <div class="finance-row-item income">
+                  <div class="row-left">
+                    <div class="row-icon">
+                      <span class="material-symbols-rounded"
+                        >trending_down</span
+                      >
+                    </div>
+                    <span>Total Pemasukan</span>
                   </div>
-                  <span>Total Pemasukan</span>
+                  <strong id="totalCashFlow" class="text-success"
+                    ><span class="shimmer-text shimmer"></span
+                  ></strong>
                 </div>
-                <strong id="totalCashFlow" class="text-success"
-                  ><span class="shimmer-text shimmer"></span
-                ></strong>
-              </div>
 
-              <div class="finance-row-item expense">
-                <div class="row-left">
-                  <div class="row-icon">
-                    <span class="material-symbols-rounded">trending_up</span>
+                <div class="finance-row-item expense">
+                  <div class="row-left">
+                    <div class="row-icon">
+                      <span class="material-symbols-rounded">trending_up</span>
+                    </div>
+                    <span>Total Pengeluaran</span>
                   </div>
-                  <span>Total Pengeluaran</span>
+                  <strong id="totalExpense" class="text-danger"
+                    ><span class="shimmer-text shimmer"></span
+                  ></strong>
                 </div>
-                <strong id="totalExpense" class="text-danger"
-                  ><span class="shimmer-text shimmer"></span
-                ></strong>
               </div>
-            </div>
-          </section>
+            </section>
 
-          <!-- KARTU TAGIHAN IPL -->
-          <section class="balance-card" aria-label="Status IPL">
-            <div class="balance-card-top">
-              <div class="balance-info">
-                <p>Tagihan IPL bulan ini</p>
-                <strong id="currentBill"
-                  ><span class="shimmer-text shimmer"></span
-                ></strong>
-                <span id="billStatus" class="status-chip"
-                  ><span class="shimmer-text shimmer-text-sm shimmer"></span
-                ></span>
+            <!-- KARTU TAGIHAN IPL -->
+            <section class="balance-card" aria-label="Status IPL">
+              <div class="balance-card-top">
+                <div class="balance-info">
+                  <p>Tagihan IPL bulan ini</p>
+                  <strong id="currentBill"
+                    ><span class="shimmer-text shimmer"></span
+                  ></strong>
+                  <span id="billStatus" class="status-chip"
+                    ><span class="shimmer-text shimmer-text-sm shimmer"></span
+                  ></span>
+                </div>
+                <div class="house-icon">
+                  <span class="material-symbols-rounded">home</span>
+                </div>
               </div>
-              <div class="house-icon">
-                <span class="material-symbols-rounded">home</span>
+              <button class="pay-small" data-page="ipl">
+                Bayar Tagihan Sekarang <span>→</span>
+              </button>
+            </section>
+
+            <!-- AKSES CEPAT -->
+            <section class="quick-section">
+              <div class="section-heading">
+                <h2>Akses cepat</h2>
+                <span>Menu Warga MY PRR</span>
               </div>
-            </div>
-            <button class="pay-small" data-page="ipl">
-              Bayar Tagihan Sekarang <span>→</span>
-            </button>
-          </section>
+              <!-- Sumber asli semua quick-card: disembunyikan, dipakai JS untuk membangun halaman carousel -->
+              <div id="quickGridSource" style="display: none">
+                <button class="quick-card" data-page="ipl">
+                  <b class="quick-icon money"
+                    ><span class="material-symbols-rounded">payments</span></b
+                  >
+                  <strong>Bayar IPL</strong>
+                  <small>Tagihan & bukti transfer</small>
+                </button>
+                <button class="quick-card" id="tukangBtn">
+                  <b class="quick-icon wrench"
+                    ><span class="material-symbols-rounded">handyman</span></b
+                  >
+                  <strong>Jasa & Internet</strong>
+                  <small>Tukang, Bnetfit & Biznet</small>
+                </button>
+                <button class="quick-card" id="healthBtn">
+                  <b class="quick-icon health"
+                    ><span class="material-symbols-rounded"
+                      >medical_services</span
+                    ></b
+                  >
+                  <strong>Darurat Medis</strong>
+                  <small>Klinik, Bidan & Ambulans</small>
+                </button>
+                <button class="quick-card" id="infoBtn">
+                  <b class="quick-icon info"
+                    ><span class="material-symbols-rounded">campaign</span></b
+                  >
+                  <strong>Info & Dokumen</strong>
+                  <small>STP PBB & Dokumen PDF</small>
+                </button>
+                <button
+                  class="quick-card"
+                  id="adminQuickBtn"
+                  data-admin-only="1"
+                  style="display: none"
+                >
+                  <b class="quick-icon admin"
+                    ><span class="material-symbols-rounded">verified</span></b
+                  >
+                  <strong>Verifikasi Tunai</strong>
+                  <small>Khusus Pengurus Paguyuban PRR</small>
+                </button>
 
-          <!-- AKSES CEPAT -->
-          <section class="quick-section">
-            <div class="section-heading">
-              <h2>Akses cepat</h2>
-              <span>Menu Warga MY PRR</span>
-            </div>
-            <!-- Sumber asli semua quick-card: disembunyikan, dipakai JS untuk membangun halaman carousel -->
-            <div id="quickGridSource" style="display: none">
-              <button class="quick-card" data-page="ipl">
-                <b class="quick-icon money"
-                  ><span class="material-symbols-rounded">payments</span></b
+                <button
+                  class="quick-card"
+                  id="expenseAdminBtn"
+                  data-admin-only="1"
+                  style="display: none"
                 >
-                <strong>Bayar IPL</strong>
-                <small>Tagihan & bukti transfer</small>
-              </button>
-              <button class="quick-card" id="tukangBtn">
-                <b class="quick-icon wrench"
-                  ><span class="material-symbols-rounded">handyman</span></b
-                >
-                <strong>Jasa & Internet</strong>
-                <small>Tukang, Bnetfit & Biznet</small>
-              </button>
-              <button class="quick-card" id="healthBtn">
-                <b class="quick-icon health"
-                  ><span class="material-symbols-rounded"
-                    >medical_services</span
-                  ></b
-                >
-                <strong>Darurat Medis</strong>
-                <small>Klinik, Bidan & Ambulans</small>
-              </button>
-              <button class="quick-card" id="infoBtn">
-                <b class="quick-icon info"
-                  ><span class="material-symbols-rounded">campaign</span></b
-                >
-                <strong>Info & Dokumen</strong>
-                <small>STP PBB & Dokumen PDF</small>
-              </button>
-              <button
-                class="quick-card"
-                id="adminQuickBtn"
-                data-admin-only="1"
-                style="display: none"
-              >
-                <b class="quick-icon admin"
-                  ><span class="material-symbols-rounded">verified</span></b
-                >
-                <strong>Verifikasi Tunai</strong>
-                <small>Khusus Pengurus Paguyuban PRR</small>
-              </button>
+                  <b class="quick-icon cashout"
+                    ><span class="material-symbols-rounded"
+                      >request_quote</span
+                    ></b
+                  >
+                  <strong>Catat Pengeluaran</strong>
+                  <small>Kas keluar Paguyuban</small>
+                </button>
 
-              <button
-                class="quick-card"
-                id="expenseAdminBtn"
-                data-admin-only="1"
-                style="display: none"
-              >
-                <b class="quick-icon cashout"
-                  ><span class="material-symbols-rounded"
-                    >request_quote</span
-                  ></b
+                <button
+                  class="quick-card"
+                  id="contentAdminBtn"
+                  data-admin-only="1"
+                  style="display: none"
                 >
-                <strong>Catat Pengeluaran</strong>
-                <small>Kas keluar Paguyuban</small>
-              </button>
+                  <b class="quick-icon content"
+                    ><span class="material-symbols-rounded"
+                      >dashboard_customize</span
+                    ></b
+                  >
+                  <strong>Kelola Konten</strong>
+                  <small>Jasa, Medis & Info Warga</small>
+                </button>
 
-              <button
-                class="quick-card"
-                id="contentAdminBtn"
-                data-admin-only="1"
-                style="display: none"
-              >
-                <b class="quick-icon content"
-                  ><span class="material-symbols-rounded"
-                    >dashboard_customize</span
-                  ></b
-                >
-                <strong>Kelola Konten</strong>
-                <small>Jasa, Medis & Info Warga</small>
-              </button>
-
-              <!-- [BARU] Kelola Warga: admin bisa daftarkan unit baru, ubah
+                <!-- [BARU] Kelola Warga: admin bisa daftarkan unit baru, ubah
                    data, & reset PIN langsung dari app — tanpa perlu buka
                    spreadsheet manual. -->
-              <button
-                class="quick-card"
-                id="userAdminBtn"
-                data-admin-only="1"
-                style="display: none"
-              >
-                <b class="quick-icon userMgmt"
-                  ><span class="material-symbols-rounded">group_add</span></b
+                <button
+                  class="quick-card"
+                  id="userAdminBtn"
+                  data-admin-only="1"
+                  style="display: none"
                 >
-                <strong>Kelola Warga</strong>
-                <small>Daftar unit & reset PIN</small>
-              </button>
+                  <b class="quick-icon userMgmt"
+                    ><span class="material-symbols-rounded">group_add</span></b
+                  >
+                  <strong>Kelola Warga</strong>
+                  <small>Daftar unit & reset PIN</small>
+                </button>
+              </div>
 
-              <!-- [BARU] Kelola Pengaduan: sebelumnya admin TIDAK PUNYA cara
-                   melihat pengaduan warga sama sekali dari aplikasi (cuma
-                   tersimpan lokal di HP warga masing-masing). -->
-              <button
-                class="quick-card"
-                id="complaintAdminBtn"
-                data-admin-only="1"
-                style="display: none"
-              >
-                <b class="quick-icon complaintMgmt"
-                  ><span class="material-symbols-rounded">campaign</span></b
+              <!-- Carousel halaman: JS memindahkan kartu dari quickGridSource ke sini, 6 kartu / halaman -->
+              <div class="quick-carousel-wrap">
+                <div class="quick-carousel" id="quickCarousel"></div>
+              </div>
+              <div class="quick-pager" id="quickPager" style="display: none">
+                <span class="quick-pager-label" id="quickPagerLabel"
+                  >1 dari 1 Halaman</span
                 >
-                <strong>Kelola Pengaduan</strong>
-                <small>Lihat & tindak lanjuti laporan</small>
-              </button>
-            </div>
+                <div class="quick-pager-dots" id="quickPagerDots"></div>
+              </div>
 
-            <!-- Carousel halaman: JS memindahkan kartu dari quickGridSource ke sini, 6 kartu / halaman -->
-            <div class="quick-carousel-wrap">
-              <div class="quick-carousel" id="quickCarousel"></div>
-            </div>
-            <div class="quick-pager" id="quickPager" style="display: none">
-              <span class="quick-pager-label" id="quickPagerLabel"
-                >1 dari 1 Halaman</span
-              >
-              <div class="quick-pager-dots" id="quickPagerDots"></div>
-            </div>
-
-            <!-- [BARU] Card Security & Tukang Sampah — DINAMIS, dikelola admin
+              <!-- [BARU] Card Security & Tukang Sampah — DINAMIS, dikelola admin
                  lewat "Kelola Konten" (tab Security / Tukang Sampah). Diisi
                  oleh JS (loadSecurityDuty/loadTrashDuty) dengan shimmer saat
                  memuat & badge "Sedang Bertugas" otomatis sesuai jam saat ini. -->
-            <div id="securityDutyContent"></div>
-            <div id="trashDutyContent"></div>
-          </section>
+              <div id="securityDutyContent"></div>
+              <div id="trashDutyContent"></div>
+            </section>
 
-          <!-- UPDATE WARGA -->
-          <section class="activity-section feed-section">
-            <div class="section-heading">
+            <!-- [BARU] Fix #3: Inventaris dipindah ke ATAS, sebelum Update
+               Warga & Pengaduan (yang dipindah dari kolom kanan ke sini),
+               supaya urutannya: ...duty cards -> Inventaris -> Update Warga
+               -> Pengaduan Lingkungan, sesuai permintaan. -->
+            <!-- INVENTARIS PRR — [BARU] Fix #4: dinamis, admin yang mengisi
+               lewat "Kelola Konten" (kategori Inventaris), bukan hardcoded. -->
+            <section class="inventory-section">
+              <div class="section-heading">
+                <h2>Inventaris MY PRR</h2>
+                <span>Fasilitas Warga</span>
+              </div>
+              <div id="inventoryListContent" class="inventory-grid"></div>
+            </section>
+
+            <!-- [BARU] Fix #6: Update Warga sudah PINDAH jadi halaman sendiri
+               (#feedPageView, di bawah), tidak lagi digabung di sini.
+               Pengaduan Lingkungan tetap di sini, sekarang otomatis jadi
+               section PALING BAWAH pada tampilan utama sesuai permintaan. -->
+            <section class="activity-section">
+              <div class="section-heading">
+                <h2>Pengaduan Lingkungan</h2>
+                <button id="openComplaintModalBtnRight" class="text-link-btn">
+                  + Buat Laporan
+                </button>
+              </div>
+              <div id="complaintList" class="activity-list"></div>
+            </section>
+          </div>
+
+          <!-- KOLOM KANAN -->
+          <div class="dashboard-right">
+            <section class="activity-section">
+              <div class="section-heading">
+                <h2>Laporan Keuangan MY PRR</h2>
+                <button id="viewFinanceDetail" class="text-link-btn">
+                  Lihat Detail →
+                </button>
+              </div>
+              <div id="financeReportList" class="activity-list">
+                <div class="skeleton-card">
+                  <div class="skeleton-thumb shimmer"></div>
+                  <div class="skeleton-lines">
+                    <div
+                      class="skeleton-line shimmer skeleton-line-title"
+                    ></div>
+                    <div class="skeleton-line shimmer skeleton-line-full"></div>
+                  </div>
+                </div>
+                <div class="skeleton-card">
+                  <div class="skeleton-thumb shimmer"></div>
+                  <div class="skeleton-lines">
+                    <div
+                      class="skeleton-line shimmer skeleton-line-title"
+                    ></div>
+                    <div class="skeleton-line shimmer skeleton-line-full"></div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="activity-section">
+              <div class="section-heading">
+                <h2>History Pembayaran Rumah Anda</h2>
+                <span id="currentYearLabel">Tahun 2026</span>
+              </div>
+              <div id="monthlyHistoryList" class="activity-list">
+                <div class="skeleton-card">
+                  <div class="skeleton-thumb shimmer"></div>
+                  <div class="skeleton-lines">
+                    <div
+                      class="skeleton-line shimmer skeleton-line-title"
+                    ></div>
+                    <div class="skeleton-line shimmer skeleton-line-full"></div>
+                  </div>
+                </div>
+                <div class="skeleton-card">
+                  <div class="skeleton-thumb shimmer"></div>
+                  <div class="skeleton-lines">
+                    <div
+                      class="skeleton-line shimmer skeleton-line-title"
+                    ></div>
+                    <div class="skeleton-line shimmer skeleton-line-full"></div>
+                  </div>
+                </div>
+                <div class="skeleton-card">
+                  <div class="skeleton-thumb shimmer"></div>
+                  <div class="skeleton-lines">
+                    <div
+                      class="skeleton-line shimmer skeleton-line-title"
+                    ></div>
+                    <div class="skeleton-line shimmer skeleton-line-full"></div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- [BARU] Slot khusus DESKTOP: kalau layar >=1024px, konten Update
+               Warga (dari #feedPageView) dipindah JS ke sini jadi sidebar
+               tetap terlihat — bukan halaman terpisah kayak di mobile. Kosong
+               & tersembunyi secara default; diisi oleh syncFeedPlacement(). -->
+            <section
+              class="activity-section feed-desktop-section"
+              id="feedDesktopSlot"
+              style="display: none"
+            ></section>
+          </div>
+        </div>
+        <!-- [BARU] Fix #4/#6: HALAMAN "UPDATE WARGA" TERSENDIRI — bukan lagi
+             digabung di tampilan utama (Beranda). Ditoggle show/hide lewat
+             showAppPage() di app.js, memakai elemen #socialFeedList /
+             #openPostComposerBtn yang SAMA (cuma dipindah ke sini), jadi
+             tidak perlu ubah logic render feed sama sekali. -->
+        <div id="feedPageView" style="display: none">
+          <section class="activity-section feed-section feed-page-hero">
+            <div class="feed-page-header">
               <h2>Update Warga</h2>
-              <span>Real-time</span>
+              <span class="feed-page-live-badge"
+                ><span class="pulse-dot"></span>Real-time</span
+              >
             </div>
+            <p class="feed-page-subtitle">
+              Linimasa warga MY PRR — berbagi info, kejadian, atau sekadar say
+              hi ke tetangga.
+            </p>
 
             <button
               type="button"
@@ -455,84 +565,6 @@
               <div class="empty-state-box">Memuat postingan warga...</div>
             </div>
           </section>
-
-          <!-- INVENTARIS PRR — [BARU] Fix #4: dinamis, admin yang mengisi
-               lewat "Kelola Konten" (kategori Inventaris), bukan hardcoded. -->
-          <section class="inventory-section">
-            <div class="section-heading">
-              <h2>Inventaris MY PRR</h2>
-              <span>Fasilitas Warga</span>
-            </div>
-            <div id="inventoryListContent" class="inventory-grid"></div>
-          </section>
-        </div>
-
-        <!-- KOLOM KANAN -->
-        <div class="dashboard-right">
-          <section class="activity-section">
-            <div class="section-heading">
-              <h2>Laporan Keuangan MY PRR</h2>
-              <button id="viewFinanceDetail" class="text-link-btn">
-                Lihat Detail →
-              </button>
-            </div>
-            <div id="financeReportList" class="activity-list">
-              <div class="skeleton-card">
-                <div class="skeleton-thumb shimmer"></div>
-                <div class="skeleton-lines">
-                  <div class="skeleton-line shimmer skeleton-line-title"></div>
-                  <div class="skeleton-line shimmer skeleton-line-full"></div>
-                </div>
-              </div>
-              <div class="skeleton-card">
-                <div class="skeleton-thumb shimmer"></div>
-                <div class="skeleton-lines">
-                  <div class="skeleton-line shimmer skeleton-line-title"></div>
-                  <div class="skeleton-line shimmer skeleton-line-full"></div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section class="activity-section">
-            <div class="section-heading">
-              <h2>Pengaduan Lingkungan</h2>
-              <button id="openComplaintModalBtnRight" class="text-link-btn">
-                + Buat Laporan
-              </button>
-            </div>
-            <div id="complaintList" class="activity-list"></div>
-          </section>
-
-          <section class="activity-section">
-            <div class="section-heading">
-              <h2>History Pembayaran Rumah Anda</h2>
-              <span id="currentYearLabel">Tahun 2026</span>
-            </div>
-            <div id="monthlyHistoryList" class="activity-list">
-              <div class="skeleton-card">
-                <div class="skeleton-thumb shimmer"></div>
-                <div class="skeleton-lines">
-                  <div class="skeleton-line shimmer skeleton-line-title"></div>
-                  <div class="skeleton-line shimmer skeleton-line-full"></div>
-                </div>
-              </div>
-              <div class="skeleton-card">
-                <div class="skeleton-thumb shimmer"></div>
-                <div class="skeleton-lines">
-                  <div class="skeleton-line shimmer skeleton-line-title"></div>
-                  <div class="skeleton-line shimmer skeleton-line-full"></div>
-                </div>
-              </div>
-              <div class="skeleton-card">
-                <div class="skeleton-thumb shimmer"></div>
-                <div class="skeleton-lines">
-                  <div class="skeleton-line shimmer skeleton-line-title"></div>
-                  <div class="skeleton-line shimmer skeleton-line-full"></div>
-                </div>
-              </div>
-            </div>
-          </section>
         </div>
       </main>
 
@@ -540,8 +572,8 @@
         <button class="nav-item active" data-page="home">
           <span class="material-symbols-rounded">home</span>Beranda
         </button>
-        <button class="nav-item" data-page="ipl">
-          <span class="material-symbols-rounded">receipt_long</span>IPL
+        <button class="nav-item" id="navFeedBtn" aria-label="Update Warga">
+          <span class="material-symbols-rounded">dynamic_feed</span>Update Warga
         </button>
         <button
           class="nav-item nav-item-post"
@@ -1515,60 +1547,6 @@
       </form>
     </dialog>
 
-    <!-- [BARU] MODAL KELOLA PENGADUAN (ADMIN) -->
-    <dialog id="complaintManagerDialog" class="modal content-manager-modal">
-      <form method="dialog">
-        <button type="button" class="close" value="cancel" aria-label="Tutup">
-          ×
-        </button>
-        <p class="eyebrow">PANEL PENGURUS PAGUYUBAN PRR</p>
-        <h2>Kelola Pengaduan</h2>
-        <p style="font-size: 12px; color: var(--muted); margin: 0 0 14px">
-          Semua pengaduan warga masuk ke sini secara real-time. Tandai statusnya
-          setelah ditindaklanjuti.
-        </p>
-
-        <div
-          style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin: 4px 0 10px;
-          "
-        >
-          <button
-            type="button"
-            id="complaintManagerRefreshBtn"
-            class="text-link-btn"
-          >
-            <span
-              class="material-symbols-rounded"
-              style="font-size: 14px; vertical-align: middle"
-              >refresh</span
-            >
-            Muat ulang
-          </button>
-          <select
-            id="complaintStatusFilter"
-            style="width: auto; padding: 6px 30px 6px 12px; font-size: 11px"
-          >
-            <option value="">Semua Status</option>
-            <option value="Menunggu">Menunggu</option>
-            <option value="Diproses">Diproses</option>
-            <option value="Selesai">Selesai</option>
-          </select>
-        </div>
-
-        <div id="complaintManagerGrid" class="content-card-grid">
-          <div class="empty-state-box">Memuat pengaduan...</div>
-        </div>
-
-        <button class="primary-button" value="cancel" style="margin-top: 14px">
-          Tutup
-        </button>
-      </form>
-    </dialog>
-
     <!-- MODAL FORM TAMBAH/EDIT KONTEN (ADMIN) -->
     <dialog id="contentFormDialog" class="modal">
       <form id="contentForm" method="dialog">
@@ -2029,6 +2007,16 @@
             <option>Keamanan / kejadian mencurigakan</option>
             <option>Kebakaran</option>
           </select>
+        </label>
+        <!-- [BARU] Field bebas seperti di menu Pengaduan, supaya warga bisa
+             kasih detail tambahan (opsional) selain kategori saja. -->
+        <label style="text-align: left"
+          >Keterangan Tambahan (Opsional)
+          <textarea
+            name="description"
+            rows="2"
+            placeholder="Contoh: lokasi tepatnya, kondisi korban, dll..."
+          ></textarea>
         </label>
         <button
           class="panic-confirm primary-button"
