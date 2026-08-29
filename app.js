@@ -4104,6 +4104,21 @@ document.addEventListener("DOMContentLoaded", () => {
   // konsisten di semua browser/perangkat termasuk iOS.
   async function showUnitSuggestions(query) {
     if (!unitSuggestList) return;
+
+    // [BARU] Tampilkan indikator loading DULU (sebelum data selesai diambil)
+    // — sebelumnya dropdown ini kosong diam-diam saat proses fetch, terasa
+    // seperti "tidak merespons". Kalau data sudah ada di cache (fetch
+    // sebelumnya sudah selesai), langsung skip loading state ini karena
+    // hasilnya akan tersedia instan tanpa jeda.
+    if (!unitListCache) {
+      unitSuggestList.innerHTML = `
+        <div class="unit-suggest-loading">
+          <span class="unit-suggest-spinner"></span>
+          Memuat daftar unit...
+        </div>`;
+      unitSuggestList.style.display = "block";
+    }
+
     const units = await loadUnitListCache();
     const q = query.trim().toLowerCase();
     const matches = (

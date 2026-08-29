@@ -2380,6 +2380,37 @@ body {
   white-space: nowrap;
 }
 
+/* [BARU] Indikator loading di dropdown saran unit — tampil sebentar saat
+   data pertama kali diambil dari server, supaya warga tahu sedang diproses
+   (bukan diam kosong yang terasa seperti macet). */
+.unit-suggest-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.unit-suggest-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--line);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: unitSuggestSpin 0.7s linear infinite;
+}
+@keyframes unitSuggestSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .unit-suggest-spinner {
+    animation: none;
+  }
+}
+
 .day-picker-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
