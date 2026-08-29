@@ -36,6 +36,20 @@
     <meta name="application-name" content="MY PRR" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- [FIX #6] SEBELUMNYA font "Inter" cuma disebut di CSS (font-family)
+         tapi TIDAK PERNAH benar-benar dimuat — tidak ada <link> Google
+         Fonts untuk itu sama sekali! Browser diam-diam jatuh ke font
+         sistem default (San Francisco/Segoe UI/Roboto tergantung OS),
+         bukan Inter yang sebenarnya dimaksud — itulah sumber kesan
+         kaku/generik yang dikeluhkan, bukan cuma soal gaya tombolnya saja.
+         Sekarang benar-benar dimuat dengan rentang bobot yang dipakai app
+         ini (400-800), termasuk dukungan variable font untuk transisi
+         antar bobot yang lebih halus. -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    />
     <link
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"
@@ -306,6 +320,19 @@
               <button class="pay-small" data-page="ipl">
                 Bayar Tagihan Sekarang <span>→</span>
               </button>
+              <!-- [BARU] Fix #4: badge indikator pembayaran yang tertunda
+                 dikirim (tersimpan lokal, menunggu koneksi pulih) — supaya
+                 warga tahu ada antrian, bukan bertanya-tanya apakah
+                 pembayarannya "hilang". Disembunyikan default, dimunculkan
+                 JS lewat updatePendingPaymentBadge() kalau antriannya > 0. -->
+              <div
+                id="pendingPaymentBadge"
+                class="pending-payment-badge"
+                style="display: none"
+              >
+                <span class="material-symbols-rounded">cloud_sync</span>
+                <span id="pendingPaymentCount">0</span>
+              </div>
             </section>
 
             <!-- AKSES CEPAT -->

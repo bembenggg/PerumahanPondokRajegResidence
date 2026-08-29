@@ -1,4 +1,4 @@
-const CACHE_NAME = "my-prr-warga-v0.6";
+const CACHE_NAME = "my-prr-warga-v0.7";
 const urlsToCache = ["./", "./index.html", "./style.css", "./app.js"];
 
 importScripts(
@@ -31,20 +31,34 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log("[service-worker.js] Menerima pesan latar belakang:", payload);
 
+  // [FIX BUG - Notif Dobel di iOS, lanjutan] Kalau payload SUDAH punya
+  // field "notification" (webpush.notification/display message dari
+  // backend), itu artinya push service di level OS SUDAH menampilkan
+  // notifikasinya secara otomatis SEBELUM handler ini sempat berjalan.
+  // Di Android, FCM SDK biasanya otomatis TIDAK memanggil
+  // onBackgroundMessage lagi untuk kasus ini — tapi Safari iOS diketahui
+  // punya perilaku berbeda: tetap memanggil handler ini WALAU notifikasi
+  // native sudah tampil, menyebabkan notifikasi muncul 2x untuk 1 pesan
+  // yang sama. Solusinya: kalau payload.notification sudah ada, JANGAN
+  // panggil showNotification() lagi di sini — cukup log saja untuk
+  // debugging. showNotification() hanya dipanggil untuk payload DATA-ONLY
+  // murni (payload.notification tidak ada), yang memang wajib kita
+  // tampilkan manual karena OS tidak bisa auto-display data-only message.
+  if (payload.notification) {
+    console.log(
+      "[service-worker.js] Payload sudah berupa display message (notifikasi native sudah/akan tampil otomatis) — skip showNotification() manual supaya tidak dobel di iOS.",
+    );
+    return;
+  }
+
   const notificationTitle =
-    (payload.notification && payload.notification.title) ||
-    (payload.data && payload.data.title) ||
-    "🚨 DARURAT MY PRR";
+    (payload.data && payload.data.title) || "🚨 DARURAT MY PRR";
 
   const tag =
-    (payload.notification && payload.notification.tag) ||
-    (payload.data && payload.data.tag) ||
-    payload.collapseKey ||
-    "my-prr-notif";
+    (payload.data && payload.data.tag) || payload.collapseKey || "my-prr-notif";
 
   const notificationOptions = {
     body:
-      (payload.notification && payload.notification.body) ||
       (payload.data && payload.data.body) ||
       "Ada pemberitahuan baru dari MY PRR.",
     icon: "icons/icon-192.png",
@@ -52,6 +66,7 @@ messaging.onBackgroundMessage((payload) => {
     vibrate: [300, 100, 300, 100, 300],
     tag: tag,
     renotify: true,
+    data: payload.data || {},
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);

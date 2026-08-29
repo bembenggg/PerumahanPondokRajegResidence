@@ -313,9 +313,15 @@ async function sendToBackend(action, data, options = {}) {
           false,
         );
       }
-      throw new Error(
+      const timeoutErr = new Error(
         "Server MY PRR sedang padat, mohon tunggu sebentar lalu coba simpan lagi.",
       );
+      // [BARU] Fix #4: tanda ini dipakai form pemanggil (mis. pembayaran)
+      // untuk membedakan "gagal karena koneksi/server" (layak diantrikan &
+      // dicoba ulang otomatis nanti) dari "ditolak karena alasan bisnis"
+      // (mis. PIN salah — percuma diulang otomatis, harus warga benahi dulu).
+      timeoutErr.isConnectionError = true;
+      throw timeoutErr;
     }
     if (!silent) {
       showAppModal(
@@ -324,9 +330,11 @@ async function sendToBackend(action, data, options = {}) {
         false,
       );
     }
-    throw new Error(
+    const connErr = new Error(
       "Gagal terhubung ke server. Periksa koneksi internet Anda, lalu coba lagi.",
     );
+    connErr.isConnectionError = true;
+    throw connErr;
   }
   clearTimeout(timeoutId);
 
@@ -344,9 +352,11 @@ async function sendToBackend(action, data, options = {}) {
         false,
       );
     }
-    throw new Error(
+    const parseErr = new Error(
       "Server MY PRR sedang padat / merespons tidak sesuai. Mohon tunggu sebentar lalu coba simpan lagi.",
     );
+    parseErr.isConnectionError = true;
+    throw parseErr;
   }
   if (!result.ok) throw new Error(result.message || "Gagal menyimpan data.");
   return result;
@@ -407,6 +417,97 @@ function showSaveFailureModal(err) {
     message,
     false,
   );
+}
+
+// ============================================================
+// [BARU] Fix #4/#5: ANTRIAN PEMBAYARAN OFFLINE — sebelumnya kalau
+// pengiriman bukti pembayaran gagal karena server padat/koneksi
+// terputus, bukti yang sudah difoto & di-upload warga hilang begitu
+// saja, harus mulai dari awal lagi. Sekarang: kalau gagalnya karena
+// KONEKSI/SERVER (bukan ditolak alasan bisnis, mis. PIN salah), data
+// pembayaran (termasuk foto bukti dalam bentuk base64) disimpan dulu
+// di perangkat warga, lalu OTOMATIS dicoba kirim lagi begitu koneksi
+// pulih (event "online") atau saat app dibuka lagi — tanpa warga
+// perlu foto ulang / isi form ulang.
+// ============================================================
+const PENDING_PAYMENTS_KEY = "pondok_rajeg_pending_payments";
+
+function getPendingPayments() {
+  try {
+    return JSON.parse(localStorage.getItem(PENDING_PAYMENTS_KEY) || "[]");
+  } catch (err) {
+    return [];
+  }
+}
+
+function savePendingPayments(list) {
+  try {
+    localStorage.setItem(PENDING_PAYMENTS_KEY, JSON.stringify(list));
+    return true;
+  } catch (err) {
+    // Kemungkinan localStorage penuh (bukti foto lumayan besar dalam
+    // base64) — beri tahu apa adanya, jangan gagal diam-diam.
+    console.error("Gagal menyimpan antrian pembayaran ke perangkat:", err);
+    return false;
+  }
+}
+
+function queuePendingPayment(paymentData) {
+  const list = getPendingPayments();
+  list.push({ ...paymentData, queuedAt: Date.now() });
+  return savePendingPayments(list);
+}
+
+function updatePendingPaymentBadge() {
+  const badge = $("#pendingPaymentBadge");
+  const countEl = $("#pendingPaymentCount");
+  if (!badge) return;
+  const count = getPendingPayments().length;
+  badge.style.display = count > 0 ? "flex" : "none";
+  // [FIX] Set textContent HANYA pada span jumlahnya, bukan pada badge
+  // secara keseluruhan — badge juga punya ikon di dalamnya yang akan
+  // ikut terhapus kalau textContent dipasang di elemen pembungkusnya.
+  if (countEl) countEl.textContent = String(count);
+}
+
+let isSyncingPendingPayments = false;
+async function trySyncPendingPayments() {
+  if (isSyncingPendingPayments) return; // cegah dobel jalan bersamaan
+  const list = getPendingPayments();
+  if (!list.length) return;
+  isSyncingPendingPayments = true;
+
+  const stillPending = [];
+  let syncedCount = 0;
+  for (const item of list) {
+    try {
+      const { queuedAt, ...payload } = item;
+      await sendToBackend("payment", payload, { silent: true });
+      syncedCount++;
+    } catch (err) {
+      // Masih gagal (server masih padat/offline) -> simpan lagi utk
+      // dicoba di kesempatan berikutnya, JANGAN dibuang.
+      stillPending.push(item);
+    }
+  }
+  savePendingPayments(stillPending);
+  updatePendingPaymentBadge();
+  isSyncingPendingPayments = false;
+
+  if (syncedCount > 0) {
+    // [Fix #5] Warga diberi tahu SECARA EKSPLISIT begitu antriannya
+    // berhasil sampai ke server, supaya tidak was-was apakah
+    // pembayarannya "hilang" saat koneksi sempat putus tadi.
+    showAppModal(
+      "Pembayaran Berhasil Terkirim",
+      syncedCount === 1
+        ? "1 bukti pembayaran yang sempat tertunda karena koneksi tadi sudah berhasil masuk ke server dan sedang menunggu verifikasi Pengurus Paguyuban PRR."
+        : `${syncedCount} bukti pembayaran yang sempat tertunda karena koneksi tadi sudah berhasil masuk ke server dan sedang menunggu verifikasi Pengurus Paguyuban PRR.`,
+      true,
+    );
+    const activeUnit = localStorage.getItem("pondok_rajeg_user");
+    if (activeUnit) safeRefreshDashboard(activeUnit);
+  }
 }
 
 function fileToBase64(file) {
@@ -700,6 +801,56 @@ function goToPost(postId) {
   tryScroll(0);
 }
 
+// [BARU] Fix #2: navigasi ke DIALOG/SECTION konten yang tepat berdasarkan
+// tipenya (jasa/internet/kesehatan/pengumuman/adart/inventaris/dst) —
+// dipakai saat notifikasi push "konten baru ditambahkan admin" di-tap,
+// supaya warga langsung diarahkan ke kontennya, bukan cuma "nyangkut" di
+// halaman utama tanpa tahu kontennya ada di mana.
+function openContentDialogByType(contentType) {
+  if (typeof window.showAppPage === "function") window.showAppPage("home");
+
+  const openAfterHome = () => {
+    if (contentType === "jasa" || contentType === "internet") {
+      const dialog = $("#tukangDialog");
+      const tabBtn = document.querySelector(
+        `[data-tukangtab="${contentType}"]`,
+      );
+      tabBtn?.click();
+      dialog?.showModal();
+      loadTukangList();
+      loadInternetList();
+    } else if (contentType === "kesehatan") {
+      $("#healthDialog")?.showModal();
+      loadHealthList();
+    } else if (contentType === "pengumuman" || contentType === "adart") {
+      const dialog = $("#infoDialog");
+      const infoTab = contentType === "pengumuman" ? "announcements" : "adart";
+      const tabBtn = document.querySelector(`[data-infotab="${infoTab}"]`);
+      backToInfoList();
+      dialog?.showModal();
+      tabBtn?.click();
+    } else if (contentType === "inventaris") {
+      // Inventaris tampil langsung di Beranda (bukan dialog terpisah) —
+      // cukup scroll ke section-nya.
+      setTimeout(() => {
+        document
+          .querySelector(".inventory-section")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 300);
+    } else if (contentType === "sampah" || contentType === "security") {
+      // Jadwal duty juga tampil langsung di Beranda.
+      const target =
+        contentType === "sampah" ? "#trashDutyContent" : "#securityDutyContent";
+      setTimeout(() => {
+        $(target)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 300);
+    }
+  };
+  // Beri jeda sedikit supaya #homePageView sempat ditampilkan dulu (kalau
+  // sebelumnya sedang di halaman Update Warga) sebelum buka dialog di atasnya.
+  setTimeout(openAfterHome, 150);
+}
+
 // [BARU] Navigasi terpusat dari klik PUSH NOTIFICATION (bukan cuma badge
 // lonceng in-app yang sudah lebih dulu berfungsi). Dipanggil dari 2 jalur:
 // 1) postMessage dari service worker, kalau tab app SUDAH terbuka saat
@@ -718,11 +869,12 @@ function handleNotifNavigation(refType, refId, title, body) {
         block: "start",
       });
     }, 350);
+  } else if (refType === "content" && refId) {
+    openContentDialogByType(refId);
   } else if (title || body) {
-    // [BARU] Fix #2: refType lain (panic/content/payment/expense/trash/dll)
-    // TIDAK punya halaman/section khusus untuk dituju — daripada warga
-    // dibawa ke Beranda tanpa konteks (lalu bingung notifikasi ini soal
-    // apa), langsung tampilkan ISI notifikasinya lewat modal.
+    // [BARU] Fix #2: refType lain (panic/payment/expense/dll) TIDAK punya
+    // halaman/section khusus untuk dituju — daripada warga dibawa ke
+    // Beranda tanpa konteks, langsung tampilkan ISI notifikasinya lewat modal.
     showAppModal(title || "Notifikasi", body || "", true);
   }
 }
@@ -3279,12 +3431,18 @@ document.addEventListener("DOMContentLoaded", () => {
             pin: formData.pin,
           },
         );
+        // [FIX BUG #3] Sebelumnya showAppModal() dipanggil SEBELUM
+        // userFormDialog ditutup — urutannya kebalik. Dialog form yang
+        // masih terbuka bisa "menimpa" modal sukses ini (native stacking
+        // dialog browser tidak selalu konsisten kalau dialog LAMA belum
+        // ditutup saat dialog BARU dibuka). Sekarang form ditutup DULU,
+        // baru modal sukses dibuka.
+        userFormDialog?.close();
         showAppModal(
           isEdit ? "Unit Diperbarui" : "Unit Terdaftar",
           result.message,
           true,
         );
-        userFormDialog?.close();
         loadUserManagerGrid();
       } catch (err) {
         showToast(`Gagal: ${err.message}`);
@@ -3315,8 +3473,10 @@ document.addEventListener("DOMContentLoaded", () => {
         // [BARU] PIN baru ditampilkan lewat modal yang TIDAK otomatis
         // hilang (bukan toast), supaya admin sempat mencatat/menyalinnya
         // sebelum menyampaikan ke warga secara pribadi.
-        showAppModal("PIN Berhasil Direset", result.message, true);
+        // [FIX BUG #3] Sama seperti di form Kelola Warga — dialog resetPin
+        // ditutup DULU sebelum modal sukses dibuka, bukan sebaliknya.
         resetPinDialog?.close();
+        showAppModal("PIN Berhasil Direset", result.message, true);
       } catch (err) {
         showToast(`Gagal: ${err.message}`);
       } finally {
@@ -4514,6 +4674,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
       $("#iplDialog")?.close();
 
+      // [FIX] proofBase64 dikonversi SEKALI di sini (bukan di dalam try,
+      // lalu diulang lagi di catch) — dipakai baik untuk pengiriman normal
+      // maupun untuk diantrikan kalau ternyata gagal karena koneksi. Tetap
+      // dibungkus try/catch sendiri supaya kegagalan BACA FILE (jarang
+      // terjadi, beda dari kegagalan koneksi ke server) tetap tertangani
+      // rapi, bukan jadi unhandled error.
+      let proofBase64;
+      try {
+        proofBase64 = await fileToBase64(proofFile);
+      } catch (readErr) {
+        showToast(
+          "Gagal membaca file bukti pembayaran. Coba pilih ulang filenya.",
+        );
+        return;
+      }
+      const proofMimeType = proofFile.type || "image/jpeg";
+      const amountValue =
+        Number(data.amount) || selectedMonths.length * DEFAULT_BILL;
+
       if (loadingModal) {
         loadingModal.innerHTML = `
   <div class="cyber-modal-card">
@@ -4545,17 +4724,23 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       try {
-        const proofBase64 = await fileToBase64(proofFile);
-        const proofMimeType = proofFile.type || "image/jpeg";
-
-        const result = await sendToBackend("payment", {
+        const paymentPayload = {
           name: activeName,
           unit: activeUnit,
           method,
           months: selectedMonths,
-          amount: Number(data.amount) || selectedMonths.length * DEFAULT_BILL,
+          amount: amountValue,
           proofBase64,
           proofMimeType,
+        };
+
+        // [BARU] Fix #4: {silent:true} supaya modal generik "Server Sedang
+        // Padat" bawaan sendToBackend TIDAK muncul di sini — kalau memang
+        // gagal karena koneksi, kita tampilkan modal KHUSUS yang menjelaskan
+        // datanya sudah diamankan & akan otomatis dikirim ulang (bukan modal
+        // generik yang bikin warga kira harus mengulang dari awal).
+        const result = await sendToBackend("payment", paymentPayload, {
+          silent: true,
         });
 
         stopTechScannerAnimation();
@@ -4563,15 +4748,59 @@ document.addEventListener("DOMContentLoaded", () => {
         paymentForm.reset();
         safeRefreshDashboard(activeUnit);
         loadNotifications();
-        showAppModal("Berhasil!", result.message, true);
+        // [Fix #5] Warga diberi tahu eksplisit bahwa buktinya SUDAH masuk
+        // ke server & sedang tahap verifikasi (bukan cuma pesan generik).
+        showAppModal("Bukti Pembayaran Terkirim", result.message, true);
       } catch (error) {
         stopTechScannerAnimation();
         if (loadingModal) loadingModal.close();
-        $("#iplDialog")?.showModal();
-        showAppModal("Gagal", error.message, false);
+
+        if (error.isConnectionError) {
+          // [BARU] Fix #4: gagal karena KONEKSI/SERVER (bukan ditolak
+          // alasan bisnis) -> simpan ke antrian perangkat, JANGAN paksa
+          // warga foto ulang/isi ulang. Akan otomatis dicoba kirim lagi
+          // saat koneksi pulih (event "online") atau saat app dibuka lagi.
+          const queued = queuePendingPayment({
+            name: activeName,
+            unit: activeUnit,
+            method,
+            months: selectedMonths,
+            amount: amountValue,
+            proofBase64,
+            proofMimeType,
+          });
+
+          paymentForm.reset();
+          updatePendingPaymentBadge();
+
+          if (queued) {
+            showAppModal(
+              "Tersimpan, Akan Dikirim Otomatis",
+              "Server sedang padat, tapi bukti pembayaran Anda sudah diamankan di perangkat ini. Begitu koneksi kembali stabil, sistem akan otomatis mengirimkannya ke server — Anda tidak perlu mengulang dari awal.",
+              true,
+            );
+          } else {
+            // localStorage penuh/gagal simpan -> jangan pura-pura berhasil,
+            // tetap minta warga coba manual.
+            $("#iplDialog")?.showModal();
+            showAppModal("Gagal", error.message, false);
+          }
+        } else {
+          // Ditolak alasan BISNIS (mis. validasi, PIN, dsb) -> percuma
+          // diantrikan/diulang otomatis, warga perlu benahi dulu.
+          $("#iplDialog")?.showModal();
+          showAppModal("Gagal", error.message, false);
+        }
       }
     });
   }
+
+  // [BARU] Fix #4: coba sinkronkan antrian pembayaran tertunda begitu app
+  // dibuka (jaga-jaga ada sisa dari sesi sebelumnya yang koneksinya putus),
+  // dan otomatis lagi setiap kali koneksi internet kembali online.
+  updatePendingPaymentBadge();
+  trySyncPendingPayments();
+  window.addEventListener("online", trySyncPendingPayments);
 
   refreshWelcomeHeader();
 });

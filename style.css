@@ -658,6 +658,41 @@ body {
   transition: background 0.2s;
 }
 
+/* [BARU] Fix #4: badge antrian pembayaran tertunda — muncul saat ada
+   bukti pembayaran yang tersimpan lokal, menunggu koneksi pulih. */
+.pending-payment-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #b45309;
+  font-size: 11px;
+  font-weight: 700;
+}
+.pending-payment-badge .material-symbols-rounded {
+  font-size: 15px;
+  animation: pendingBadgePulse 1.6s ease-in-out infinite;
+}
+@keyframes pendingBadgePulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pending-payment-badge .material-symbols-rounded {
+    animation: none;
+  }
+}
+
 /* [BARU] Card Security & Tukang Sampah — DINAMIS (menggantikan markup statis
    lama .security-duty-card). Fix #7: KEDUA kartu memakai gradient hijau yang
    SAMA dengan hero/branding utama situs (bukan navy/coklat yang beda tema
@@ -1166,7 +1201,7 @@ body {
   background: #fff;
   border: 1.5px solid var(--line);
   color: var(--green);
-  font-weight: 750;
+  font-weight: 700;
   font-size: 12px;
   border-radius: 16px;
   cursor: pointer;
@@ -1739,7 +1774,7 @@ body {
   margin: 0 0 18px;
   letter-spacing: -0.5px;
   color: var(--dark);
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .close {
@@ -2796,12 +2831,20 @@ input[type="file"]::file-selector-button {
   border-radius: 14px;
   padding: 14px;
   margin-top: 14px;
-  font-weight: 750;
+  font-weight: 700;
   font-size: 14px;
+  letter-spacing: 0.1px;
   cursor: pointer;
+  transition:
+    opacity 0.15s,
+    transform 0.1s;
 }
 .primary-button:hover {
   opacity: 0.92;
+}
+.primary-button:active,
+.panic-confirm:active {
+  transform: scale(0.98);
 }
 
 .form-note {
@@ -2856,7 +2899,7 @@ input[type="file"]::file-selector-button {
   font-size: 11px;
   color: var(--muted);
   margin-bottom: 8px;
-  font-weight: 750;
+  font-weight: 700;
   overflow-wrap: anywhere;
 }
 .article-detail-body-text p {
