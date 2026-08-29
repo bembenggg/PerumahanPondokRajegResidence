@@ -1238,6 +1238,13 @@ function monthBadgeMeta(category) {
   return { text: "Bayar di Muka", cls: "badge-advance" };
 }
 
+// [BARU] Relayout "2026 modern": dari daftar vertikal panjang jadi grid
+// petak (tile) ringkas dikelompokkan per TAHUN — penting sekarang karena
+// jendela bulan bisa mencakup 2 tahun sekaligus (tahun lalu utk tunggakan +
+// tahun berjalan sampai Desember). Tetap pakai elemen <input type="checkbox">
+// dengan name="selectedMonth" yang sama supaya getSelectedMonths()/
+// updateSelectedMonthsSummary() tidak perlu diubah — cuma tampilannya yang
+// dirombak (class pembungkusnya sekarang .month-tile, bukan .month-row lagi).
 function renderMonthsPicker(unpaidMonths) {
   const container = $("#monthsPickerContainer");
   if (!container) return;
@@ -1248,24 +1255,54 @@ function renderMonthsPicker(unpaidMonths) {
     return;
   }
 
-  container.innerHTML = unpaidMonths
-    .map((item, idx) => {
-      const badge = monthBadgeMeta(item.category);
+  // Kelompokkan per tahun, urut sesuai urutan asli dari backend (kronologis).
+  const groups = [];
+  const groupIndexByYear = {};
+  unpaidMonths.forEach((item) => {
+    const year = item.label.split(" ")[1];
+    if (!(year in groupIndexByYear)) {
+      groupIndexByYear[year] = groups.length;
+      groups.push({ year, items: [] });
+    }
+    groups[groupIndexByYear[year]].items.push(item);
+  });
+
+  const currentYear = String(new Date().getFullYear());
+  let firstItemRendered = false;
+
+  container.innerHTML = groups
+    .map((group) => {
+      const isCurrentYear = group.year === currentYear;
       return `
-    <label class="month-row" data-month="${item.label}">
-      <input type="checkbox" name="selectedMonth" value="${item.label}" ${idx === 0 ? "checked" : ""} />
-      <span class="month-row-info">
-        <b>${item.label}</b>
-        <small class="month-badge ${badge.cls}">${badge.text}</small>
-      </span>
-      <span class="month-row-check"><span class="material-symbols-rounded">check</span></span>
-    </label>`;
+    <div class="months-year-group">
+      <div class="months-year-label">
+        ${escapeHtml(group.year)}
+        <span class="months-year-tag">${isCurrentYear ? "Tahun Ini" : "Tahun Lalu"}</span>
+      </div>
+      <div class="months-tile-grid">
+        ${group.items
+          .map((item) => {
+            const badge = monthBadgeMeta(item.category);
+            const monthShort = item.label.split(" ")[0].slice(0, 3);
+            const isFirst = !firstItemRendered;
+            firstItemRendered = true;
+            return `
+          <label class="month-tile ${badge.cls}" data-month="${escapeHtml(item.label)}">
+            <input type="checkbox" name="selectedMonth" value="${escapeHtml(item.label)}" ${isFirst ? "checked" : ""} />
+            <span class="month-tile-name">${escapeHtml(monthShort)}</span>
+            <span class="month-tile-badge-dot"></span>
+            <span class="month-tile-check"><span class="material-symbols-rounded">check</span></span>
+          </label>`;
+          })
+          .join("")}
+      </div>
+    </div>`;
     })
     .join("");
 
-  container.querySelectorAll(".month-row").forEach((row) => {
-    const checkbox = row.querySelector("input");
-    const syncState = () => row.classList.toggle("checked", checkbox.checked);
+  container.querySelectorAll(".month-tile").forEach((tile) => {
+    const checkbox = tile.querySelector("input");
+    const syncState = () => tile.classList.toggle("checked", checkbox.checked);
     syncState();
     checkbox.addEventListener("change", () => {
       syncState();
@@ -3715,7 +3752,11 @@ document.addEventListener("DOMContentLoaded", () => {
         .querySelectorAll("#monthsPickerContainer input[name='selectedMonth']")
         .forEach((cb) => {
           cb.checked = true;
-          cb.closest(".month-row")?.classList.add("checked");
+          // [FIX BUG] Sebelumnya masih cari ".month-row" (class lama sebelum
+          // relayout jadi grid tile) — sekarang tile-nya pakai class
+          // ".month-tile", jadi visual centang tidak pernah ikut ter-update
+          // walau checkbox-nya sendiri sebenarnya sudah checked.
+          cb.closest(".month-tile")?.classList.add("checked");
         });
       updateSelectedMonthsSummary();
     });
@@ -3726,7 +3767,7 @@ document.addEventListener("DOMContentLoaded", () => {
         .querySelectorAll("#monthsPickerContainer input[name='selectedMonth']")
         .forEach((cb) => {
           cb.checked = false;
-          cb.closest(".month-row")?.classList.remove("checked");
+          cb.closest(".month-tile")?.classList.remove("checked");
         });
       updateSelectedMonthsSummary();
     });

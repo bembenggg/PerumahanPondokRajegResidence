@@ -2201,15 +2201,137 @@ body {
 .months-picker {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  max-height: 280px;
+  gap: 14px;
+  max-height: 340px;
   overflow-y: auto;
-  padding: 8px;
+  padding: 10px;
   margin-top: 4px;
   border: 1.5px solid var(--line);
-  border-radius: 16px;
+  border-radius: 18px;
   background: #f8fbf9;
 }
+
+/* [BARU] Relayout "2026 modern" — grid petak (tile) ringkas dikelompokkan
+   per tahun, menggantikan daftar baris vertikal panjang. Dipakai karena
+   jendela bulan sekarang mencakup 2 tahun sekaligus (Januari tahun lalu s/d
+   Desember tahun berjalan). */
+.months-year-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.months-year-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--dark);
+  padding: 0 2px;
+  position: sticky;
+  top: -10px;
+  background: #f8fbf9;
+  z-index: 1;
+}
+.months-year-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--muted);
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 2px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+}
+.months-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.month-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 4px 10px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1.5px solid var(--line);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.1s;
+}
+.month-tile:active {
+  transform: scale(0.96);
+}
+.month-tile input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.month-tile-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.month-tile-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.month-tile.badge-overdue .month-tile-badge-dot {
+  background: #dc2626;
+}
+.month-tile.badge-current .month-tile-badge-dot {
+  background: #b45309;
+}
+.month-tile.badge-advance .month-tile-badge-dot {
+  background: #2563eb;
+}
+.month-tile-check {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
+  box-shadow: 0 2px 6px rgba(8, 122, 75, 0.4);
+}
+.month-tile-check .material-symbols-rounded {
+  font-size: 13px;
+}
+.month-tile.checked {
+  background: linear-gradient(145deg, var(--soft), #fff);
+  border-color: var(--green);
+  box-shadow: 0 4px 10px rgba(8, 122, 75, 0.12);
+}
+.month-tile.checked .month-tile-check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Baris/legenda lama tetap dipakai di tempat lain (mis. .months-picker-hint
+   di atas grid ini) — class dasarnya dipertahankan, cuma tile baru ini yang
+   memakai turunannya (.month-tile.badge-xxx) untuk aksen titik warna. */
 .month-row {
   display: flex;
   align-items: center;
