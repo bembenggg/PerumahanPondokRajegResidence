@@ -274,6 +274,19 @@ const rupiah = (value) =>
     maximumFractionDigits: 0,
   }).format(Number(value) || 0);
 
+// [DIPERLUAS] Sebelumnya cuma untuk QRIS — sekarang berlaku untuk Transfer
+// Bank juga, karena keduanya sekarang sama-sama pakai kode unik (lihat
+// getPaymentUniqueCode di atas). Tunai TIDAK di-highlight karena tidak
+// pakai kode unik (diverifikasi manual, bukan dicocokkan ke nominal).
+function formatAmountWithQrisHighlight(amount, method) {
+  const formatted = rupiah(amount);
+  if (method !== "QRIS" && method !== "Transfer Bank") return formatted;
+  return (
+    formatted.slice(0, -3) +
+    `<span class="qris-code-highlight">${formatted.slice(-3)}</span>`
+  );
+}
+
 // [BARU] Fix #3: timeout + pesan kontekstual terpusat — SEMUA pemanggilan
 // backend lewat fungsi ini (dipakai hampir seluruh tombol simpan di app),
 // jadi cukup diperbaiki di SATU tempat. Kalau server lambat merespons
@@ -1473,34 +1486,115 @@ function getSelectedMonths() {
   ).map((el) => el.value);
 }
 
+// [BARU] Kode unik QRIS: 3 digit ditambahkan ke nominal, supaya admin bisa
+// mencocokkan pembayaran mana milik siapa lewat riwayat transaksi di app
+// Livin Merchant/GoPay Merchant (yang tidak tersambung API/webhook ke
+// sistem ini). Di-cache per nominal dasar supaya kodenya STABIL selama
+// warga belum mengubah jumlah bulan yang dipilih (tidak berubah-ubah tiap
+// re-render, biar tidak membingungkan).
+// [DIPERLUAS] Sebelumnya cuma berlaku untuk QRIS — sekarang juga berlaku
+// untuk Transfer Bank, karena kode unik justru bikin AI Vision LEBIH akurat
+// memverifikasi: begitu AI berhasil baca satu angka dari struk (format
+// struk beda-beda tiap bank: BCA/Mandiri/BRI/Jago dst), kecocokan PERSIS ke
+// angka spesifik (bukan angka bulat yang bisa kebetulan cocok) jauh lebih
+// meyakinkan sebagai bukti — bukan cuma "≥ tagihan" yang longgar. TIDAK
+// berlaku untuk Tunai karena itu diverifikasi manual oleh admin, bukan AI.
+const paymentUniqueCodeCache = {};
+function getPaymentUniqueCode(baseTotal) {
+  const key = String(baseTotal);
+  if (!paymentUniqueCodeCache[key]) {
+    paymentUniqueCodeCache[key] = Math.floor(Math.random() * 900) + 100; // 100-999
+  }
+  return paymentUniqueCodeCache[key];
+}
+
 function updateSelectedMonthsSummary() {
   const selected = getSelectedMonths();
-  const total = selected.length * DEFAULT_BILL;
+  const baseTotal = selected.length * DEFAULT_BILL;
+  const method = $("#paymentMethodSelect")?.value || "Transfer Bank";
   const modalBillEl = $("#modalBill");
   const countEl = $("#modalBillMonthsCount");
   const hiddenAmount = $("#paymentAmountHidden");
+  const qrisCodeNote = $("#qrisUniqueCodeNote");
+  const usesUniqueCode = method === "QRIS" || method === "Transfer Bank";
 
-  if (modalBillEl) modalBillEl.textContent = rupiah(total);
+  let finalTotal = baseTotal;
+  if (usesUniqueCode && baseTotal > 0) {
+    const code = getPaymentUniqueCode(baseTotal);
+    finalTotal = baseTotal + code;
+    if (qrisCodeNote) {
+      qrisCodeNote.style.display = "block";
+      const verb = method === "QRIS" ? "Transfer" : "Kirim";
+      // [BARU] Tombol "Salin Nominal" — supaya warga tidak perlu ketik
+      // manual nominal yang agak tidak biasa (rawan salah ketik/typo),
+      // cukup tap sekali lalu tempel langsung di app pembayaran mereka.
+      qrisCodeNote.innerHTML = `
+        ⚠️ <b>${verb} PERSIS ${rupiah(finalTotal)}</b> (BUKAN ${rupiah(baseTotal)} bulat) — 3 digit terakhir (<b>${String(code).padStart(3, "0")}</b>) adalah kode unik Anda, WAJIB disertakan supaya pembayaran Anda mudah &amp; cepat diverifikasi.
+        <button type="button" id="copyQrisAmountBtn" class="qris-copy-btn" data-amount="${finalTotal}">
+          <span class="material-symbols-rounded">content_copy</span> Salin Nominal
+        </button>`;
+      const copyBtn = $("#copyQrisAmountBtn");
+      if (copyBtn) {
+        copyBtn.addEventListener("click", async () => {
+          const rawAmount = copyBtn.dataset.amount;
+          try {
+            await navigator.clipboard.writeText(rawAmount);
+          } catch (err) {
+            // Fallback untuk browser lama/tanpa izin clipboard API.
+            const tempInput = document.createElement("textarea");
+            tempInput.value = rawAmount;
+            tempInput.style.position = "fixed";
+            tempInput.style.opacity = "0";
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+          }
+          copyBtn.innerHTML = `<span class="material-symbols-rounded">check</span> Tersalin!`;
+          setTimeout(() => {
+            copyBtn.innerHTML = `<span class="material-symbols-rounded">content_copy</span> Salin Nominal`;
+          }, 1800);
+        });
+      }
+    }
+  } else if (qrisCodeNote) {
+    qrisCodeNote.style.display = "none";
+  }
+
+  if (modalBillEl) modalBillEl.textContent = rupiah(finalTotal);
   if (countEl) {
     countEl.textContent = selected.length
       ? `${selected.length} bulan dipilih: ${selected.join(", ")}`
       : "Belum ada bulan dipilih";
   }
-  if (hiddenAmount) hiddenAmount.value = total;
+  if (hiddenAmount) hiddenAmount.value = finalTotal;
 }
 
 function updatePaymentMethodUI(method) {
   const note = $("#paymentMethodNote");
   const proofLabelText = $("#proofLabelText");
+  const qrisBlock = $("#qrisImageBlock");
   if (!note || !proofLabelText) return;
+
+  // [BARU] Metode QRIS: tampilkan gambar QR statis (Livin Merchant/GoPay
+  // Merchant) + instruksi scan, sembunyikan catatan rekening bank (tidak
+  // relevan untuk QRIS).
+  if (qrisBlock) qrisBlock.style.display = method === "QRIS" ? "block" : "none";
 
   if (method === "Tunai ke petugas") {
     note.className = "payment-method-note cash-note";
     note.innerHTML = `⚠️ <b>Metode Tunai:</b> Serahkan uang tunai kepada Pengurus Paguyuban PRR bagian keuangan, lalu foto kwitansi/tanda terima sebagai bukti.`;
+    note.style.display = "block";
     proofLabelText.textContent =
       "Bukti Serah Terima Tunai (Foto Kwitansi) — Wajib";
+  } else if (method === "QRIS") {
+    // Catatan rekening bank disembunyikan (gambar QRIS di atas sudah
+    // menggantikan perannya sebagai instruksi pembayaran).
+    note.style.display = "none";
+    proofLabelText.textContent = "Bukti Pembayaran QRIS (Screenshot) — Wajib";
   } else {
     note.className = "payment-method-note";
+    note.style.display = "block";
     note.innerHTML = `💡 Transfer wajib ke <b>Bank Jago a.n Muhamad Kurnia Fauqou Nur (504460167350)</b>.`;
     proofLabelText.textContent = "Bukti Transfer (Foto / PDF) — Wajib";
   }
@@ -1674,7 +1768,7 @@ function showAdminDetail(item) {
   if (titleEl) titleEl.textContent = `${item.unit} · ${item.name}`;
   if (metaEl) {
     metaEl.innerHTML = `
-      <div><span>Nominal</span>${rupiah(item.amount)}</div>
+      <div><span>Nominal</span>${formatAmountWithQrisHighlight(item.amount, item.method)}</div>
       <div><span>Bulan</span>${item.months || "-"}</div>
       <div><span>Metode</span>${item.method}</div>
       <div><span>Waktu Kirim</span>${item.timestamp}</div>
@@ -1728,11 +1822,11 @@ function renderAdminPending() {
           <b>${p.unit} · ${p.name}</b>
           <small>${p.timestamp}</small>
         </div>
-        <div class="pending-amount">${rupiah(p.amount)}</div>
+        <div class="pending-amount">${formatAmountWithQrisHighlight(p.amount, p.method)}</div>
       </div>
       <div class="pending-meta">
         <div><span>Bulan:</span> ${p.months || "-"}</div>
-        <div><span>Metode:</span> ${p.method}</div>
+        <div><span>Metode:</span> ${p.method}${p.method === "QRIS" || p.method === "Transfer Bank" ? ' <small class="qris-hint">(cocokkan 3 digit terakhir dgn mutasi/riwayat)</small>' : ""}</div>
       </div>
       <button type="button" class="text-link-btn" data-detail="${idx}" style="margin-bottom: 10px;">
         <span class="material-symbols-rounded" style="font-size: 14px; vertical-align: middle;">visibility</span>
@@ -3899,9 +3993,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const paymentMethodSelect = $("#paymentMethodSelect");
   if (paymentMethodSelect) {
-    paymentMethodSelect.addEventListener("change", (e) =>
-      updatePaymentMethodUI(e.target.value),
-    );
+    paymentMethodSelect.addEventListener("change", (e) => {
+      updatePaymentMethodUI(e.target.value);
+      // [BARU] Total (termasuk kode unik QRIS) perlu dihitung ULANG setiap
+      // metode pembayaran berganti — bukan cuma saat centang bulan berubah.
+      updateSelectedMonthsSummary();
+    });
   }
 
   const selectAllUnpaidBtn = $("#selectAllUnpaidBtn");

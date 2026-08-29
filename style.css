@@ -2668,6 +2668,93 @@ body {
   color: #9a3412;
 }
 
+/* [BARU] Area gambar QRIS di form pembayaran IPL */
+.qris-image-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 16px;
+  background: var(--soft);
+  border: 1.5px solid var(--line);
+  border-radius: 16px;
+  text-align: center;
+}
+.qris-image-block img {
+  width: 100%;
+  max-width: 240px;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid var(--line);
+}
+.qris-image-caption {
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* [BARU] Peringatan kode unik QRIS — merah/oranye mencolok karena warga
+   WAJIB baca ini sebelum transfer (kalau salah nominal, sulit dilacak). */
+.qris-unique-code-note {
+  font-size: 11.5px;
+  line-height: 1.6;
+  margin: 0 0 12px;
+  background: #fef2f2;
+  border: 1.5px solid #fecaca;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #991b1b;
+}
+
+/* [BARU] Tombol "Salin Nominal" — supaya warga cukup tap sekali, tidak
+   perlu ketik manual nominal yang agak tidak biasa (rawan typo). */
+.qris-copy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 9px;
+  border: 1.5px solid #fca5a5;
+  background: #fff;
+  color: #991b1b;
+  font-weight: 700;
+  font-size: 11.5px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.qris-copy-btn .material-symbols-rounded {
+  font-size: 15px;
+}
+.qris-copy-btn:hover {
+  background: #fef2f2;
+}
+.qris-copy-btn:active {
+  transform: scale(0.97);
+}
+
+/* [BARU] Highlight kode unik di panel admin (Verifikasi Tunai/QRIS) — 3
+   digit terakhir dibedakan warnanya, supaya admin bisa langsung cocokkan
+   dengan riwayat transaksi di app Livin Merchant/GoPay Merchant tanpa
+   perlu hitung manual. */
+.qris-code-highlight {
+  color: #dc2626;
+  background: #fef2f2;
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+.qris-hint {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 10px;
+}
+
 .empty-state-box {
   padding: 22px 16px;
   text-align: center;

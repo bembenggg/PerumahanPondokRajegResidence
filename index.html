@@ -1943,6 +1943,17 @@
           </div>
         </div>
 
+        <!-- [BARU] Peringatan kode unik QRIS — cuma tampil saat metode QRIS
+             dipilih. Digenerate JS (3 digit) & ditambahkan ke nominal,
+             supaya admin bisa mencocokkan siapa bayar berapa lewat riwayat
+             transaksi di app Livin Merchant/GoPay Merchant (yang tidak
+             tersambung otomatis ke sistem ini). -->
+        <div
+          id="qrisUniqueCodeNote"
+          class="qris-unique-code-note"
+          style="display: none"
+        ></div>
+
         <div class="bill-summary">
           <span>Total tagihan terpilih</span
           ><strong id="modalBill">Rp 0</strong>
@@ -1952,6 +1963,21 @@
         <div id="paymentMethodNote" class="payment-method-note">
           💡 Transfer wajib ke
           <b>Bank Jago a.n Muhamad Kurnia Fauqou Nur (504460167350)</b>.
+        </div>
+
+        <!-- [DIPERBARUI] Gambar QRIS asli — merchant terdaftar "UMMACARE
+             INDONESIA" (sebelumnya placeholder abu-abu). -->
+        <div id="qrisImageBlock" class="qris-image-block" style="display: none">
+          <img
+            id="qrisImage"
+            src="https://i.ibb.co.com/pjrC8rQd/Whats-App-Image-2026-08-30-at-00-29-03.jpg"
+            alt="Kode QRIS Pembayaran IPL - UMMACARE INDONESIA"
+          />
+          <p class="qris-image-caption">
+            Scan kode QRIS di atas pakai e-wallet atau m-banking apa saja
+            (GoPay, OVO, DANA, ShopeePay, BCA Mobile, dll), lalu screenshot
+            bukti pembayarannya untuk diupload di bawah.
+          </p>
         </div>
 
         <label
@@ -1979,6 +2005,7 @@
             >Metode pembayaran
             <select name="method" id="paymentMethodSelect">
               <option value="Transfer Bank">Transfer Bank</option>
+              <option value="QRIS">QRIS</option>
               <option value="Tunai ke petugas">Tunai ke petugas</option>
             </select>
           </label>
