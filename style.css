@@ -23,6 +23,20 @@ html {
   text-size-adjust: 100%;
 }
 
+/* [FIX #2] Sebelumnya html/body tidak dikunci (tanpa overflow:hidden) dan
+   body masih pakai "min-height: 100vh" biasa (bukan dvh) — sementara
+   .app-shell di dalamnya SUDAH pakai dvh. Ketidakcocokan ini bisa bikin
+   <body> ikut scroll sendiri terpisah dari .app-shell saat address bar
+   browser collapse/expand, membuat SELURUH tampilan (termasuk bottom-nav)
+   terlihat ikut bergeser — walau .app-shell & bottom-nav sendiri sebenarnya
+   sudah benar terkunci. Body sekarang dikunci penuh (tidak bisa scroll sama
+   sekali); satu-satunya yang boleh scroll adalah .main-content di dalam
+   .app-shell. */
+html,
+body {
+  overflow: hidden;
+}
+
 body {
   margin: 0;
   background: #f4f7f5;
@@ -34,7 +48,8 @@ body {
     "Segoe UI",
     Roboto,
     sans-serif;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -378,6 +393,14 @@ body {
   overflow-y: auto;
   background: #f6faf7;
   -webkit-overflow-scrolling: touch;
+  /* [FIX BUG #2] Mencegah efek "rubber-band bounce" khas iOS Safari
+     menyebar ke luar area scroll ini — tanpa ini, saat warga scroll
+     sampai mentok atas/bawah, seluruh app-shell (termasuk header &
+     bottom-nav yang sebenarnya sudah terkunci lewat flexbox) ikut
+     terlihat "goyang/bergeser", karena browser mencoba scroll elemen
+     DI LUAR .main-content juga. overscroll-behain:contain mengunci
+     efek bounce supaya berhenti persis di batas area scroll ini saja. */
+  overscroll-behavior: contain;
 }
 .hero {
   position: relative;
@@ -870,25 +893,25 @@ body {
 }
 
 /* [BARU] Fix #4/#6: HALAMAN "UPDATE WARGA" TERSENDIRI — gaya linimasa
-   modern 2026: header sticky dengan badge "Real-time" berdenyut, subtitle
-   ramah, tanpa nuansa "dashboard" seperti section lain — biar terasa jadi
-   ruang komunikasi warga yang berdiri sendiri, bukan sekadar widget. */
+   modern 2026, badge "Real-time" berdenyut, subtitle ramah. */
 #feedPageView {
   padding: 0 16px 24px;
 }
 .feed-page-hero {
   padding-top: 18px;
 }
+/* [DISEDERHANAKAN] Sebelumnya header pakai position:sticky + background
+   terpisah dari section induknya — rawan bikin tumpang-tindih visual saat
+   scroll (subtitle jadi terlihat "mengambang" di atas/tertutup header) dan
+   kesannya berantakan. Sekarang mengikuti pola .section-heading yang sudah
+   dipakai section lain di app ini (mengalir normal, tanpa efek melayang),
+   jauh lebih stabil & konsisten. */
 .feed-page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  position: sticky;
-  top: 0;
-  background: #f6faf7;
-  padding: 6px 0 10px;
-  z-index: 5;
+  margin-bottom: 4px;
 }
 .feed-page-header h2 {
   font-size: 20px;
@@ -907,6 +930,7 @@ body {
   background: rgba(8, 122, 75, 0.1);
   padding: 5px 10px;
   border-radius: 20px;
+  flex-shrink: 0;
 }
 .feed-page-live-badge .pulse-dot {
   background: var(--green);
@@ -3255,10 +3279,6 @@ dialog#aiLoadingModal::backdrop {
      di sini supaya cuma ada satu lapis padding, konsisten dgn section lain. */
   .feed-desktop-section .feed-page-hero {
     padding: 0;
-  }
-  .feed-desktop-section .feed-page-header {
-    background: #fff;
-    padding-top: 0;
   }
   .hero {
     border-radius: 18px;

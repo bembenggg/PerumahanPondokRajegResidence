@@ -700,6 +700,63 @@ function goToPost(postId) {
   tryScroll(0);
 }
 
+// [BARU] Navigasi terpusat dari klik PUSH NOTIFICATION (bukan cuma badge
+// lonceng in-app yang sudah lebih dulu berfungsi). Dipanggil dari 2 jalur:
+// 1) postMessage dari service worker, kalau tab app SUDAH terbuka saat
+//    notifikasi di-tap (lihat listener "message" di bawah).
+// 2) parameter URL (?refType=...&refId=...), kalau notifikasi di-tap saat
+//    app BELUM terbuka sama sekali (service worker buka tab baru lewat
+//    clients.openWindow, lihat notificationclick di service-worker.js).
+function handleNotifNavigation(refType, refId) {
+  if (refType === "post" && refId) {
+    goToPost(refId);
+  } else if (refType === "complaint") {
+    if (typeof window.showAppPage === "function") window.showAppPage("home");
+    setTimeout(() => {
+      $("#complaintList")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 350);
+  }
+  // refType lain (content/payment/panic/dll) -> cukup fokus ke Beranda saja
+  // (link default sudah "./" tanpa parameter, tidak akan sampai ke sini).
+}
+
+// Jalur 1: app SUDAH terbuka di tab lain saat notifikasi ditekan.
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    if (event.data && event.data.type === "my-prr-notif-navigate") {
+      handleNotifNavigation(event.data.refType, event.data.refId);
+    }
+  });
+}
+
+// Jalur 2: app baru dibuka lewat notifikasi (tab baru), refType/refId
+// datang lewat parameter URL. Ditunda beberapa saat supaya app sempat boot
+// (login otomatis, data feed dimuat) dulu sebelum mencoba navigasi.
+(function checkNotifDeepLinkOnLoad() {
+  const params = new URLSearchParams(window.location.search);
+  const refType = params.get("refType");
+  if (!refType) return;
+  const refId = params.get("refId") || "";
+
+  // Bersihkan URL supaya parameter ini tidak ke-trigger ulang kalau
+  // halaman di-refresh manual nanti.
+  window.history.replaceState({}, "", window.location.pathname);
+
+  const tryNavigate = (attempt) => {
+    const mainApp = $("#mainApp");
+    const isBooted = mainApp && mainApp.style.display !== "none";
+    if (isBooted) {
+      handleNotifNavigation(refType, refId);
+      return;
+    }
+    if (attempt < 10) setTimeout(() => tryNavigate(attempt + 1), 400);
+  };
+  tryNavigate(0);
+})();
+
 function updateNotifBadge() {
   const btn = $("#notificationBtn");
   if (!btn) return;

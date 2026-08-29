@@ -1,4 +1,4 @@
-const CACHE_NAME = "my-prr-warga-v1.0";
+const CACHE_NAME = "my-prr-warga-v0.4";
 const urlsToCache = ["./", "./index.html", "./style.css", "./app.js"];
 
 importScripts(
@@ -57,46 +57,59 @@ messaging.onBackgroundMessage((payload) => {
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// Fallback tambahan: sebagian browser Android OEM (khususnya versi Chrome
-// lama di HP MIUI/Funtouch) tidak selalu memicu onBackgroundMessage untuk
-// display-message. Menangani event "push" secara langsung memastikan
-// notifikasi tetap tampil selama Service Worker sempat dibangunkan sistem,
-// walau hanya sesaat.
-self.addEventListener("push", (event) => {
-  if (!event.data) return;
-  try {
-    const payload = event.data.json();
-    // Jika FCM SDK (firebase-messaging-sw) sudah/akan menampilkan notifikasi
-    // dari field webpush.notification, browser menanganinya secara native.
-    // Blok ini hanya sebagai jaring pengaman tambahan agar tidak pernah
-    // "diam saja" ketika payload berbentuk data-only.
-    if (payload && payload.data && !payload.notification) {
-      const title = payload.data.title || "Notifikasi MY PRR";
-      const options = {
-        body: payload.data.body || "",
-        icon: payload.data.icon || "icons/icon-192.png",
-        badge: payload.data.badge || "icons/icon-96.png",
-        vibrate: [300, 100, 300, 100, 300],
-        tag: payload.data.tag || "my-prr-notif",
-        renotify: true,
-      };
-      event.waitUntil(self.registration.showNotification(title, options));
-    }
-  } catch (err) {
-    console.error("Gagal memproses event push mentah:", err);
-  }
-});
+// [FIX BUG #1 - Notif Dobel di iOS] Sebelumnya ada 2 listener terpisah yang
+// SAMA-SAMA bisa memanggil showNotification() untuk pesan yang sama:
+// messaging.onBackgroundMessage() di atas (bawaan SDK Firebase) DAN listener
+// "push" mentah tambahan di bawah ini. Di iOS, struktur payload mentah yang
+// diterima event "push" ternyata bisa berbeda dari yang diperkirakan kode
+// lama (payload.notification tidak selalu terbaca sesuai harapan), sehingga
+// listener kedua ini salah kira pesannya "data-only" dan ikut menampilkan
+// notifikasi lagi — hasilnya notifikasi muncul 2x untuk 1 pesan yang sama.
+//
+// Dihapus total (bukan cuma diperbaiki syaratnya) karena jalur utama sudah
+// cukup & lebih andal tanpa perlu listener kedua ini sama sekali:
+// 1) webpush.notification di payload FCM membuat push service level-OS
+//    browser menampilkan notifikasi otomatis, bahkan kalau SW/JS dibekukan
+//    (inilah yang memperbaiki kasus Xiaomi/Redmi/Vivo sebelumnya).
+// 2) messaging.onBackgroundMessage() di atas menangani sisanya dengan baik.
+// Dua jalur itu sudah cukup solid tanpa perlu listener "push" mentah kedua
+// yang justru menjadi sumber duplikasi.
 
+// [FIX] Sebelumnya klik notifikasi HANYA fokus/buka app polos ("./"), tidak
+// pernah membaca data referensi (postingan/aktivitas terkait) yang sekarang
+// disertakan backend (lihat sendFCMv1Message di code.gs). Sekarang:
+// - Kalau ada tab app yang sudah terbuka -> kirim pesan (postMessage) ke tab
+//   itu supaya app.js langsung navigasi ke konten terkait tanpa reload.
+// - Kalau belum ada tab terbuka -> buka tab baru dengan link tujuan yang
+//   sudah disertakan backend (event.notification.data.link), app.js akan
+//   baca parameter URL itu saat baru boot dan navigasi ke sana otomatis.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const data = event.notification.data || {};
+  const refType = data.refType || "";
+  const refId = data.refId || "";
+  const targetUrl = data.link || "./";
+
   event.waitUntil(
     clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((clientList) => {
         for (const client of clientList) {
-          if ("focus" in client) return client.focus();
+          if ("focus" in client) {
+            client.focus();
+            // Tab sudah terbuka -> tidak perlu reload, cukup kirim pesan
+            // navigasi langsung ke app.js yang sedang berjalan.
+            if (refType) {
+              client.postMessage({
+                type: "my-prr-notif-navigate",
+                refType,
+                refId,
+              });
+            }
+            return;
+          }
         }
-        if (clients.openWindow) return clients.openWindow("./");
+        if (clients.openWindow) return clients.openWindow(targetUrl);
       }),
   );
 });
