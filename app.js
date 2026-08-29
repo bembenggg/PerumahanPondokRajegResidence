@@ -3030,7 +3030,12 @@ document.addEventListener("DOMContentLoaded", () => {
           return;
         }
 
-        localStorage.setItem("pondok_rajeg_user", unit);
+        // [FIX BUG] Sebelumnya localStorage disimpan pakai `unit` (apa pun
+        // yang DIKETIK user saat login, casing bebas karena login memang
+        // case-insensitive) — sekarang pakai `result.unit` (casing ASLI
+        // dari sheet Users, dikembalikan backend) supaya konsisten di
+        // mana pun unit ini ditampilkan (mis. autofill lokasi pengaduan).
+        localStorage.setItem("pondok_rajeg_user", result.unit || unit);
         localStorage.setItem("pondok_rajeg_name", result.name);
         localStorage.setItem(
           ROLE_KEY,
@@ -4074,10 +4079,21 @@ document.addEventListener("DOMContentLoaded", () => {
     if (unitListCache) return unitListCache;
     try {
       const result = await sendToBackend("listAllUnits", {}, { silent: true });
+      // Hanya cache kalau BENAR-BENAR dapat data — array kosong dari sheet
+      // yang genuinely kosong itu sah untuk di-cache, jadi cek eksplisit
+      // via `result.units` (bukan just truthy check di awal fungsi ini).
       unitListCache = result.units || [];
     } catch (err) {
+      // [FIX BUG] Sebelumnya kegagalan (mis. koneksi lambat / Apps Script
+      // baru "bangun" dari idle) tetap MENYIMPAN unitListCache = [] (array
+      // kosong). Masalahnya, array kosong itu tetap truthy di JS — jadi
+      // pengecekan "if (unitListCache) return..." di atas menganggap data
+      // SUDAH pernah berhasil dimuat, dan TIDAK PERNAH mencoba lagi untuk
+      // sisa sesi ini, walau percobaan berikutnya sebenarnya bisa berhasil.
+      // Sekarang kegagalan TIDAK disimpan ke cache sama sekali, supaya
+      // percobaan berikutnya (mis. fokus ulang ke field) otomatis retry.
       console.error("Gagal memuat daftar unit untuk saran lokasi:", err);
-      unitListCache = [];
+      return [];
     }
     return unitListCache;
   }
