@@ -1952,44 +1952,66 @@ body {
 .tukang-tab-btn {
   flex: 1;
   min-width: 100px;
-  padding: 10px;
+  padding: 11px;
   border: 1.5px solid var(--line);
   background: #f8faf8;
-  border-radius: 12px;
+  border-radius: 30px;
   font-weight: 700;
   font-size: 12px;
   color: var(--muted);
   cursor: pointer;
+  transition:
+    background 0.18s,
+    border-color 0.18s,
+    transform 0.1s,
+    color 0.18s;
+}
+.tukang-tab-btn:active {
+  transform: scale(0.97);
 }
 .tukang-tab-btn.active {
   background: var(--green);
   color: #fff;
   border-color: var(--green);
+  box-shadow: 0 4px 12px rgba(8, 122, 75, 0.25);
 }
 .tukang-tab-pane {
   max-height: 280px;
   overflow-y: auto;
 }
 
+/* [BARU] Style 2026: dari kartu datar (flat tint background) jadi kartu
+   putih dengan bayangan halus + border tipis, border-radius lebih besar,
+   dan micro-interaction saat disentuh — kesan lebih "mengambang" & modern,
+   selaras dengan linimasa Update Warga yang sudah lebih dulu direstyle. */
 .tukang-item {
-  background: var(--soft);
+  background: #fff;
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 14px;
-  margin-bottom: 10px;
+  border-radius: 20px;
+  padding: 16px;
+  margin-bottom: 12px;
   text-align: left;
+  box-shadow: 0 2px 10px rgba(6, 43, 28, 0.05);
+  transition:
+    box-shadow 0.2s,
+    transform 0.15s;
+}
+.tukang-item:active {
+  transform: scale(0.99);
 }
 .tukang-item b {
-  font-size: 13px;
+  font-size: 14px;
   display: block;
   color: var(--dark);
   margin-bottom: 3px;
+  letter-spacing: -0.1px;
+  font-weight: 700;
 }
 .tukang-item p {
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--muted);
   margin: 0 0 10px;
-  line-height: 1.4;
+  line-height: 1.55;
 }
 
 /* ========================================================== */
@@ -2030,7 +2052,7 @@ body {
   flex: 0 0 auto;
   width: 52px;
   height: 52px;
-  border-radius: 14px;
+  border-radius: 16px;
   overflow: hidden;
   background: #fff;
   border: 1px solid var(--line);
@@ -2055,23 +2077,32 @@ body {
   font-size: 24px;
   color: #fff;
 }
+/* [BARU] Style 2026: setiap ikon dapat bayangan warna SENADA gradiennya
+   sendiri (bukan lagi bayangan generik/tanpa bayangan) — efek "glow"
+   lembut yang jadi ciri khas UI modern saat ini, bukan flat datar. */
 .content-thumb-icon.wrench {
   background: linear-gradient(135deg, #f59e0b, #d97706);
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
 }
 .content-thumb-icon.wifi {
   background: linear-gradient(135deg, #6366f1, #4f46e5);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
 }
 .content-thumb-icon.health {
   background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
 }
 .content-thumb-icon.info {
   background: linear-gradient(135deg, #3b82f6, #2563eb);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 .content-thumb-icon.trash {
   background: linear-gradient(135deg, #a16207, #78350f);
+  box-shadow: 0 4px 12px rgba(120, 53, 15, 0.3);
 }
 .content-thumb-icon.security {
   background: linear-gradient(135deg, #0f172a, #1e3a8a);
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
 }
 .content-thumb-square {
   width: 46px;
@@ -2126,20 +2157,26 @@ body {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: #25d366;
+  background: linear-gradient(135deg, #25d366, #1ebe57);
   color: #fff;
   font-size: 13px;
   font-weight: 700;
+  letter-spacing: 0.1px;
   width: 100%;
   padding: 12px;
-  border-radius: 12px;
+  border-radius: 14px;
   text-decoration: none;
   box-shadow: 0 4px 12px rgba(37, 211, 102, 0.25);
   margin-top: 8px;
-  transition: background 0.2s;
+  transition:
+    box-shadow 0.2s,
+    transform 0.12s;
 }
 .whatsapp-btn:hover {
-  background: #1ebe57;
+  box-shadow: 0 6px 16px rgba(37, 211, 102, 0.35);
+}
+.whatsapp-btn:active {
+  transform: scale(0.97);
 }
 
 .internet-provider {
@@ -2147,8 +2184,11 @@ body {
   border-color: #bfdbfe !important;
 }
 .internet-btn {
-  background: #2563eb !important;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
+}
+.internet-btn:hover {
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35) !important;
 }
 .emergency-item {
   background: #fef2f2 !important;
@@ -3242,7 +3282,14 @@ input[type="file"]::file-selector-button {
    underline supaya tetap konsisten dengan desain kita, bukan biru default
    bawaan browser. */
 .content-manage-meta a,
-.tukang-item a,
+/* [FIX BUG] Sebelumnya ".tukang-item a" tanpa pengecualian — tidak sengaja
+   ikut menimpa warna PUTIH tombol WhatsApp/Link (yang juga elemen <a>,
+   nested di dalam .tukang-item) jadi warna teks gelap/hitam (mewarisi warna
+   teks default halaman), padahal tombol itu punya latar warna solid dan
+   butuh teks putih supaya kontras & tidak terlihat kaku/berat. Aturan
+   "warna ikut teks sekitar" ini sekarang HANYA berlaku untuk link teks
+   polos (mis. URL yang disebut di deskripsi), bukan tombol berlatar warna. */
+.tukang-item a:not(.whatsapp-btn),
 .doc-info a {
   color: inherit;
   text-decoration: none;
