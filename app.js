@@ -1185,6 +1185,9 @@ function applyRoleUI(role) {
   const userAdminBtn = $("#userAdminBtn");
   if (userAdminBtn)
     userAdminBtn.style.display = role === "admin" ? "flex" : "none";
+  const complaintAdminBtn = $("#complaintAdminBtn");
+  if (complaintAdminBtn)
+    complaintAdminBtn.style.display = role === "admin" ? "flex" : "none";
 
   // Susun ulang carousel "Akses cepat" karena jumlah kartu yang tampil berubah
   // (kartu khusus admin baru saja disembunyikan/ditampilkan di atas).
@@ -2569,6 +2572,99 @@ function openResetPinDialog(unit) {
   dialog.showModal();
 }
 
+// ------------------------------------------------------------
+// [BARU] KELOLA PENGADUAN (ADMIN) — sebelumnya TIDAK ADA cara admin melihat
+// pengaduan warga dari dalam aplikasi sama sekali (data cuma tersimpan
+// lokal di HP warga masing-masing). Sekarang admin bisa lihat SEMUA
+// pengaduan (dari sheet "Complaints" pusat) + ubah status penanganannya.
+// ------------------------------------------------------------
+let currentComplaintList = [];
+
+const COMPLAINT_STATUS_META = {
+  Menunggu: { label: "Menunggu", color: "#b45309", bg: "#fef3c7" },
+  Diproses: { label: "Diproses", color: "#1d4ed8", bg: "#dbeafe" },
+  Selesai: { label: "Selesai", color: "#15803d", bg: "#dcfce7" },
+};
+
+async function loadComplaintManagerGrid() {
+  const grid = $("#complaintManagerGrid");
+  if (!grid) return;
+  grid.innerHTML = shimmerListHtml(3);
+  const adminUnit = localStorage.getItem("pondok_rajeg_user");
+  try {
+    const result = await sendToBackend("adminListComplaints", { adminUnit });
+    currentComplaintList = result.complaints || [];
+    renderComplaintManagerGrid();
+  } catch (err) {
+    grid.innerHTML = `<div class="empty-state-box" style="grid-column: 1 / -1;">Gagal memuat: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function renderComplaintManagerGrid() {
+  const grid = $("#complaintManagerGrid");
+  if (!grid) return;
+  const filterVal = $("#complaintStatusFilter")?.value || "";
+  const filtered = filterVal
+    ? currentComplaintList.filter((c) => c.status === filterVal)
+    : currentComplaintList;
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty-state-box" style="grid-column: 1 / -1;">Belum ada pengaduan${filterVal ? ` berstatus "${escapeHtml(filterVal)}"` : ""}.</div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered
+    .map((c) => {
+      const meta =
+        COMPLAINT_STATUS_META[c.status] || COMPLAINT_STATUS_META.Menunggu;
+      return `
+    <div class="content-manage-card" data-complaint-id="${escapeHtml(c.id)}">
+      <div class="content-manage-card-top">
+        <div class="content-thumb content-thumb-sm content-thumb-icon wrench">
+          <span class="material-symbols-rounded">campaign</span>
+        </div>
+        <div class="content-manage-card-headtext">
+          <b>${escapeHtml(c.category)}</b>
+          <span class="content-order-badge" style="background:${meta.bg}; color:${meta.color};">${escapeHtml(meta.label)}</span>
+        </div>
+      </div>
+      <small class="content-manage-subtitle">${escapeHtml(c.name || "Warga")}${c.unit ? ` (${escapeHtml(c.unit)})` : ""} • ${escapeHtml(c.location)}</small>
+      <p class="content-manage-desc">${escapeHtml(c.description)}</p>
+      <div class="content-manage-meta"><span class="material-symbols-rounded">schedule</span>${escapeHtml(c.timestamp)}</div>
+      <div class="content-manage-actions">
+        ${c.status !== "Diproses" ? `<button type="button" class="chip-btn" data-set-status="${escapeHtml(c.id)}|Diproses">Tindak Lanjuti</button>` : ""}
+        ${c.status !== "Selesai" ? `<button type="button" class="chip-btn" data-set-status="${escapeHtml(c.id)}|Selesai">Tandai Selesai</button>` : ""}
+        ${c.status !== "Menunggu" ? `<button type="button" class="chip-btn ghost" data-set-status="${escapeHtml(c.id)}|Menunggu">Batal Proses</button>` : ""}
+      </div>
+    </div>`;
+    })
+    .join("");
+
+  grid.querySelectorAll("[data-set-status]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const [id, status] = btn.dataset.setStatus.split("|");
+      updateComplaintStatus(id, status);
+    });
+  });
+}
+
+async function updateComplaintStatus(id, status) {
+  const adminUnit = localStorage.getItem("pondok_rajeg_user");
+  try {
+    const result = await sendToBackend("adminUpdateComplaintStatus", {
+      adminUnit,
+      id,
+      status,
+    });
+    showToast(result.message);
+    const item = currentComplaintList.find((c) => c.id === id);
+    if (item) item.status = status;
+    renderComplaintManagerGrid();
+  } catch (err) {
+    showToast(`Gagal: ${err.message}`);
+  }
+}
+
 function refreshPublicContentIfOpen(type) {
   // Segarkan tampilan warga bila dialog terkait sedang terbuka di belakang.
   if (type === "jasa" && $("#tukangDialog")?.open) loadTukangList();
@@ -3153,6 +3249,31 @@ document.addEventListener("DOMContentLoaded", () => {
         submitBtn.innerHTML = originalText;
       }
     });
+  }
+
+  // ------------------------------------------------------------
+  // [BARU] PANEL "KELOLA PENGADUAN" (ADMIN)
+  // ------------------------------------------------------------
+  const complaintAdminBtn = $("#complaintAdminBtn");
+  const complaintManagerDialog = $("#complaintManagerDialog");
+  const complaintManagerRefreshBtn = $("#complaintManagerRefreshBtn");
+  const complaintStatusFilter = $("#complaintStatusFilter");
+
+  if (complaintAdminBtn && complaintManagerDialog) {
+    complaintAdminBtn.addEventListener("click", () => {
+      complaintManagerDialog.showModal();
+      loadComplaintManagerGrid();
+    });
+  }
+  if (complaintManagerRefreshBtn) {
+    complaintManagerRefreshBtn.addEventListener("click", () =>
+      loadComplaintManagerGrid(),
+    );
+  }
+  if (complaintStatusFilter) {
+    complaintStatusFilter.addEventListener("change", () =>
+      renderComplaintManagerGrid(),
+    );
   }
 
   // ------------------------------------------------------------
@@ -3868,6 +3989,8 @@ document.addEventListener("DOMContentLoaded", () => {
     complaintForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(e.currentTarget));
+      const unit = localStorage.getItem("pondok_rajeg_user") || "";
+      const name = localStorage.getItem("pondok_rajeg_name") || unit;
       const record = {
         category: data.category,
         location: data.location,
@@ -3886,7 +4009,16 @@ document.addEventListener("DOMContentLoaded", () => {
       showToast("Laporan pengaduan berhasil dikirim.");
 
       try {
-        await sendToBackend("complaint", record);
+        // [FIX BUG] Sebelumnya payload TIDAK menyertakan unit/nama pelapor —
+        // admin tidak akan pernah tahu pengaduan itu dari warga yang mana.
+        // silent:true supaya tidak muncul modal "Server Sedang Padat" yang
+        // membingungkan tepat setelah toast "berhasil dikirim" di atas —
+        // laporan sudah tersimpan lokal terlepas dari hasil kirim ke server.
+        await sendToBackend(
+          "complaint",
+          { ...record, unit, name },
+          { silent: true },
+        );
       } catch (err) {
         console.error("Gagal mengirim pengaduan ke server:", err);
       }

@@ -2635,6 +2635,10 @@ input[type="file"]::file-selector-button {
   background: #ede9fe;
   color: #6d28d9;
 }
+.quick-icon.complaintMgmt {
+  background: #fef3c7;
+  color: #b45309;
+}
 
 .expense-row {
   display: flex;

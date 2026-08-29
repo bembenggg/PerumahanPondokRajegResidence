@@ -396,6 +396,22 @@
                 <strong>Kelola Warga</strong>
                 <small>Daftar unit & reset PIN</small>
               </button>
+
+              <!-- [BARU] Kelola Pengaduan: sebelumnya admin TIDAK PUNYA cara
+                   melihat pengaduan warga sama sekali dari aplikasi (cuma
+                   tersimpan lokal di HP warga masing-masing). -->
+              <button
+                class="quick-card"
+                id="complaintAdminBtn"
+                data-admin-only="1"
+                style="display: none"
+              >
+                <b class="quick-icon complaintMgmt"
+                  ><span class="material-symbols-rounded">campaign</span></b
+                >
+                <strong>Kelola Pengaduan</strong>
+                <small>Lihat & tindak lanjuti laporan</small>
+              </button>
             </div>
 
             <!-- Carousel halaman: JS memindahkan kartu dari quickGridSource ke sini, 6 kartu / halaman -->
@@ -1495,6 +1511,60 @@
         </label>
         <button class="primary-button" type="submit" id="resetPinSubmitBtn">
           Reset PIN <span>→</span>
+        </button>
+      </form>
+    </dialog>
+
+    <!-- [BARU] MODAL KELOLA PENGADUAN (ADMIN) -->
+    <dialog id="complaintManagerDialog" class="modal content-manager-modal">
+      <form method="dialog">
+        <button type="button" class="close" value="cancel" aria-label="Tutup">
+          ×
+        </button>
+        <p class="eyebrow">PANEL PENGURUS PAGUYUBAN PRR</p>
+        <h2>Kelola Pengaduan</h2>
+        <p style="font-size: 12px; color: var(--muted); margin: 0 0 14px">
+          Semua pengaduan warga masuk ke sini secara real-time. Tandai statusnya
+          setelah ditindaklanjuti.
+        </p>
+
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 4px 0 10px;
+          "
+        >
+          <button
+            type="button"
+            id="complaintManagerRefreshBtn"
+            class="text-link-btn"
+          >
+            <span
+              class="material-symbols-rounded"
+              style="font-size: 14px; vertical-align: middle"
+              >refresh</span
+            >
+            Muat ulang
+          </button>
+          <select
+            id="complaintStatusFilter"
+            style="width: auto; padding: 6px 30px 6px 12px; font-size: 11px"
+          >
+            <option value="">Semua Status</option>
+            <option value="Menunggu">Menunggu</option>
+            <option value="Diproses">Diproses</option>
+            <option value="Selesai">Selesai</option>
+          </select>
+        </div>
+
+        <div id="complaintManagerGrid" class="content-card-grid">
+          <div class="empty-state-box">Memuat pengaduan...</div>
+        </div>
+
+        <button class="primary-button" value="cancel" style="margin-top: 14px">
+          Tutup
         </button>
       </form>
     </dialog>
