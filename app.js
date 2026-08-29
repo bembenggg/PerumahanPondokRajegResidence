@@ -1182,6 +1182,9 @@ function applyRoleUI(role) {
   const contentAdminBtn = $("#contentAdminBtn");
   if (contentAdminBtn)
     contentAdminBtn.style.display = role === "admin" ? "flex" : "none";
+  const userAdminBtn = $("#userAdminBtn");
+  if (userAdminBtn)
+    userAdminBtn.style.display = role === "admin" ? "flex" : "none";
 
   // Susun ulang carousel "Akses cepat" karena jumlah kartu yang tampil berubah
   // (kartu khusus admin baru saja disembunyikan/ditampilkan di atas).
@@ -1770,14 +1773,25 @@ function renderDutyContactSection(group, meta) {
   if (!peopleWithPhone.length) return "";
 
   const uniquePhones = [...new Set(peopleWithPhone.map((p) => p.phone))];
+  // Betul-betul nomor BERSAMA hanya kalau SEMUA orang di shift ini memakai
+  // nomor yang sama (mis. line pos bersama). Kalau cuma SEBAGIAN yang punya
+  // nomor (mis. 2 orang jaga, cuma 1 yang isi WA), itu BUKAN nomor bersama —
+  // label harus jelas menyebut punya siapa nomor itu.
+  const allShareSamePhone =
+    uniquePhones.length === 1 && peopleWithPhone.length === group.people.length;
 
   if (uniquePhones.length === 1) {
-    const label =
-      peopleWithPhone.length > 1
-        ? joinDutyNames(group.titles)
-        : peopleWithPhone[0].name;
-    return `<a href="${waLink(uniquePhones[0], `Halo ${label}, saya warga MY PRR ingin menghubungi...`)}" target="_blank" class="whatsapp-btn duty-wa-btn">
-              <span class="material-symbols-rounded">chat</span> ${meta.waLabel || "Chat WhatsApp"}
+    // [FIX BUG] Sebelumnya variabel "label" dihitung tapi TIDAK PERNAH
+    // dipakai di teks tombol — makanya tombol selalu tampil generik "Chat
+    // Pos Satpam" walau nomornya sebenarnya cuma milik SATU orang, bikin
+    // warga bingung sedang menghubungi siapa. Sekarang label tombol
+    // eksplisit menyebut nama pemilik nomor kalau bukan nomor bersama.
+    const namesWithPhone = joinDutyNames(peopleWithPhone.map((p) => p.name));
+    const buttonLabel = allShareSamePhone
+      ? meta.waLabel || "Chat WhatsApp"
+      : `Chat WA ${namesWithPhone}`;
+    return `<a href="${waLink(uniquePhones[0], `Halo ${namesWithPhone}, saya warga MY PRR ingin menghubungi...`)}" target="_blank" class="whatsapp-btn duty-wa-btn">
+              <span class="material-symbols-rounded">chat</span> ${escapeHtml(buttonLabel)}
             </a>`;
   }
 
@@ -2421,6 +2435,140 @@ async function deleteContentCard(type, id, items) {
   }
 }
 
+// ------------------------------------------------------------
+// [BARU] KELOLA WARGA (ADMIN) — daftar unit baru, ubah data, reset PIN.
+// Pola/struktur mengikuti "Kelola Konten" supaya konsisten, tapi menyasar
+// sheet "Users" (bukan "ContentCards") lewat action adminListUsers /
+// adminRegisterUnit / adminUpdateUnit / adminResetUnitPin / adminDeleteUnit.
+// ------------------------------------------------------------
+let currentUserList = [];
+
+async function loadUserManagerGrid() {
+  const grid = $("#userManagerGrid");
+  if (!grid) return;
+  grid.innerHTML = shimmerListHtml(3);
+  const adminUnit = localStorage.getItem("pondok_rajeg_user");
+  try {
+    const result = await sendToBackend("adminListUsers", { adminUnit });
+    currentUserList = result.users || [];
+    renderUserManagerGrid(currentUserList);
+  } catch (err) {
+    grid.innerHTML = `<div class="empty-state-box" style="grid-column: 1 / -1;">Gagal memuat: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function renderUserManagerGrid(users) {
+  const grid = $("#userManagerGrid");
+  if (!grid) return;
+  if (!users.length) {
+    grid.innerHTML = `<div class="empty-state-box" style="grid-column: 1 / -1;">Belum ada unit terdaftar. Klik "+ Daftarkan Unit" untuk mendaftarkan warga pertama.</div>`;
+    return;
+  }
+  grid.innerHTML = users
+    .map(
+      (u) => `
+    <div class="content-manage-card" data-unit="${escapeHtml(u.unit)}">
+      <div class="content-manage-card-top">
+        <div class="content-thumb content-thumb-sm content-thumb-icon ${u.role === "admin" ? "security" : "wrench"}">
+          <span class="material-symbols-rounded">${u.role === "admin" ? "shield_person" : "home"}</span>
+        </div>
+        <div class="content-manage-card-headtext">
+          <b>${escapeHtml(u.unit)}</b>
+          <span class="content-order-badge">${u.role === "admin" ? "Admin" : "Warga"}</span>
+        </div>
+      </div>
+      <small class="content-manage-subtitle">${escapeHtml(u.name)}</small>
+      <div class="content-manage-actions">
+        <button type="button" class="chip-btn" data-edit-user="${escapeHtml(u.unit)}">Ubah</button>
+        <button type="button" class="chip-btn" data-reset-pin="${escapeHtml(u.unit)}">Reset PIN</button>
+        <button type="button" class="chip-btn ghost" data-delete-user="${escapeHtml(u.unit)}">Hapus</button>
+      </div>
+    </div>`,
+    )
+    .join("");
+
+  grid.querySelectorAll("[data-edit-user]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const u = users.find((x) => x.unit === btn.dataset.editUser);
+      if (u) openUserForm(u);
+    });
+  });
+  grid.querySelectorAll("[data-reset-pin]").forEach((btn) => {
+    btn.addEventListener("click", () =>
+      openResetPinDialog(btn.dataset.resetPin),
+    );
+  });
+  grid.querySelectorAll("[data-delete-user]").forEach((btn) => {
+    btn.addEventListener("click", () => deleteUserUnit(btn.dataset.deleteUser));
+  });
+}
+
+function openUserForm(user) {
+  const dialog = $("#userFormDialog");
+  const form = $("#userForm");
+  if (!dialog || !form) return;
+  form.reset();
+
+  const isEdit = !!user;
+  $("#userFormEyebrow").textContent = isEdit
+    ? "UBAH DATA UNIT"
+    : "DAFTARKAN UNIT";
+  $("#userFormTitle").textContent = isEdit
+    ? "Ubah Unit " + user.unit
+    : "Unit Baru";
+  $("#userFormSubmitBtn").innerHTML = isEdit
+    ? "Simpan Perubahan <span>→</span>"
+    : "Daftarkan <span>→</span>";
+
+  const unitInput = form.querySelector("[name='unit']");
+  const pinSection = $("#userFormPinSection");
+  // Saat EDIT: kode unit tidak boleh diubah (jadi identitas kunci di sheet
+  // Users) & field PIN disembunyikan (reset PIN sudah ada menu terpisah).
+  unitInput.readOnly = isEdit;
+  unitInput.style.opacity = isEdit ? "0.6" : "1";
+  if (pinSection) pinSection.style.display = isEdit ? "none" : "block";
+  form.querySelector("[name='pin']").required = !isEdit;
+
+  if (isEdit) {
+    unitInput.value = user.unit;
+    form.querySelector("[name='name']").value = user.name;
+    form.querySelector("[name='role']").value = user.role;
+    form.dataset.editingUnit = user.unit;
+  } else {
+    delete form.dataset.editingUnit;
+  }
+
+  dialog.showModal();
+}
+
+async function deleteUserUnit(unit) {
+  const u = currentUserList.find((x) => x.unit === unit);
+  if (
+    !confirm(
+      `Hapus unit "${unit}" (${u ? u.name : ""})? Warga ini tidak akan bisa login lagi.`,
+    )
+  )
+    return;
+  const adminUnit = localStorage.getItem("pondok_rajeg_user");
+  try {
+    const result = await sendToBackend("adminDeleteUnit", { adminUnit, unit });
+    showToast(result.message);
+    loadUserManagerGrid();
+  } catch (err) {
+    showToast(`Gagal: ${err.message}`);
+  }
+}
+
+function openResetPinDialog(unit) {
+  const dialog = $("#resetPinDialog");
+  const form = $("#resetPinForm");
+  if (!dialog || !form) return;
+  form.reset();
+  form.dataset.resetUnit = unit;
+  $("#resetPinTitle").textContent = "Reset PIN — " + unit;
+  dialog.showModal();
+}
+
 function refreshPublicContentIfOpen(type) {
   // Segarkan tampilan warga bila dialog terkait sedang terbuka di belakang.
   if (type === "jasa" && $("#tukangDialog")?.open) loadTukangList();
@@ -2891,6 +3039,115 @@ document.addEventListener("DOMContentLoaded", () => {
         loadNotifications();
       } catch (err) {
         showSaveFailureModal(err);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
+    });
+  }
+
+  // ------------------------------------------------------------
+  // [BARU] PANEL "KELOLA WARGA" (ADMIN) — daftar/ubah/reset PIN unit.
+  // ------------------------------------------------------------
+  const userAdminBtn = $("#userAdminBtn");
+  const userManagerDialog = $("#userManagerDialog");
+  const userManagerRefreshBtn = $("#userManagerRefreshBtn");
+  const userManagerAddBtn = $("#userManagerAddBtn");
+  const userForm = $("#userForm");
+  const userFormDialog = $("#userFormDialog");
+  const userFormRandomPinBtn = $("#userFormRandomPinBtn");
+  const resetPinForm = $("#resetPinForm");
+  const resetPinDialog = $("#resetPinDialog");
+
+  if (userAdminBtn && userManagerDialog) {
+    userAdminBtn.addEventListener("click", () => {
+      userManagerDialog.showModal();
+      loadUserManagerGrid();
+    });
+  }
+
+  if (userManagerRefreshBtn) {
+    userManagerRefreshBtn.addEventListener("click", () =>
+      loadUserManagerGrid(),
+    );
+  }
+
+  if (userManagerAddBtn) {
+    userManagerAddBtn.addEventListener("click", () => openUserForm(null));
+  }
+
+  if (userFormRandomPinBtn) {
+    userFormRandomPinBtn.addEventListener("click", () => {
+      const pinInput = userForm.querySelector("[name='pin']");
+      if (pinInput) {
+        pinInput.value = String(Math.floor(100000 + Math.random() * 900000));
+        pinInput.type = "text"; // supaya admin bisa lihat & catatkan PIN-nya
+      }
+    });
+  }
+
+  if (userForm) {
+    userForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = Object.fromEntries(new FormData(userForm));
+      const adminUnit = localStorage.getItem("pondok_rajeg_user");
+      const isEdit = !!userForm.dataset.editingUnit;
+      const submitBtn = $("#userFormSubmitBtn");
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = "Menyimpan...";
+
+      try {
+        const result = await sendToBackend(
+          isEdit ? "adminUpdateUnit" : "adminRegisterUnit",
+          {
+            adminUnit,
+            unit: isEdit ? userForm.dataset.editingUnit : formData.unit,
+            name: formData.name,
+            role: formData.role,
+            pin: formData.pin,
+          },
+        );
+        showAppModal(
+          isEdit ? "Unit Diperbarui" : "Unit Terdaftar",
+          result.message,
+          true,
+        );
+        userFormDialog?.close();
+        loadUserManagerGrid();
+      } catch (err) {
+        showToast(`Gagal: ${err.message}`);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
+    });
+  }
+
+  if (resetPinForm) {
+    resetPinForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = Object.fromEntries(new FormData(resetPinForm));
+      const adminUnit = localStorage.getItem("pondok_rajeg_user");
+      const unit = resetPinForm.dataset.resetUnit;
+      const submitBtn = $("#resetPinSubmitBtn");
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = "Memproses...";
+
+      try {
+        const result = await sendToBackend("adminResetUnitPin", {
+          adminUnit,
+          unit,
+          newPin: formData.newPin,
+        });
+        // [BARU] PIN baru ditampilkan lewat modal yang TIDAK otomatis
+        // hilang (bukan toast), supaya admin sempat mencatat/menyalinnya
+        // sebelum menyampaikan ke warga secara pribadi.
+        showAppModal("PIN Berhasil Direset", result.message, true);
+        resetPinDialog?.close();
+      } catch (err) {
+        showToast(`Gagal: ${err.message}`);
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;

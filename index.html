@@ -380,6 +380,22 @@
                 <strong>Kelola Konten</strong>
                 <small>Jasa, Medis & Info Warga</small>
               </button>
+
+              <!-- [BARU] Kelola Warga: admin bisa daftarkan unit baru, ubah
+                   data, & reset PIN langsung dari app — tanpa perlu buka
+                   spreadsheet manual. -->
+              <button
+                class="quick-card"
+                id="userAdminBtn"
+                data-admin-only="1"
+                style="display: none"
+              >
+                <b class="quick-icon userMgmt"
+                  ><span class="material-symbols-rounded">group_add</span></b
+                >
+                <strong>Kelola Warga</strong>
+                <small>Daftar unit & reset PIN</small>
+              </button>
             </div>
 
             <!-- Carousel halaman: JS memindahkan kartu dari quickGridSource ke sini, 6 kartu / halaman -->
@@ -1348,6 +1364,137 @@
         ></div>
         <button class="primary-button" type="submit" id="bulkUploadSubmitBtn">
           Upload Semua <span>→</span>
+        </button>
+      </form>
+    </dialog>
+
+    <!-- [BARU] MODAL KELOLA WARGA (ADMIN) — daftar unit baru, ubah data,
+         reset PIN, tanpa perlu buka spreadsheet manual. -->
+    <dialog id="userManagerDialog" class="modal content-manager-modal">
+      <form method="dialog">
+        <button type="button" class="close" value="cancel" aria-label="Tutup">
+          ×
+        </button>
+        <p class="eyebrow">PANEL PENGURUS PAGUYUBAN PRR</p>
+        <h2>Kelola Warga</h2>
+        <p style="font-size: 12px; color: var(--muted); margin: 0 0 14px">
+          Daftarkan unit warga baru, ubah nama/peran, atau reset PIN kapan saja
+          — tidak perlu edit spreadsheet manual lagi.
+        </p>
+
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 4px 0 10px;
+          "
+        >
+          <button
+            type="button"
+            id="userManagerRefreshBtn"
+            class="text-link-btn"
+          >
+            <span
+              class="material-symbols-rounded"
+              style="font-size: 14px; vertical-align: middle"
+              >refresh</span
+            >
+            Muat ulang
+          </button>
+          <button type="button" id="userManagerAddBtn" class="text-link-btn">
+            + Daftarkan Unit
+          </button>
+        </div>
+
+        <div id="userManagerGrid" class="content-card-grid">
+          <div class="empty-state-box">Memuat daftar warga...</div>
+        </div>
+
+        <button class="primary-button" value="cancel" style="margin-top: 14px">
+          Tutup
+        </button>
+      </form>
+    </dialog>
+
+    <!-- MODAL FORM TAMBAH/EDIT UNIT WARGA -->
+    <dialog id="userFormDialog" class="modal">
+      <form id="userForm" method="dialog">
+        <button type="button" class="close" value="cancel" aria-label="Tutup">
+          ×
+        </button>
+        <p class="eyebrow" id="userFormEyebrow">DAFTARKAN UNIT</p>
+        <h2 id="userFormTitle">Unit Baru</h2>
+
+        <label id="userFormUnitLabel"
+          >Kode Unit / Blok Rumah
+          <input type="text" name="unit" placeholder="Contoh: B8/2" required />
+        </label>
+        <label
+          >Nama Warga
+          <input
+            type="text"
+            name="name"
+            placeholder="Contoh: Bambang Kurniawan W"
+            required
+          />
+        </label>
+        <label
+          >Peran
+          <select name="role">
+            <option value="warga">Warga</option>
+            <option value="admin">Pengurus Paguyuban PRR (Admin)</option>
+          </select>
+        </label>
+
+        <div id="userFormPinSection">
+          <label
+            >PIN Awal (4-6 Angka)
+            <input
+              type="password"
+              name="pin"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="6"
+              placeholder="••••"
+            />
+          </label>
+          <button type="button" id="userFormRandomPinBtn" class="text-link-btn">
+            🎲 Buatkan PIN Acak
+          </button>
+        </div>
+
+        <button class="primary-button" type="submit" id="userFormSubmitBtn">
+          Simpan <span>→</span>
+        </button>
+      </form>
+    </dialog>
+
+    <!-- [BARU] MODAL KONFIRMASI RESET PIN -->
+    <dialog id="resetPinDialog" class="modal">
+      <form id="resetPinForm" method="dialog">
+        <button type="button" class="close" value="cancel" aria-label="Tutup">
+          ×
+        </button>
+        <p class="eyebrow">RESET PIN</p>
+        <h2 id="resetPinTitle">Reset PIN Warga</h2>
+        <p style="font-size: 12px; color: var(--muted); margin: 0 0 14px">
+          Kosongkan field di bawah untuk membuat PIN acak otomatis, atau isi
+          manual kalau warga sudah punya PIN yang diinginkan.
+        </p>
+        <label
+          >PIN Baru (Opsional — 4-6 Angka)
+          <input
+            type="password"
+            name="newPin"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="6"
+            placeholder="Kosongkan untuk acak otomatis"
+          />
+        </label>
+        <button class="primary-button" type="submit" id="resetPinSubmitBtn">
+          Reset PIN <span>→</span>
         </button>
       </form>
     </dialog>
