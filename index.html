@@ -1965,18 +1965,28 @@
           <b>Bank Jago a.n Muhamad Kurnia Fauqou Nur (504460167350)</b>.
         </div>
 
-        <!-- [DIPERBARUI] Gambar QRIS asli — merchant terdaftar "UMMACARE
-             INDONESIA" (sebelumnya placeholder abu-abu). -->
+        <!-- [DIPERBARUI] Style 2026: badge "Siap Discan" + bingkai putih
+             melayang dengan bayangan di sekitar QR, background gradient
+             lembut + tekstur titik halus — bukan kotak datar polos lagi. -->
         <div id="qrisImageBlock" class="qris-image-block" style="display: none">
-          <img
-            id="qrisImage"
-            src="https://i.ibb.co.com/pjrC8rQd/Whats-App-Image-2026-08-30-at-00-29-03.jpg"
-            alt="Kode QRIS Pembayaran IPL - UMMACARE INDONESIA"
-          />
+          <span class="qris-scan-badge">
+            <span class="material-symbols-rounded">qr_code_2</span> Siap Discan
+          </span>
+          <div class="qris-image-frame">
+            <!-- [BARU] Gambar QRIS bisa di-tap untuk diperbesar (lightbox
+                 di bawah) — supaya lebih gampang di-scan dari layar HP lain
+                 kalau tampilan kecil di sini kurang jelas terdeteksi kamera. -->
+            <img
+              id="qrisImage"
+              src="https://i.ibb.co.com/pjrC8rQd/Whats-App-Image-2026-08-30-at-00-29-03.jpg"
+              alt="Kode QRIS Pembayaran IPL - UMMACARE INDONESIA"
+            />
+          </div>
           <p class="qris-image-caption">
-            Scan kode QRIS di atas pakai e-wallet atau m-banking apa saja
-            (GoPay, OVO, DANA, ShopeePay, BCA Mobile, dll), lalu screenshot
-            bukti pembayarannya untuk diupload di bawah.
+            <span class="material-symbols-rounded">zoom_in</span>
+            Tap gambar QRIS untuk memperbesar. Scan pakai e-wallet atau
+            m-banking apa saja (GoPay, OVO, DANA, ShopeePay, BCA Mobile, dll),
+            lalu screenshot bukti pembayarannya untuk diupload di bawah.
           </p>
         </div>
 
@@ -2030,6 +2040,20 @@
           Konfirmasi pembayaran <span>→</span>
         </button>
       </form>
+    </dialog>
+
+    <!-- [BARU] Lightbox perbesar gambar QRIS — dibuka saat gambar QR di
+         form pembayaran di-tap. Tap di mana saja / tombol X untuk tutup. -->
+    <dialog id="qrisZoomDialog" class="qris-zoom-dialog">
+      <button
+        type="button"
+        class="qris-zoom-close"
+        id="qrisZoomCloseBtn"
+        aria-label="Tutup"
+      >
+        <span class="material-symbols-rounded">close</span>
+      </button>
+      <img id="qrisZoomImage" src="" alt="Kode QRIS diperbesar" />
     </dialog>
 
     <dialog

@@ -2669,32 +2669,139 @@ body {
 }
 
 /* [BARU] Area gambar QRIS di form pembayaran IPL */
+/* [DIPERBARUI] Style 2026: dari kotak datar warna tint polos jadi kartu
+   bergradasi lembut + tekstur titik halus di background, bingkai QR putih
+   melayang dengan bayangan (bukan cuma border rata), dan badge "Siap
+   Discan" di atas — kesan lebih premium/modern, senada dengan linimasa
+   Update Warga & tile bulan pembayaran yang sudah lebih dulu direstyle. */
 .qris-image-block {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   margin: 0 0 14px;
-  padding: 16px;
-  background: var(--soft);
-  border: 1.5px solid var(--line);
-  border-radius: 16px;
+  padding: 22px 18px;
+  background: linear-gradient(160deg, #f0faf4, #ffffff 60%);
+  border: 1px solid var(--line);
+  border-radius: 22px;
   text-align: center;
+  overflow: hidden;
+}
+.qris-image-block::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    circle,
+    rgba(8, 122, 75, 0.07) 1px,
+    transparent 1px
+  );
+  background-size: 18px 18px;
+  pointer-events: none;
+}
+.qris-scan-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  color: var(--green);
+  background: rgba(8, 122, 75, 0.1);
+  padding: 6px 14px;
+  border-radius: 20px;
+}
+.qris-scan-badge .material-symbols-rounded {
+  font-size: 14px;
+}
+.qris-image-frame {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* [FIX] Sebelumnya cuma mengandalkan ukuran otomatis (shrink-to-fit) buat
+     menengahkan gambar di dalam bingkai — meleset kalau kombinasi lebar
+     maksimal (220px) & tinggi maksimal (340px) tidak pas dengan rasio asli
+     gambar (poster memanjang), bikin gambar nempel ke salah satu sisi.
+     Sekarang ditengahkan EKSPLISIT lewat flexbox, dijamin selalu center
+     berapa pun ukuran akhir gambarnya setelah dibatasi. */
+  padding: 14px;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 10px 28px rgba(6, 43, 28, 0.14);
 }
 .qris-image-block img {
-  width: 100%;
-  max-width: 240px;
-  aspect-ratio: 1 / 1;
+  display: block;
+  /* [FIX] Sebelumnya "width:100%" + "max-width" + "max-height" dipakai
+     bersamaan — kombinasi ini ambigu untuk gambar potret (bisa bikin
+     browser menghitung ukuran akhir yang tidak proporsional/tidak center).
+     Disederhanakan jadi cuma max-width & max-height, browser otomatis
+     hitung ukuran akhir yang PALING PAS menjaga rasio asli gambar. */
+  max-width: 220px;
+  max-height: 340px;
+  width: auto;
+  height: auto;
   object-fit: contain;
-  border-radius: 12px;
-  background: #fff;
-  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: zoom-in;
 }
 .qris-image-caption {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
   font-size: 11.5px;
   color: var(--muted);
-  line-height: 1.5;
+  line-height: 1.55;
   margin: 0;
+  text-align: left;
+}
+.qris-image-caption .material-symbols-rounded {
+  font-size: 15px;
+  color: var(--green);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* [BARU] Lightbox perbesar gambar QRIS */
+.qris-zoom-dialog {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  max-width: 92vw;
+  max-height: 92vh;
+  overflow: visible;
+}
+.qris-zoom-dialog::backdrop {
+  background: rgba(6, 43, 28, 0.85);
+}
+.qris-zoom-dialog img {
+  display: block;
+  max-width: 92vw;
+  max-height: 88vh;
+  width: auto;
+  height: auto;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+.qris-zoom-close {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 1;
 }
 
 /* [BARU] Peringatan kode unik QRIS — merah/oranye mencolok karena warga

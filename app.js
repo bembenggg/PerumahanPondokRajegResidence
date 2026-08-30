@@ -1499,13 +1499,62 @@ function getSelectedMonths() {
 // angka spesifik (bukan angka bulat yang bisa kebetulan cocok) jauh lebih
 // meyakinkan sebagai bukti — bukan cuma "≥ tagihan" yang longgar. TIDAK
 // berlaku untuk Tunai karena itu diverifikasi manual oleh admin, bukan AI.
-const paymentUniqueCodeCache = {};
-function getPaymentUniqueCode(baseTotal) {
-  const key = String(baseTotal);
-  if (!paymentUniqueCodeCache[key]) {
-    paymentUniqueCodeCache[key] = Math.floor(Math.random() * 900) + 100; // 100-999
+// [FIX BUG] Sebelumnya kode unik cuma disimpan di variabel JS biasa
+// (memory), yang HILANG TOTAL setiap kali halaman dimuat ulang — termasuk
+// skenario umum: warga pindah ke app bank/e-wallet buat transfer, PWA
+// dibackground lalu "dibunuh" OS, warga balik lagi ke MY PRR (jadi reload
+// baru). Kode unik yang tadinya ditampilkan (mis. 656) jadi HILANG dan
+// diganti kode BARU acak (mis. 812) — padahal warga sudah kepalang
+// transfer pakai kode lama, jadi tidak akan pernah cocok saat diverifikasi.
+// Sekarang kode disimpan ke localStorage (bertahan lintas reload/buka app
+// lagi), kedaluwarsa otomatis setelah 48 jam supaya tidak menumpuk selamanya.
+const PAYMENT_UNIQUE_CODE_KEY = "pondok_rajeg_unique_codes";
+const UNIQUE_CODE_EXPIRY_MS = 48 * 60 * 60 * 1000; // 48 jam
+
+// [FIX BUG] Sebelumnya kunci cache HANYA berdasarkan total nominal
+// (baseTotal) — akibatnya, warga yang bayar "Januari 2025 saja" (1 bulan =
+// Rp120.000) lalu di lain waktu bayar "Februari 2025 saja" (juga 1 bulan =
+// Rp120.000) akan dapat KODE UNIK YANG SAMA PERSIS, karena totalnya
+// kebetulan sama walau bulannya beda! Ini menurunkan gunanya kode unik utk
+// admin membedakan transaksi. Sekarang kunci cache menyertakan DAFTAR BULAN
+// YANG DIPILIH (bukan cuma totalnya), jadi kombinasi bulan berbeda selalu
+// dapat kode berbeda — walau kebetulan totalnya sama.
+function getPaymentUniqueCode(baseTotal, selectedMonths) {
+  const monthsKey = (selectedMonths || []).slice().sort().join(",");
+  const key = monthsKey + "|" + String(baseTotal);
+  let store = {};
+  try {
+    store = JSON.parse(localStorage.getItem(PAYMENT_UNIQUE_CODE_KEY) || "{}");
+  } catch (err) {
+    store = {};
   }
-  return paymentUniqueCodeCache[key];
+
+  const now = Date.now();
+  const existing = store[key];
+  if (
+    existing &&
+    existing.code &&
+    now - existing.savedAt < UNIQUE_CODE_EXPIRY_MS
+  ) {
+    return existing.code;
+  }
+
+  const newCode = Math.floor(Math.random() * 900) + 100; // 100-999
+  store[key] = { code: newCode, savedAt: now };
+
+  // Sekalian bersihkan entri lama yang sudah kedaluwarsa, supaya
+  // localStorage tidak menumpuk sampah kode unik dari bulan-bulan lalu.
+  Object.keys(store).forEach((k) => {
+    if (now - store[k].savedAt >= UNIQUE_CODE_EXPIRY_MS) delete store[k];
+  });
+
+  try {
+    localStorage.setItem(PAYMENT_UNIQUE_CODE_KEY, JSON.stringify(store));
+  } catch (err) {
+    // localStorage penuh/gagal simpan -> kode tetap dipakai untuk sesi
+    // ini, cuma tidak bertahan kalau reload (fallback aman, bukan crash).
+  }
+  return newCode;
 }
 
 function updateSelectedMonthsSummary() {
@@ -1520,7 +1569,7 @@ function updateSelectedMonthsSummary() {
 
   let finalTotal = baseTotal;
   if (usesUniqueCode && baseTotal > 0) {
-    const code = getPaymentUniqueCode(baseTotal);
+    const code = getPaymentUniqueCode(baseTotal, selected);
     finalTotal = baseTotal + code;
     if (qrisCodeNote) {
       qrisCodeNote.style.display = "block";
@@ -3998,6 +4047,30 @@ document.addEventListener("DOMContentLoaded", () => {
       // [BARU] Total (termasuk kode unik QRIS) perlu dihitung ULANG setiap
       // metode pembayaran berganti — bukan cuma saat centang bulan berubah.
       updateSelectedMonthsSummary();
+    });
+  }
+
+  // [BARU] Lightbox perbesar gambar QRIS — tap gambar kecil di form untuk
+  // lihat versi besarnya, supaya lebih gampang di-scan dari HP lain kalau
+  // ukuran kecil di form kurang jelas terdeteksi kamera.
+  const qrisImage = $("#qrisImage");
+  const qrisZoomDialog = $("#qrisZoomDialog");
+  const qrisZoomImage = $("#qrisZoomImage");
+  const qrisZoomCloseBtn = $("#qrisZoomCloseBtn");
+  if (qrisImage && qrisZoomDialog && qrisZoomImage) {
+    qrisImage.addEventListener("click", () => {
+      qrisZoomImage.src = qrisImage.src;
+      qrisZoomDialog.showModal();
+    });
+  }
+  if (qrisZoomCloseBtn && qrisZoomDialog) {
+    qrisZoomCloseBtn.addEventListener("click", () => qrisZoomDialog.close());
+  }
+  if (qrisZoomDialog) {
+    // Tap di area luar gambar (backdrop/dialog sendiri, bukan gambarnya)
+    // juga menutup lightbox — pola umum galeri foto.
+    qrisZoomDialog.addEventListener("click", (e) => {
+      if (e.target === qrisZoomDialog) qrisZoomDialog.close();
     });
   }
 
