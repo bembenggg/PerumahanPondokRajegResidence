@@ -4876,6 +4876,11 @@ document.addEventListener("DOMContentLoaded", () => {
               "Server sedang padat, tapi bukti pembayaran Anda sudah diamankan di perangkat ini. Begitu koneksi kembali stabil, sistem akan otomatis mengirimkannya ke server — Anda tidak perlu mengulang dari awal.",
               true,
             );
+            // [BARU] Coba kirim ulang CEPAT (15 detik) setelah diantrikan —
+            // kalau ternyata koneksinya cuma putus sesaat (bukan benar-benar
+            // lama padat), warga tidak perlu menunggu sampai pemicu berkala
+            // 45 detik berikutnya untuk melihat badge-nya hilang.
+            setTimeout(trySyncPendingPayments, 15000);
           } else {
             // localStorage penuh/gagal simpan -> jangan pura-pura berhasil,
             // tetap minta warga coba manual.
@@ -4898,6 +4903,18 @@ document.addEventListener("DOMContentLoaded", () => {
   updatePendingPaymentBadge();
   trySyncPendingPayments();
   window.addEventListener("online", trySyncPendingPayments);
+
+  // [BARU] Sebelumnya HANYA 2 pemicu di atas (buka app / event "online")
+  // — kalau warga tetap di halaman yang sama tanpa reload, dan koneksinya
+  // cuma lambat (bukan benar-benar offline, jadi event "online" browser
+  // tidak pernah terpicu), antrian bisa "nyangkut" lama menunggu tanpa ada
+  // yang mencoba kirim ulang, padahal badge-nya masih nongol terus — bikin
+  // warga bingung apakah sudah terkirim atau belum. Sekarang ditambah
+  // pemicu BERKALA setiap 45 detik SELAMA masih ada antrian, supaya begitu
+  // koneksi membaik, badge langsung hilang tanpa warga perlu reload manual.
+  setInterval(() => {
+    if (getPendingPayments().length > 0) trySyncPendingPayments();
+  }, 45000);
 
   refreshWelcomeHeader();
 });

@@ -1,4 +1,4 @@
-const CACHE_NAME = "my-prr-warga-v1.0.";
+const CACHE_NAME = "my-prr-warga-v0.7";
 const urlsToCache = ["./", "./index.html", "./style.css", "./app.js"];
 
 importScripts(
@@ -100,17 +100,48 @@ messaging.onBackgroundMessage((payload) => {
 //   baca parameter URL itu saat baru boot dan navigasi ke sana otomatis.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+
+  // [FIX BUG - Deep Link Tidak Jalan di iOS & Android] Sebelumnya SEMUA info
+  // navigasi (refType/refId/title/body/link) diambil dari
+  // event.notification.data — tapi untuk notifikasi yang tampil OTOMATIS
+  // lewat push service OS (jalur "display message" utama sejak perbaikan
+  // Xiaomi/Vivo), field "data" custom TIDAK SELALU ikut terbawa dengan
+  // andal ke objek Notification akhir di semua kombinasi browser/OS.
+  //
+  // Sekarang sumber utamanya adalah TAG (format "refType::refId::asli" —
+  // lihat sendFCMv1Message di code.gs), karena "tag" adalah properti INTI
+  // Notification API yang DIJAMIN selalu tersedia apa pun jalur tampilnya.
+  // title/body diambil dari event.notification.title/body langsung (juga
+  // properti inti, bukan custom data) — bukan dari data.title/data.body.
+  // "data" tetap dibaca sebagai PELENGKAP/cadangan kalau parsing tag gagal.
+  const rawTag = event.notification.tag || "";
+  const tagParts = rawTag.split("::");
   const data = event.notification.data || {};
-  const refType = data.refType || "";
-  const refId = data.refId || "";
-  const title = data.title || "";
-  const body = data.body || "";
+
+  const refType =
+    (tagParts.length >= 3 ? tagParts[0] : "") || data.refType || "";
+  const refId = (tagParts.length >= 3 ? tagParts[1] : "") || data.refId || "";
+  const title = event.notification.title || data.title || "";
+  const body = event.notification.body || data.body || "";
 
   // [BARU] Fix #2: sertakan title/body sebagai parameter URL juga (dipakai
   // app.js sebagai fallback MODAL kalau refType tidak punya halaman/section
   // spesifik untuk dituju, mis. panic/content/payment — supaya warga tidak
   // "dibuang" ke Beranda tanpa konteks, tapi langsung lihat isi notifnya).
+  // targetUrl dibangun ULANG dari refType/refId hasil parsing tag di atas
+  // (bukan cuma pakai data.link apa adanya) supaya tetap benar walau
+  // data.link kebetulan tidak terbawa.
   let targetUrl = data.link || "./";
+  if (refType === "post" && refId) {
+    targetUrl = "./?refType=post&refId=" + encodeURIComponent(refId);
+  } else if (refType === "complaint") {
+    targetUrl = "./?refType=complaint";
+  } else if (refType && targetUrl === "./") {
+    targetUrl =
+      "./?refType=" +
+      encodeURIComponent(refType) +
+      (refId ? "&refId=" + encodeURIComponent(refId) : "");
+  }
   try {
     const urlObj = new URL(targetUrl, self.location.origin);
     if (title) urlObj.searchParams.set("notifTitle", title);
